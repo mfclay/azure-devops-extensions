@@ -48,8 +48,15 @@ diffs `npx vitest run -u` makes to the `*.golden.json` files before keeping them
 
 - **Never commit a recording of a real project.** `capture-fixture` writes to
   `core/fixtures/recorded/`, which git ignores.
-- Only tests and the dev page import fixtures. Nothing reachable from an extension's entry point
-  may import them, so the bundler never sees them.
+- Only tests, the dev page and the demo hub import fixtures. Nothing reachable from the hub's
+  entry point imports them in a normal build, so the bundler never sees them.
+- **The demo hub** (`npm run build:demo -w @pipeline-insights/extension`, then
+  `node scripts/package.mjs --overrides overrides/demo.json --demo`) is the real hub reading the
+  contoso estate, with its timestamps moved to now, for Marketplace screenshots inside Azure
+  DevOps. A Vite plugin swaps the hub's `src/source.ts` for `src/demo-source.ts` in that build
+  only. It publishes as the private `pipeline-insights-demo` extension, shared only with the test
+  organization; packaging refuses `--demo` for anything else, because it skips the identifier
+  check.
 - `tools/check-identifiers.mjs` is the second guard. `package.mjs` runs it over the staged
   `build/` directory, and it fails a package that carries any name or GUID the fixtures hold,
   a run URL, a subscription path, or a denylist match.

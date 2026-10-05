@@ -7,6 +7,11 @@
  *
  *   node scripts/package.mjs --overrides overrides/dev.json
  *   node scripts/package.mjs --overrides overrides/release.json
+ *   node scripts/package.mjs --overrides overrides/demo.json --demo
+ *
+ * `--demo` packages the demo hub (`npm run build:demo`), which carries the synthetic contoso
+ * estate on purpose. It skips the identifier check for that reason, so it refuses any overrides
+ * that are not a private `-demo` extension.
  *
  * The version comes from the manifest unless the overrides file sets one; the dev publish script
  * writes the next free version into a staged copy of its overrides. There is no `--rev-version`: tfx would bump
@@ -64,10 +69,15 @@ if (
   throw new Error(`${overridesPath} does not name a publisher.`);
 }
 
+const demo = argv.includes('--demo');
+if (demo && !(String(overrides.id ?? '').endsWith('-demo') && overrides.public === false)) {
+  throw new Error(`--demo packages fixture data, so ${overridesPath} must name a private "-demo" extension.`);
+}
+
 // ── Preconditions ────────────────────────────────────────────────────────────
 
 // `--hub` exists for the tests, which need a hub that is certainly missing.
-const hubDist = path.resolve(root, flag('hub') ?? path.join('dist', 'hub'));
+const hubDist = path.resolve(root, flag('hub') ?? path.join('dist', demo ? 'demo-hub' : 'hub'));
 const staged = [
   ['The hub', hubDist, 'build the hub first'],
   ['The manifest', path.join(root, 'vss-extension.json'), 'it lives beside package.json'],
@@ -94,7 +104,11 @@ await fs.copyFile(path.join(root, '..', 'LICENSE'), path.join(build, 'LICENSE'))
 
 // ── No real identifiers in what ships ────────────────────────────────────────
 
-execFileSync(process.execPath, [path.resolve(root, '../tools/check-identifiers.mjs'), build], { stdio: 'inherit' });
+if (demo) {
+  console.log('Demo package: it carries the synthetic contoso estate by design, so the identifier check is skipped.');
+} else {
+  execFileSync(process.execPath, [path.resolve(root, '../tools/check-identifiers.mjs'), build], { stdio: 'inherit' });
+}
 
 await fs.mkdir(out, { recursive: true });
 

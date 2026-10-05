@@ -1,0 +1,9 @@
+{
+  "publisher": "MichaelC",
+  "id": "pipeline-insights-demo",
+  "public": false,
+  "galleryFlags": [
+    "Preview"
+  ],
+  "name": "Pipeline Insights (demo)"
+}

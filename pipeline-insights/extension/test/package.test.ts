@@ -48,4 +48,19 @@ describe('package.mjs', () => {
     expect(status).not.toBe(0);
     expect(stderr).toContain('The hub is missing');
   });
+
+  it('packages fixture data only into a private -demo extension', () => {
+    // The demo hub carries the contoso estate and skips the identifier check, so the one thing
+    // that keeps it off the Marketplace is this refusal.
+    for (const overrides of [
+      { publisher: 'example-publisher', id: 'pipeline-insights-dev', public: false },
+      { publisher: 'example-publisher', id: 'pipeline-insights-demo', public: true },
+    ]) {
+      const file = path.join(scratch, 'not-demo.json');
+      writeFileSync(file, JSON.stringify(overrides));
+      const { status, stderr } = pack('--overrides', file, '--demo');
+      expect(status).not.toBe(0);
+      expect(stderr).toContain('must name a private "-demo" extension');
+    }
+  });
 });

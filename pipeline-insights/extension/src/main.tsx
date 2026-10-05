@@ -10,8 +10,8 @@ import { adoLinks, InsightsPage, LoadingPage, useRepoSearch, type About, type Se
 import * as SDK from 'azure-devops-extension-sdk';
 import { StrictMode, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { createRoot } from 'react-dom/client';
-import { AdoSource } from './ado-source.js';
 import { ADO_THEME_KEYS, adoTheme, isDark, luminance, type AdoThemeData } from './ado-theme.js';
+import { hubSource } from './source.js';
 
 /** Unfinished runs are re-read this often while the page is visible. */
 const REFRESH_MS = 60_000;
@@ -121,7 +121,7 @@ function Hub({ host }: { host: Host }) {
   const theme = useAdoTheme();
   const { source, cache, links } = useMemo(
     () => ({
-      source: new AdoSource(host.collection, host.project, () => SDK.getAccessToken()),
+      source: hubSource(host.collection, host.project),
       cache: new MemoryCache(),
       links: adoLinks(host.collection, host.project),
     }),
