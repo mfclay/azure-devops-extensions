@@ -40,7 +40,7 @@ afterEach(() => {
 const page = () =>
   render(<InsightsPage estate={estate} now={Date.parse(fixture.capturedAt)} project={fixture.project} links={adoLinks(fixture.org, fixture.project)} />);
 const attention = () => within(screen.getByRole('region', { name: /Needs attention/ }));
-const health = () => within(screen.getByRole('region', { name: 'Estate health' }));
+const health = () => within(screen.getByRole('region', { name: 'Pipeline health' }));
 const rows = () => screen.queryAllByRole('button', { name: / details$/ });
 const lineHeads = () => screen.queryAllByRole('button', { name: / line$/ });
 /** Opens a closed line, whose member rows are hidden until then. */

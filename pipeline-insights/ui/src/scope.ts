@@ -3,7 +3,7 @@ import type { Lines, Pipeline } from '@pipeline-insights/core';
 /**
  * Which pipelines the page is about: a folder from the heading or the page address, and the quick
  * filters. Everything above the folder blocks is worked out from the pipelines in scope, so a
- * folder narrows Needs attention and Estate health too. See design.md, "The page".
+ * folder narrows Needs attention and Pipeline health too. See design.md, "The page".
  */
 export interface Scope {
   /** As Azure DevOps writes it, `\services`; null for every folder. */

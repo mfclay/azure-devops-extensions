@@ -15,7 +15,7 @@ Pipeline Insights is a page inside Azure DevOps that shows every pipeline in a p
 **Goals**
 
 - Answer "what needs me right now?" before anything else, in plain sentences, most urgent first.
-- Show the whole estate's health at a glance, and each folder's health in one line.
+- Show the health of every pipeline at a glance, and each folder's health in one line.
 - Show each pipeline's recent history, its latest run's stages, and what it is for.
 - Live in Azure DevOps, under the viewer's own sign-in, with no stored credential.
 
@@ -49,7 +49,7 @@ The page sits inside Azure DevOps's own top bar and left menu. The left menu can
 
 ## The page
 
-The page reads top to bottom from "what needs me" to "everything else". Guidance comes first, then the estate's health, then one block per pipeline folder. Clicking any pipeline opens a side panel.
+The page reads top to bottom from "what needs me" to "everything else". Guidance comes first, then pipeline health, then one block per pipeline folder. Clicking any pipeline opens a side panel.
 
 ```text
 +----------------------------------------------------------------------------+
@@ -57,7 +57,7 @@ The page reads top to bottom from "what needs me" to "everything else". Guidance
 +------------+---------------------------------------------------------------+
 | Pipelines  | Controls: window 7/14/30 days, main only, filters             |
 |            +------------------------------------+--------------------------+
-| menu       | NEEDS ATTENTION (emphasised)       | Estate health            |
+| menu       | NEEDS ATTENTION (emphasised)       | Pipeline health          |
 | [Insights] | most urgent first, one sentence    | [==========|==|=|-]      |
 |            | each:                              | count per state;         |
 |            | catalog-sync-etl-deploy: failed    |   click to filter        |
@@ -86,7 +86,7 @@ The attention list is the one emphasised region. Clicking any pipeline row opens
 | Heading | `Pipeline Insights › <folder>`. The folder is a dropdown of every folder with its pipeline count, subfolders indented under their parent, and "All folders" in grey when none is picked. "Pipeline Insights" goes back to every folder. | Narrows the whole page to one part of the estate. |
 | Controls | Time window (7, 14 or 30 days), main branch only (on by default), quick filters, filter box | The window drives success rates and failure counts. Main-only keeps PR and feature-branch runs from making a pipeline look broken. |
 | Needs attention | One sentence per problem, most urgent first: pipeline name, what is wrong, where (the stage), how long ago, and an Open run link. Six shown, "Show all" for the rest. | The page's main job: tell the viewer where to start. |
-| Estate health | A segmented bar and a count per state (Failing, Waiting for approval, Running, Healthy, Idle 30+ days and others). Below it: runs in the window, percent succeeded, runs waiting for approval. Clicking a state filters the page. Archived and disabled pipelines are not counted, and a line says how many were left out. | The whole estate in one glance, and the fastest way to narrow it. |
+| Pipeline health | A segmented bar and a count per state (Failing, Waiting for approval, Running, Healthy, Idle 30+ days and others). Below it: runs in the window, percent succeeded, runs waiting for approval. Clicking a state filters the page. Archived and disabled pipelines are not counted, and a line says how many were left out. | The whole estate in one glance, and the fastest way to narrow it. |
 | Folder blocks | One collapsible block per pipeline folder, open by default. The header carries a one-line state summary. Inside, one row per line or standalone pipeline, worst state first, with archived and disabled ones last and dimmed. | Folders are a project's existing grouping, so no new taxonomy is needed. |
 | Pipeline row | State icon; name, purpose and "Runs after X" when it is chained; the last 15 runs as coloured squares, oldest to newest, with PR runs drawn shorter; the latest run's reason, age and stage strip, naming the stage that is waiting or failed; success rate, run count and median duration for the window | Enough to judge a pipeline without opening it. |
 | Side panel | State and folder; Open in Pipelines, View YAML and Edit description links; purpose (marked draft, derived or summary), owner, category, component, triggers, YAML path, what to fix in the metadata, window stats; the entry's details; recent runs, each with its stages listed | The detail for one pipeline, without leaving the page. |
@@ -94,7 +94,7 @@ The attention list is the one emphasised region. Clicking any pipeline row opens
 **Folder and quick filters.** Decided 2026-10-04 from mockups.
 
 - A folder includes its subfolders: `\services` holds no pipelines of its own, only `\services\infrastructure` (2) and `\services\production` (8). `\services` never matches `\services-old`.
-- The folder and the quick filters narrow everything on the page, Needs attention and Estate health included, not only the folder blocks.
+- The folder and the quick filters narrow everything on the page, Needs attention and Pipeline health included, not only the folder blocks.
 - Lines are inferred from the whole estate first and then narrowed, so a filter never changes which pipelines group. A line that spans two folders keeps only the members in view, filed under the last of them; one left with a single member shows it alone.
 - The picked folder goes into the page address as `?folder=`, so a bookmark reopens it. Opening the page with `?folder=` starts from the default settings with only the folder set.
 - Quick filters: **Repo**, shown when there are two repos to pick from among the pipelines in view; **Category** and **Component**, shown once any pipeline declares one. Before the descriptions load nothing is declared, so they never flash in and out. A picked filter is tinted, and "Any" clears it.
@@ -150,8 +150,8 @@ Within a priority, the oldest item comes first.
 **Archived and disabled pipelines.** Decided 2026-10-04, from mockups, in 0.1.3. A pipeline is retired when its entry says `archived: true` or it is disabled in Azure DevOps. A retired pipeline stays listed and keeps its state, but:
 
 - it raises no attention item, a failed run included, and is not counted among pipelines with no owner;
-- Estate health leaves it out of the state counts and the run totals, and says how many it left out ("Not counted: 1 disabled pipeline.");
-- clicking a state in Estate health does not show it, since it was not counted;
+- Pipeline health leaves it out of the state counts and the run totals, and says how many it left out ("Not counted: 1 disabled pipeline.");
+- clicking a state in Pipeline health does not show it, since it was not counted;
 - it is listed last in its folder, dimmed, tagged `archived` or `disabled`, and the folder header counts it apart from the states;
 - the setup panel leaves it out of every progress count, though an archived entry's problems are still listed, since the entry is still read;
 - the side panel says why it is quiet;
@@ -326,7 +326,7 @@ Iterate under a dev publisher, installed only in a test organization. Once the e
 
 **Phases**
 
-1. The Insights page: controls, Needs attention, Estate health, folder blocks, side panel, folder dropdown, quick filters and setup panel. Iterated under the dev publisher in the test organization. Done through M6 on 2026-10-04.
+1. The Insights page: controls, Needs attention, Pipeline health, folder blocks, side panel, folder dropdown, quick filters and setup panel. Iterated under the dev publisher in the test organization. Done through M6 on 2026-10-04.
 2. Publish under the release publisher.
 3. The dashboard widget.
 4. Later: the button on a pipeline's page, other projects, the folder right-click menu.

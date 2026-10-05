@@ -18,7 +18,7 @@ export function EstateHealth({ summary, windowDays, filter, onFilter }: Props) {
   return (
     <section className="pi-panel" aria-labelledby="pi-health-h">
       <div className="pi-panel-head">
-        <h2 id="pi-health-h">Estate health</h2>
+        <h2 id="pi-health-h">Pipeline health</h2>
         <span className="pi-hint">{filter ? 'Filtered · click again to clear' : 'Click a state to filter'}</span>
       </div>
       <div className="pi-health">

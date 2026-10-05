@@ -4,7 +4,7 @@ One page in the Pipelines menu that shows a project's pipelines at a glance.
 
 - **Needs attention:** failing pipelines, runs waiting at an approval, and pipelines that have
   gone quiet, most urgent first.
-- **Estate health:** every pipeline by state, with run counts and success rates for the last 7,
+- **Pipeline health:** every pipeline by state, with run counts and success rates for the last 7,
   14 or 30 days.
 - **Folders:** one block per pipeline folder, with each pipeline's recent runs, and a side panel
   with its stages and history. Pick a folder from the heading to see only that folder and its

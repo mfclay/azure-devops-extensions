@@ -81,7 +81,7 @@ interface Tip {
 }
 
 /**
- * The Insights page: what needs attention, the estate's health, then one block per folder, with
+ * The Insights page: what needs attention, pipeline health, then one block per folder, with
  * a side panel per pipeline. Colours and fonts come from `--pi-*` variables the host sets.
  */
 export function InsightsPage(props: InsightsPageProps) {

@@ -3,7 +3,7 @@
   "id": "pipeline-insights",
   "version": "0.1.0",
   "name": "Pipeline Insights",
-  "description": "One page for a project's pipelines: what needs attention, the estate's health, and every pipeline's recent runs.",
+  "description": "One page for a project's pipelines: what needs attention, how they're doing overall, and every pipeline's recent runs.",
   "categories": [
     "Azure Pipelines"
   ],

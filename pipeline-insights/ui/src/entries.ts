@@ -40,7 +40,7 @@ export function folderEntries(
   const filtering = Boolean(q || view.filter);
   const matches = (a: PipelineAnalysis) =>
     (!q || a.pipeline.name.toLowerCase().includes(q) || (a.pipeline.facts.purpose ?? '').toLowerCase().includes(q)) &&
-    // A state filter matches what Estate health counted, which leaves retired pipelines out.
+    // A state filter matches what Pipeline health counted, which leaves retired pipelines out.
     (!view.filter || (a.state === view.filter && !isRetired(a.pipeline)));
 
   const entries: { folder: string; entry: FolderEntry }[] = [];

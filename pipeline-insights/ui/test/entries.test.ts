@@ -111,7 +111,7 @@ describe('folderEntries with archived and disabled pipelines', () => {
     expect(etl.headline.pipeline.name).toBe('catalog-sync-etl-build');
   });
 
-  it('leaves them out of a state filter, as Estate health leaves them out of its counts', () => {
+  it('leaves them out of a state filter, as Pipeline health leaves them out of its counts', () => {
     const marked = estate.map((p) => (p.name.startsWith('catalog-sync-etl') ? { ...p, facts: { ...p.facts, archived: true } } : p));
     const failing = folderEntries(marked.map((p) => pipelineState(p, options)), inferLines(marked), { query: '', filter: 'failing' });
     expect(flat(failing).map(label)).toEqual(['model-retrain-run']);
