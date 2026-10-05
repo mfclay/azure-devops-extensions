@@ -163,3 +163,12 @@ describe('needsCompiler', () => {
     expect(needsCompiler('main.json', undefined)).toBe(false);
   });
 });
+
+describe('the task icon', () => {
+  it('ships a 32×32 icon.png beside task.json', () => {
+    // The agent and the task picker look for exactly this name, next to task.json.
+    const png = readFileSync(join(root, 'icon.png'));
+    expect(png.subarray(12, 16).toString('latin1')).toBe('IHDR');
+    expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual([32, 32]);
+  });
+});

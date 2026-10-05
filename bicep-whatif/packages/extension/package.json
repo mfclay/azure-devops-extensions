@@ -6,7 +6,6 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "icon": "node scripts/make-icon.mjs",
     "package": "node scripts/package.mjs",
     "package:rev": "node scripts/package.mjs --rev-version",
     "test": "vitest run",

@@ -20,7 +20,7 @@
     }
   ],
   "icons": {
-    "default": "images/icon.png"
+    "default": "images/icon-128.png"
   },
   "content": {
     "details": {
@@ -40,8 +40,8 @@
     "uri": "https://github.com/mfclay/azure-devops-extensions/tree/main/pipeline-insights"
   },
   "branding": {
-    "color": "#0078d4",
-    "theme": "dark"
+    "color": "#AEDFE5",
+    "theme": "light"
   },
   "scopes": [
     "vso.build",

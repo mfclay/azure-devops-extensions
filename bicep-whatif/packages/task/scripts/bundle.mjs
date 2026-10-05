@@ -5,6 +5,7 @@
  *
  *   dist/
  *     task.json          the manifest, copied verbatim
+ *     icon.png           the 32×32 task icon, copied verbatim (source: ../extension/art/)
  *     index.js           this package and `@bicep-whatif/core`, bundled
  *     package.json       generated, declaring only the two externals
  *     node_modules/      those two, installed for production
@@ -66,6 +67,7 @@ const result = await esbuild.build({
 });
 
 await fs.copyFile(path.join(root, 'task.json'), path.join(dist, 'task.json'));
+await fs.copyFile(path.join(root, 'icon.png'), path.join(dist, 'icon.png'));
 
 await fs.writeFile(
   path.join(dist, 'package.json'),

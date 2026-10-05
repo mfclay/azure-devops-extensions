@@ -14,7 +14,7 @@
     "arm"
   ],
   "targets": [{ "id": "Microsoft.VisualStudio.Services" }],
-  "icons": { "default": "images/extension-icon.png" },
+  "icons": { "default": "images/icon-128.png" },
   "content": {
     "details": { "path": "overview.md" },
     "license": { "path": "LICENSE" }
@@ -27,7 +27,7 @@
     "type": "git",
     "uri": "https://github.com/mfclay/azure-devops-extensions/tree/main/bicep-whatif"
   },
-  "branding": { "color": "#161C23", "theme": "dark" },
+  "branding": { "color": "#1E2B2F", "theme": "dark" },
   "scopes": ["vso.build"],
   "files": [
     { "path": "task", "addressable": false },
