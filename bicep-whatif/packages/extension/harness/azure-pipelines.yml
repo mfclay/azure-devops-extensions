@@ -83,8 +83,9 @@ stages:
     # azureSubscription references service connection
     # harness-placeholder-connection which could not be found", having executed
     # nothing at all.
-    - task: StackWhatIf@0
-      displayName: 'StackWhatIf (never runs — here to make the tab visible)'
+    # The harness runs against the dev build, whose task is StackWhatIfDev.
+    - task: StackWhatIfDev@0
+      displayName: 'StackWhatIfDev (never runs — here to make the tab visible)'
       condition: false
       inputs:
         mode: whatif

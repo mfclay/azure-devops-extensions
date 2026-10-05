@@ -18,6 +18,7 @@
  */
 import { execFileSync } from 'node:child_process';
 import { existsSync, promises as fs } from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -93,6 +94,43 @@ const strays = (await fs.readdir(path.join(build, 'ui'), { recursive: true })).f
 );
 if (strays.length > 0) throw new Error(`Unexpected task.json inside the tab: ${strays.join(', ')}`);
 
+// ── A separate task identity, for builds that ask for one ────────────────────
+//
+// The dev extension and the release extension both ship this task. An
+// organisation cannot install two extensions whose tasks share a GUID, and two
+// tasks with one name make `StackWhatIf@0` ambiguous, so a dev build carries
+// its own id and name (`task` in overrides/dev.json). It is applied to the
+// staged copies only, and `supportsTasks` follows it, or the tab would gate on a
+// task that is not in the package. tfx gets the overrides without the block.
+let tfxOverridesPath = overridesPath;
+if (overrides.task) {
+  const { id, name, friendlyName } = overrides.task;
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id ?? '') || !name) {
+    throw new Error(`${overridesPath}: "task" needs a GUID "id" and a "name".`);
+  }
+  const taskJsonPath = path.join(build, 'task', 'task.json');
+  const taskJson = JSON.parse(await fs.readFile(taskJsonPath, 'utf8'));
+  if (id.toLowerCase() === taskJson.id.toLowerCase()) {
+    throw new Error(`${overridesPath}: "task.id" must differ from task.json's id.`);
+  }
+  const releaseId = taskJson.id;
+  Object.assign(taskJson, { id, name }, friendlyName ? { friendlyName } : {});
+  await fs.writeFile(taskJsonPath, `${JSON.stringify(taskJson, null, 2)}\n`);
+
+  const manifestPath = path.join(build, 'vss-extension.json');
+  const staged = JSON.parse(await fs.readFile(manifestPath, 'utf8'));
+  for (const c of staged.contributions ?? []) {
+    const supports = c.properties?.supportsTasks;
+    if (Array.isArray(supports)) c.properties.supportsTasks = supports.map((t) => (t === releaseId ? id : t));
+  }
+  await fs.writeFile(manifestPath, `${JSON.stringify(staged, null, 2)}\n`);
+
+  const { task: _task, ...rest } = overrides;
+  tfxOverridesPath = path.join(os.tmpdir(), `bicep-whatif-overrides-${process.pid}.json`);
+  await fs.writeFile(tfxOverridesPath, JSON.stringify(rest, null, 2));
+  console.log(`Task identity: ${name} ${id} (from ${path.basename(overridesPath)})\n`);
+}
+
 await fs.mkdir(out, { recursive: true });
 
 // ── Package ──────────────────────────────────────────────────────────────────
@@ -105,7 +143,7 @@ const args = [
   '--manifest-globs',
   'vss-extension.json',
   '--overrides-file',
-  overridesPath,
+  tfxOverridesPath,
   '--output-path',
   out,
   '--no-color',
@@ -113,7 +151,11 @@ const args = [
 if (revVersion) args.push('--rev-version');
 
 console.log(`tfx ${args.join(' ')}\n`);
-execFileSync('tfx', args, { stdio: 'inherit', cwd: root });
+try {
+  execFileSync('tfx', args, { stdio: 'inherit', cwd: root });
+} finally {
+  if (tfxOverridesPath !== overridesPath) await fs.rm(tfxOverridesPath, { force: true });
+}
 
 // ── Check the one limit that bites ───────────────────────────────────────────
 

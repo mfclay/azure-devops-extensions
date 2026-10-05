@@ -58,6 +58,16 @@ describe('vss-extension.json — identity', () => {
     expect(dev['public']).toBe(false);
   });
 
+  it('gives the dev build a task identity of its own', () => {
+    // One organisation runs dev builds beside release ones. Two installed tasks
+    // cannot share a GUID, and a shared name makes `StackWhatIf@0` ambiguous.
+    const dev = read('overrides/dev.json');
+    const task = JSON.parse(readFileSync(join(root, '../task/task.json'), 'utf8')) as Record<string, any>;
+    expect(dev['task']['id']).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+    expect(dev['task']['id']).not.toBe(task['id']);
+    expect(dev['task']['name']).not.toBe(task['name']);
+  });
+
   it('ships a release template that refuses to be used as-is', () => {
     const release = read('overrides/release.example.json');
     expect(String(release['publisher'])).toMatch(/^REPLACE/);

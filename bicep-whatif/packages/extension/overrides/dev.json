@@ -2,6 +2,13 @@
   "publisher": "MichaelC",
   "id": "bicep-whatif-dev",
   "public": false,
-  "galleryFlags": ["Preview"],
-  "name": "Bicep What-If for Deployment Stacks (dev)"
+  "galleryFlags": [
+    "Preview"
+  ],
+  "name": "Bicep What-If for Deployment Stacks (dev)",
+  "task": {
+    "id": "5d644a73-061c-432f-a54e-bbe2b68290aa",
+    "name": "StackWhatIfDev",
+    "friendlyName": "Deployment stack what-if (dev)"
+  }
 }

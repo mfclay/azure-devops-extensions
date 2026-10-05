@@ -25,12 +25,14 @@ import { readFileSync } from 'node:fs';
  *
  * The scrubber emits `00000000-0000-4000-8000-0000000000NN`; the synthetic
  * fixtures use visibly-fake repeated nibbles; and the task id is public by
- * design — it is what the extension's `supportsTasks` gates the tab on.
+ * design — it is what the extension's `supportsTasks` gates the tab on. The dev
+ * build's task id, in overrides/dev.json, is public for the same reason.
  */
 const ALLOWED_GUID = [
   /^00000000-0000-4000-8000-0000[0-9a-f]{8}$/i,
   /^(?:([0-9a-f])\1{7})-(?:([0-9a-f])\2{3})-4\2{3}-8\2{3}-\1{12}$/i,
   /^b34d630d-2819-48d6-a62f-9412768de7c5$/i, // the StackWhatIf task id
+  /^5d644a73-061c-432f-a54e-bbe2b68290aa$/i, // the StackWhatIfDev task id (dev builds)
 ];
 
 const GUID = /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi;

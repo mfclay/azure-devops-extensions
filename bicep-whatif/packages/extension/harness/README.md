@@ -16,7 +16,7 @@ stacks.**
 It does need one thing it used to claim it did not: **a placeholder Azure
 Resource Manager service connection.** Not because anything uses it — nothing
 does — but because `azureSubscription` is `required: true` and typed
-`connectedService:AzureRM` in `task.json`, so the disabled `StackWhatIf@0` step
+`connectedService:AzureRM` in `task.json`, so the disabled `StackWhatIfDev@0` step
 cannot omit it, and `supportsTasks` means the step cannot be removed either. See
 "Setting it up", step 2.
 
@@ -42,7 +42,8 @@ In an Azure DevOps organisation you control:
    [the extension README](../README.md#publishing) — publishing needs a
    Marketplace PAT, which is yours to create.
 
-   Order matters: the pipeline references `StackWhatIf@0`, so if the extension
+   Order matters: the pipeline references `StackWhatIfDev@0`, the dev build's
+   name for the task, so if the extension
    is not installed the YAML fails to validate the moment you save it, with an
    error about an unrecognised task rather than anything about the harness.
 
@@ -180,12 +181,12 @@ sidecars, and nothing silently dropped.
 
 Almost certainly `supportsTasks`, not the handshake.
 
-The tab is only visible when the `StackWhatIf` task is present in the build
+The tab is only visible when the `StackWhatIfDev` task is present in the build
 **definition** — not when it has run. There is no runtime control over whether a
 tab renders ([SDK issue #85](https://github.com/microsoft/azure-devops-extension-sdk/issues/85),
 open), and the failure is silent: no tab, no error, nothing logged anywhere.
 
-`WhatIf_Network` carries a `StackWhatIf@0` step with `condition: false` for
+`WhatIf_Network` carries a `StackWhatIfDev@0` step with `condition: false` for
 exactly this reason, and **it works** — settled 2026-08-26 against a real
 installed extension. A step that never runs still counts as being in the
 definition, the tab appears, and the fallback of dropping the condition is not

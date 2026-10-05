@@ -26,6 +26,12 @@ That also makes the GUID in `supportsTasks` load-bearing: it must equal the `id`
 in `task.json`, and a mismatch makes the tab silently never appear, with nothing
 logged anywhere. `test/manifest.test.ts` asserts they agree.
 
+Dev builds ship the task as `StackWhatIfDev`, with its own GUID, so a dev build
+and a release build can be installed in the same organisation. The `task` block
+in `overrides/dev.json` holds that identity; `scripts/package.mjs` writes it into
+the staged `task.json` and points `supportsTasks` at it. Pipelines that run
+against a dev build reference `StackWhatIfDev@0`.
+
 ## The publisher is never committed
 
 Extension identity is `{publisher}.{id}`. Swapping a development publisher for a
