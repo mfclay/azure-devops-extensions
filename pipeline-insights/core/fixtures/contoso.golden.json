@@ -84,7 +84,7 @@
    "devtools-ci (133)": {"rate":1,"judged":3,"failed":0,"median":66157,"windowRuns":3}
   },
   "attention": [
-   {"kind":"failing","pipeline":"model-retrain-run (121)","priority":0,"runId":20030,"title":"Last run on main failed","why":"It is the only run on main. 8 newer runs from other branches, the latest succeeded."},
+   {"kind":"failing","pipeline":"model-retrain-run (121)","priority":0,"runId":20030,"title":"Last run on main failed","why":"It is the only run on main. 8 newer runs from other branches; the latest succeeded."},
    {"kind":"failing","pipeline":"catalog-sync-etl-deploy (124)","priority":0,"runId":20174,"title":"Last run on main failed","why":"Failed at Ring-2 Production. The run before it passed."},
    {"kind":"waiting","pipeline":"config-sync-build (110)","priority":1,"runId":20150,"title":"Approval waiting a long time","why":"A run is waiting at Apply. Waiting more than a day, so it may be stale. Newer runs of this pipeline can queue behind it."},
    {"kind":"waiting","pipeline":"webapp-storefront-deploy (129)","priority":2,"runId":20269,"title":"Waiting for approval","why":"3 runs are waiting at Ring 2: production. In the same run, Ring 2: production, region east: schema plan failed."},
@@ -274,7 +274,7 @@
    "devtools-ci (133)": {"rate":1,"judged":3,"failed":0,"median":66157,"windowRuns":3}
   },
   "attention": [
-   {"kind":"failing","pipeline":"model-retrain-run (121)","priority":0,"runId":20030,"title":"Last run on main failed","why":"It is the only run on main. 8 newer runs from other branches, the latest succeeded."},
+   {"kind":"failing","pipeline":"model-retrain-run (121)","priority":0,"runId":20030,"title":"Last run on main failed","why":"It is the only run on main. 8 newer runs from other branches; the latest succeeded."},
    {"kind":"failing","pipeline":"catalog-sync-etl-deploy (124)","priority":0,"runId":20174,"title":"Last run on main failed","why":"Failed at Ring-2 Production. The run before it passed."},
    {"kind":"waiting","pipeline":"config-sync-build (110)","priority":1,"runId":20150,"title":"Approval waiting a long time","why":"A run is waiting at Apply. Waiting more than a day, so it may be stale. Newer runs of this pipeline can queue behind it."},
    {"kind":"waiting","pipeline":"webapp-storefront-deploy (129)","priority":2,"runId":20269,"title":"Waiting for approval","why":"3 runs are waiting at Ring 2: production. In the same run, Ring 2: production, region east: schema plan failed."},
@@ -462,7 +462,7 @@
    "devtools-ci (133)": {"rate":1,"judged":3,"failed":0,"median":66157,"windowRuns":3}
   },
   "attention": [
-   {"kind":"failing","pipeline":"model-retrain-run (121)","priority":0,"runId":20030,"title":"Last run on main failed","why":"It is the only run on main. 8 newer runs from other branches, the latest succeeded."},
+   {"kind":"failing","pipeline":"model-retrain-run (121)","priority":0,"runId":20030,"title":"Last run on main failed","why":"It is the only run on main. 8 newer runs from other branches; the latest succeeded."},
    {"kind":"failing","pipeline":"catalog-sync-etl-deploy (124)","priority":0,"runId":20174,"title":"Last run on main failed","why":"Failed at Ring-2 Production. The run before it passed."},
    {"kind":"waiting","pipeline":"config-sync-build (110)","priority":1,"runId":20150,"title":"Approval waiting a long time","why":"A run is waiting at Apply. Waiting more than a day, so it may be stale. Newer runs of this pipeline can queue behind it."},
    {"kind":"waiting","pipeline":"webapp-storefront-deploy (129)","priority":2,"runId":20269,"title":"Waiting for approval","why":"3 runs are waiting at Ring 2: production. In the same run, Ring 2: production, region east: schema plan failed."},

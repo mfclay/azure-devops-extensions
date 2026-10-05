@@ -195,6 +195,7 @@ export function InsightsPage(props: InsightsPageProps) {
             <Attention
               items={attention}
               windowDays={view.windowDays}
+              mainOnly={view.mainOnly}
               now={now}
               links={links}
               showAll={view.showAllAttention}

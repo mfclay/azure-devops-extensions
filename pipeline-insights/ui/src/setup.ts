@@ -1,5 +1,5 @@
 import type { Lines, Phrase, Pipeline, RepoCatalog } from '@pipeline-insights/core';
-import { CATALOG_NAME, isRetired } from '@pipeline-insights/core';
+import { CATALOG_NAME, codeSpans, isRetired } from '@pipeline-insights/core';
 import { notCounted } from './format.js';
 import { declared } from './scope.js';
 
@@ -117,7 +117,7 @@ export function setupStatus(all: readonly Pipeline[], lines: Lines, facts: Setup
     },
     broken.length > 0 && {
       title: 'Fix the metadata files',
-      detail: list(broken, (c) => [{ code: `${c.repo}/${c.path}` }, `: ${c.problems.join(' ')}`]),
+      detail: list(broken, (c) => [{ code: `${c.repo}/${c.path}` }, ': ', ...codeSpans(c.problems.join(' '))]),
     },
     orphans.length > 0 && {
       title: 'Entries without a pipeline',

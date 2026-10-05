@@ -12,6 +12,7 @@ export type PipelineItem = Exclude<AttentionItem, NoOwnerItem>;
 interface Props {
   items: PipelineItem[];
   windowDays: WindowDays;
+  mainOnly: boolean;
   now: number;
   links: InsightsLinks;
   showAll: boolean;
@@ -20,7 +21,7 @@ interface Props {
 }
 
 /** The page's main job: one sentence per problem, most urgent first. */
-export function Attention({ items, windowDays, now, links, showAll, onToggleShowAll, onOpen }: Props) {
+export function Attention({ items, windowDays, mainOnly, now, links, showAll, onToggleShowAll, onOpen }: Props) {
   const shown = showAll ? items : items.slice(0, LIMIT);
   return (
     <section className="pi-panel" aria-labelledby="pi-attn-h">
@@ -44,7 +45,7 @@ export function Attention({ items, windowDays, now, links, showAll, onToggleShow
                 {item.title}
               </div>
               <div className="pi-why">
-                <PhraseView phrase={explainItem(item, { windowDays })} />
+                <PhraseView phrase={explainItem(item, { windowDays, mainOnly })} />
               </div>
             </div>
             <div className="pi-age">

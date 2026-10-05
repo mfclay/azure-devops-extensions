@@ -1,10 +1,10 @@
-import { CATALOG_NAME, isRetired, runOutcome, type PipelineAnalysis, type PipelineFacts, type Stage, type WindowDays } from '@pipeline-insights/core';
+import { CATALOG_NAME, codeSpans, isRetired, runOutcome, type PipelineAnalysis, type PipelineFacts, type Stage, type WindowDays } from '@pipeline-insights/core';
 import { useEffect, useRef, useState } from 'react';
 import { OUTCOME_DISPLAY, reasonLabel, STATE_DISPLAY, stageTone, stageWord } from './display.js';
 import { ago, duration, folderTitle, percent } from './format.js';
 import type { InsightsLinks } from './links.js';
 import type { Related } from './related.js';
-import { StateIcon, TriggerLine } from './parts.js';
+import { PhraseView, StateIcon, TriggerLine } from './parts.js';
 
 interface Props {
   a: PipelineAnalysis;
@@ -171,7 +171,9 @@ export function SidePanel({ a, windowDays, mainOnly, now, links, loadStages, rel
                 <dd>
                   <ul>
                     {p.facts.metadataProblems.map((problem, i) => (
-                      <li key={i}>{problem}</li>
+                      <li key={i}>
+                        <PhraseView phrase={codeSpans(problem)} />
+                      </li>
                     ))}
                   </ul>
                 </dd>

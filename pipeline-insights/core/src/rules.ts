@@ -345,8 +345,28 @@ export function summarizeEstate(estate: readonly Pipeline[], options: RuleOption
 /** Text with the names a reader scans for marked: a stage, or a literal such as a file marker. */
 export type Phrase = (string | { stage: string } | { code: string })[];
 
+/** A message whose `backticked` parts are literals, as a phrase that shows them as code. */
+export function codeSpans(text: string): Phrase {
+  return text.split('`').map((part, i) => (i % 2 ? { code: part } : part)).filter((part) => part !== '');
+}
+
+/** What became of a newer run, as the end of a sentence: "succeeded", "is still running". */
+export function outcomePhrase(outcome: string): string {
+  const phrases: Record<string, string> = {
+    succeeded: 'succeeded',
+    failed: 'failed',
+    partiallySucceeded: 'partially succeeded',
+    canceled: 'was canceled',
+    inProgress: 'is still running',
+    notStarted: 'is queued',
+    postponed: 'is queued',
+    cancelling: 'is being canceled',
+  };
+  return phrases[outcome] ?? outcome.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase();
+}
+
 /** The sentence under an attention item's title: where it went wrong, and what else to know. */
-export function explainItem(item: AttentionItem, options: Pick<RuleOptions, 'windowDays'>): Phrase {
+export function explainItem(item: AttentionItem, options: Pick<RuleOptions, 'windowDays' | 'mainOnly'>): Phrase {
   const days = options.windowDays;
   const out: Phrase = [];
   const sentence = (...parts: Phrase) => {
@@ -357,10 +377,12 @@ export function explainItem(item: AttentionItem, options: Pick<RuleOptions, 'win
     case 'failing':
       if (item.failedStage) sentence('Failed at ', { stage: item.failedStage }, '.');
       if (item.failuresInWindow > 1) sentence(`${item.failuresInWindow} failures in the last ${days} days.`);
-      else if (item.previousResult === null) sentence('It is the only run on main.');
+      else if (item.previousResult === null) sentence(options.mainOnly ? 'It is the only run on main.' : 'It is the only finished run.');
       else if (item.previousResult === 'succeeded') sentence('The run before it passed.');
       if (item.newerOffMain) {
-        sentence(`${item.newerOffMain.count} newer runs from other branches, the latest ${item.newerOffMain.latestOutcome}.`);
+        const { count, latestOutcome } = item.newerOffMain;
+        const outcome = outcomePhrase(latestOutcome);
+        sentence(count === 1 ? `A newer run from another branch ${outcome}.` : `${count} newer runs from other branches; the latest ${outcome}.`);
       }
       break;
     case 'waiting':

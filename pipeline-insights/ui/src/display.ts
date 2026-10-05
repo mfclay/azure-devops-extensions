@@ -42,12 +42,25 @@ const REASONS: Record<string, string> = {
   batchedCI: 'CI',
   individualCI: 'CI',
   manual: 'Manual',
+  userCreated: 'Manual',
   pullRequest: 'PR',
   schedule: 'Scheduled',
+  scheduleForced: 'Scheduled',
   resourceTrigger: 'After pipeline',
+  buildCompletion: 'After pipeline',
+  triggered: 'Triggered',
+  checkInShelveset: 'Gated check-in',
+  validateShelveset: 'Shelveset',
 };
 
-export const reasonLabel = (reason: string | null) => (reason ? (REASONS[reason] ?? reason) : '');
+/** An Azure DevOps value such as `succeededWithIssues`, as words: "succeeded with issues". */
+const words = (value: string) => value.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase();
+
+export const reasonLabel = (reason: string | null) => {
+  if (!reason) return '';
+  const w = words(reason);
+  return REASONS[reason] ?? w.charAt(0).toUpperCase() + w.slice(1);
+};
 
 const STAGE_RESULT_TONES: Record<string, Tone> = {
   succeeded: 'ok',
@@ -67,5 +80,5 @@ export function stageTone(s: Stage): Tone {
 
 export function stageWord(s: Stage): string {
   if (s.waitingForApproval) return 'waiting for approval';
-  return s.state === 'completed' ? s.result || 'done' : (s.state ?? '');
+  return words(s.state === 'completed' ? s.result || 'done' : (s.state ?? ''));
 }

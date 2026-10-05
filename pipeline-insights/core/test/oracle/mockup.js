@@ -55,6 +55,12 @@ function analyse(p) {
   };
 }
 
+function outcomePhrase(o) {
+  const phrases = { succeeded: "succeeded", failed: "failed", partiallySucceeded: "partially succeeded", canceled: "was canceled",
+    inProgress: "is still running", notStarted: "is queued", postponed: "is queued", cancelling: "is being canceled" };
+  return phrases[o] ?? o.replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase();
+}
+
 function attention(list) {
   const items = [];
   for (const a of list) {
@@ -65,9 +71,13 @@ function attention(list) {
       const elsewhere = state.mainOnly ? p.runs.filter(r => r.branch !== "main" && Date.parse(r.queued) > Date.parse(a.last.queued)) : [];
       const parts = [bad ? `Failed at <span class="stage-name">${esc(bad[0])}</span>.` : ""];
       if (a.failedN > 1) parts.push(`${a.failedN} failures in the last ${state.days} days.`);
-      else if (!prev) parts.push("It is the only run on main.");
+      else if (!prev) parts.push(state.mainOnly ? "It is the only run on main." : "It is the only finished run.");
       else if (prev.result === "succeeded") parts.push("The run before it passed.");
-      if (elsewhere.length) parts.push(`${elsewhere.length} newer runs from other branches, the latest ${elsewhere[0].result || elsewhere[0].status}.`);
+      if (elsewhere.length) {
+        // Changed from the original mockup in step with core: singular wording, and outcome words rather than API values.
+        const outcome = outcomePhrase(elsewhere[0].result || elsewhere[0].status);
+        parts.push(elsewhere.length === 1 ? `A newer run from another branch ${outcome}.` : `${elsewhere.length} newer runs from other branches; the latest ${outcome}.`);
+      }
       items.push({ sev: 0, k: "fail", a, when: a.last.finished, run: a.last.id,
         what: state.mainOnly ? "Last run on main failed" : "Last run failed", why: parts.filter(Boolean).join(" ") });
     }

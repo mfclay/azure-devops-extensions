@@ -124,7 +124,7 @@ resources:
     const t = parseTriggers(yaml, d, []);
     expect(t.lines).toEqual([
       'CI (pipeline settings): `main`',
-      'Schedule (pipeline settings): 09:00 Mountain Standard Time, all',
+      'Schedule (pipeline settings): 09:00 Mountain Standard Time, every day',
       'After `upstream-build` (pipeline settings): `main`',
     ]);
     expect(t.runsAfter).toEqual(['upstream-build']);
@@ -139,7 +139,7 @@ resources:
         },
       ],
     });
-    expect(parseTriggers(null, d, []).lines).toEqual(['Schedule (pipeline settings): 09:00 Mountain Standard Time, all']);
+    expect(parseTriggers(null, d, []).lines).toEqual(['Schedule (pipeline settings): 09:00 Mountain Standard Time, every day']);
     expect(parseTriggers(null, definition(), [])).toEqual({
       lines: ['Unknown (YAML not found)'],
       manualOnly: false,

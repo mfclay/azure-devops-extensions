@@ -55,7 +55,7 @@ describe('InsightsPage on the contoso estate', () => {
     const items = attention().getAllByRole('listitem');
     expect(items).toHaveLength(7); // six items and "Show all"
     expect(items[0]?.textContent).toContain('model-retrain-run · Last run on main failed');
-    expect(items[0]?.textContent).toContain('It is the only run on main. 8 newer runs from other branches, the latest succeeded.');
+    expect(items[0]?.textContent).toContain('It is the only run on main. 8 newer runs from other branches; the latest succeeded.');
     expect(items[1]?.querySelector('.pi-stage-name')?.textContent).toBe('Ring-2 Production');
     expect(screen.getByRole('heading', { name: 'Needs attention 7' })).toBeTruthy();
 

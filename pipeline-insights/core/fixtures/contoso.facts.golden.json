@@ -7,7 +7,7 @@
    "yaml": {"state":"unreadable","branch":"main"}
   },
   "legacy-export-run": {
-   "triggers": ["Schedule (pipeline settings): 09:00 Pacific Standard Time, all"],
+   "triggers": ["Schedule (pipeline settings): 09:00 Pacific Standard Time, every day"],
    "purposeSource": "structural",
    "purpose": "1 stage, Run",
    "yaml": {"state":"unreadable","branch":"main"}

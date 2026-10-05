@@ -174,6 +174,28 @@ function scheduleLines(triggers: readonly Node[]): string[] {
   return schedules.map((s) => {
     const hh = String(s.startHours ?? 0).padStart(2, '0');
     const mm = String(s.startMinutes ?? 0).padStart(2, '0');
-    return `Schedule (pipeline settings): ${hh}:${mm} ${String(s.timeZoneId ?? '')}, ${String(s.daysToBuild ?? '')}`;
+    return `Schedule (pipeline settings): ${hh}:${mm} ${String(s.timeZoneId ?? '')}, ${scheduleDays(s.daysToBuild)}`;
   });
+}
+
+const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+/**
+ * A classic schedule's days, which the API gives as flags: a number (Monday = 1 … Sunday = 64)
+ * or their names ("all", "monday, wednesday"). Shown as "every day", "weekdays" or a list.
+ */
+export function scheduleDays(value: unknown): string {
+  let days: string[];
+  if (typeof value === 'number') days = DAYS.filter((_, i) => value & (1 << i));
+  else if (typeof value === 'string') {
+    const names = value.split(/[\s,]+/).filter(Boolean).map((v) => v.toLowerCase());
+    if (names.includes('all')) days = DAYS;
+    else days = DAYS.filter((d) => names.includes(d.toLowerCase()));
+    if (!days.length && value.trim() && !names.includes('none')) return value.trim();
+  } else return '';
+  if (days.length === 7) return 'every day';
+  if (days.length === 0) return 'no days';
+  if (days.length === 5 && days.every((d, i) => d === DAYS[i])) return 'weekdays';
+  if (days.length === 2 && days[0] === 'Saturday' && days[1] === 'Sunday') return 'weekends';
+  return days.join(', ');
 }
