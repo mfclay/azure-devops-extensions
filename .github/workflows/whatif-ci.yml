@@ -1,0 +1,121 @@
+# The whole chain, in one job, on the Node line the task actually ships to.
+#
+# This repo is **private**, so Actions minutes are billable against the account
+# quota — they were free while it was public. Two consequences are designed in
+# here rather than left to be noticed later:
+#
+#   * **One job, never a matrix.** Billing rounds each job up to the whole
+#     minute independently, so a two-version matrix of a ~2-minute chain costs
+#     four to six minutes, not two. Adding a second Node version is a real
+#     recurring cost, not a free extra signal.
+#   * **Superseded runs are cancelled** (see `concurrency`), so pushing three
+#     times in a minute bills for one run rather than three.
+name: Bicep What-If CI
+
+# Path-filtered: this repo holds more than one extension, and a run for a
+# change that cannot affect this one is billable minutes for nothing.
+on:
+  push:
+    branches: [main]
+    paths: ['bicep-whatif/**', '.github/workflows/whatif-ci.yml']
+  pull_request:
+    paths: ['bicep-whatif/**', '.github/workflows/whatif-ci.yml']
+  workflow_dispatch:
+
+# Nothing here writes to the repo, publishes, or reads a secret.
+permissions:
+  contents: read
+
+# Everything below runs inside the extension's own npm project. `uses:` steps
+# ignore this, so their paths spell out the folder.
+defaults:
+  run:
+    working-directory: bicep-whatif
+
+concurrency:
+  group: whatif-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # Runs before `npm ci` on purpose: it imports nothing but `node:` builtins
+      # and finds its files with `git ls-files`, so it needs no install and no
+      # fetch depth. It is also the cheapest step (~0.2s) guarding the most
+      # consequential mistake in the repo — a live identifier reaching a commit.
+      # Failing here costs a few seconds instead of a full install.
+      - name: Check for unscrubbed identifiers
+        run: npm run check:identifiers
+
+      # **Two different Nodes meet here, and only one of them is this repo's.**
+      # The `@v5` actions above and below pick the Node that runs the *action's own
+      # JavaScript* — GitHub deprecated Node 20 for that in September 2025, which is
+      # what `@v4` warned about. `node-version` below picks the Node that runs
+      # *this workspace*. Bumping the actions does not touch the build, and the
+      # deprecation warning is not a reason to raise `node-version`.
+      #
+      # 20.x is the line the shipped task runs on (the `Node20_1` handler), and
+      # it is the floor this workspace claims to support — so CI tests the worst
+      # supported case, which the developer's own Node cannot.
+      #
+      # The build tooling's real floor is **20.19**, not the 20.1 you might
+      # infer from `package.mjs` needing `fs.readdir({recursive:true})`: vite 7
+      # declares `^20.19.0 || >=22.12.0`. `20` resolves to the latest 20.x and
+      # clears both. Neither floor is the shipped task's — do not "fix"
+      # `engines` on the strength of this comment; `Node20_1` names the *agent's*
+      # runtime and is a different thing entirely.
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: bicep-whatif/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      # Builds core, then task, then ui. It deliberately skips `extension`,
+      # which has no `build` script — packaging is the explicit step below.
+      - name: Build
+        run: npm run build
+
+      - name: Package extension
+        run: npm run package -w @bicep-whatif/extension
+
+      # The genuinely useful output: every commit gets an installable build to
+      # try in a real organisation, without publishing anything to anyone.
+      #
+      # 14 days, not the 90-day default, because artifact storage also counts
+      # against a private repo's quota — at 4.08 MB a VSIX, 90-day retention
+      # fills the Free tier's 500 MB in about 120 builds.
+      #
+      # `@v7`, where checkout and setup-node are on `@v5`, because this action
+      # versions on its own schedule: v5 carried only "preliminary" Node 24
+      # support and still *defaulted* to Node 20, so it kept warning after the
+      # other two had stopped. v6 made Node 24 the default and v7 is current.
+      # Read the release notes rather than assuming the majors move together.
+      - name: Upload VSIX
+        uses: actions/upload-artifact@v7
+        with:
+          name: vsix-${{ github.sha }}
+          path: bicep-whatif/packages/extension/dist/*.vsix
+          if-no-files-found: error
+          retention-days: 14
+
+# There is deliberately **no publish job**, and its absence is a decision rather
+# than an omission. Publishing is blocked on two things this repo cannot settle:
+# an organisation-level extension approval whose status is genuinely unknown,
+# and a release publisher identity that does not exist yet. A publish job wired
+# to a Marketplace PAT before either lands would put a standing credential in
+# repo secrets for something that cannot be used — and half-wired publishing is
+# worse than none. Note also that the publisher is never committed (decision
+# F1): identity is `{publisher}.{id}`, so a dev-to-release swap creates a
+# *different* extension with no upgrade path.

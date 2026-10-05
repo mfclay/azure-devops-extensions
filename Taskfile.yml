@@ -1,0 +1,65 @@
+version: '3'
+
+vars:
+  DENYLIST: '{{.HOME}}/Source/.azure-devops-extensions-private/denylist.txt'
+
+tasks:
+  pre-commit:
+    desc: Every extension's checks, then the denylist scan.
+    cmds:
+      - task: whatif:pre-commit
+      - task: pi:pre-commit
+      - task: denylist
+
+  whatif:pre-commit:
+    desc: What-if viewer identifier check, typecheck and tests.
+    dir: bicep-whatif
+    cmds:
+      - npm run check:identifiers
+      - npm run typecheck
+      - npm test
+
+  pi:pre-commit:
+    desc: Pipeline Insights typecheck, tests and its own denylist scan.
+    dir: pipeline-insights
+    cmds:
+      - task: pi:install-check
+      - npm run typecheck
+      - npm test
+      - npm run check:denylist
+
+  pi:install-check:
+    internal: true
+    dir: pipeline-insights
+    status:
+      - test -d node_modules
+    cmds:
+      - npm ci
+
+  denylist:
+    silent: true
+    desc: Scan the working tree (tracked and untracked, not ignored) with the private denylist.
+    cmds:
+      - |
+        if [ ! -f "{{.DENYLIST}}" ]; then
+          echo "denylist: {{.DENYLIST}} not found; skipped." >&2; exit 0
+        fi
+        n=$(git ls-files -co --exclude-standard -z | xargs -0 grep -l -i -E -f "{{.DENYLIST}}" -- 2>/dev/null | wc -l | tr -d ' ' || true)
+        if [ "$n" != "0" ]; then
+          echo "denylist: $n file(s) match. Names only, no content:" >&2
+          git ls-files -co --exclude-standard -z | xargs -0 grep -l -i -E -f "{{.DENYLIST}}" -- >&2
+          exit 1
+        fi
+        echo "denylist: working tree clean."
+
+  denylist:history:
+    silent: true
+    desc: Scan every commit's files, commit messages and paths with the private denylist.
+    cmds:
+      - |
+        [ -f "{{.DENYLIST}}" ] || { echo "denylist: not found." >&2; exit 1; }
+        b=$(git grep -l -i -E -f "{{.DENYLIST}}" $(git rev-list --all) | wc -l | tr -d ' ' || true)
+        m=$(git log --all --format=%B | grep -c -i -E -f "{{.DENYLIST}}" || true)
+        p=$(git log --all --name-only --format= | grep -c -i -E -f "{{.DENYLIST}}" || true)
+        echo "denylist history: blob-hits=$b message-lines=$m paths=$p"
+        [ "$b$m$p" = "000" ]

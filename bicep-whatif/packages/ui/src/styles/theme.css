@@ -1,0 +1,82 @@
+/*
+ * Theming against Azure DevOps' own CSS custom properties (decision E1).
+ *
+ * The host sets these on the page and swaps them wholesale when the user changes
+ * theme, so reading them is what makes the tab follow the theme with no theme
+ * code of our own. Every one carries a light-theme fallback, which is what
+ * `?mock=1` renders with outside the host.
+ *
+ * Careful: `--palette-neutral-*` are raw `R, G, B` triples, not colours. They are
+ * only ever valid inside `rgb()` / `rgba()`, and their fallbacks are triples too.
+ */
+:root {
+  --w-bg: var(--background-color, #ffffff);
+  --w-surface: var(--callout-background-color, #ffffff);
+  --w-surface-2: rgba(var(--palette-neutral-2, 246, 246, 246), 1);
+  --w-surface-3: rgba(var(--palette-neutral-4, 237, 237, 237), 1);
+
+  --w-text: var(--text-primary-color, rgba(0, 0, 0, 0.9));
+  --w-text-2: var(--text-secondary-color, rgba(0, 0, 0, 0.55));
+  --w-text-3: var(--text-disabled-color, rgba(0, 0, 0, 0.38));
+
+  --w-line: var(--border-subtle-color, rgba(0, 0, 0, 0.1));
+  --w-line-strong: rgba(var(--palette-neutral-20, 96, 94, 92), 0.35);
+  --w-focus: var(--focus-border-color, #0078d4);
+
+  --w-accent: var(--communication-background, #0078d4);
+  --w-accent-fg: var(--communication-foreground, #005a9e);
+
+  --w-row-hover: var(--component-grid-row-hover-color, rgba(0, 0, 0, 0.04));
+  --w-row-selected: var(--component-grid-selected-row-color, rgba(0, 120, 212, 0.12));
+  --w-row-line: var(--component-grid-cell-bottom-border-color, rgba(0, 0, 0, 0.06));
+
+  /* Tone, straight off core's SEVERITY_TONE. Hue is semantic; prominence is rank. */
+  --w-critical: var(--status-error-text, #cd3b3b);
+  --w-warning: var(--status-warning-text, #a8760a);
+  --w-positive: var(--status-success-text, #107c10);
+  --w-neutral: var(--text-secondary-color, rgba(0, 0, 0, 0.55));
+
+  --w-font: var(--font-family, "Segoe UI", -apple-system, BlinkMacSystemFont, system-ui, sans-serif);
+  /* Resource ids, property paths and values are machine text and get a machine face. */
+  --w-mono: ui-monospace, SFMono-Regular, "Cascadia Mono", "Segoe UI Mono", Consolas, monospace;
+
+  --w-row-h: 34px;
+  --w-radius: 2px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--w-bg);
+  color: var(--w-text);
+  font-family: var(--w-font);
+  font-size: 13px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 1px solid var(--w-focus);
+  outline-offset: 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

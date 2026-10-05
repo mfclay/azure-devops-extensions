@@ -1,0 +1,1470 @@
+{
+  "_capture": {
+    "what": "An Azure DevOps build timeline and its what-if attachment lists, as the results tab reads them.",
+    "org": "contoso",
+    "project": "Platform",
+    "pipeline": "deployment-stacks-whatif",
+    "buildId": 7700078,
+    "branch": "refs/heads/main",
+    "buildFinished": "2026-08-26T03:10:53Z",
+    "captured": "2026-08-26",
+    "timelineRecordsProjectedTo": [
+      "id",
+      "parentId",
+      "type",
+      "name",
+      "identifier",
+      "state",
+      "result"
+    ],
+    "attachmentListsVerbatim": true,
+    "sidecarsVerbatim": true
+  },
+  "timelineId": "00000000-0000-4000-8000-000000000101",
+  "records": [
+    {
+      "id": "00000000-0000-4000-8000-000000000102",
+      "type": "Stage",
+      "name": "Stack 4 — Client (alpha) (Deploy)",
+      "identifier": "Deploy_ClientAlpha",
+      "state": "completed",
+      "result": "skipped"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000103",
+      "parentId": "00000000-0000-4000-8000-000000000104",
+      "type": "Task",
+      "name": "Publish Results",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000105",
+      "parentId": "00000000-0000-4000-8000-000000000106",
+      "type": "Phase",
+      "name": "Deploy",
+      "identifier": "Deploy_WorkloadAlphaRegyProd.Deploy",
+      "state": "completed",
+      "result": "skipped"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000107",
+      "type": "Stage",
+      "name": "Stack 3 — Platform (dev)",
+      "identifier": "WhatIf_PlatformDev",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000108",
+      "parentId": "00000000-0000-4000-8000-000000000109",
+      "type": "Task",
+      "name": "Delete what-if result",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000110",
+      "type": "Stage",
+      "name": "Detect Changed Stacks",
+      "identifier": "DetectChanges",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000111",
+      "parentId": "00000000-0000-4000-8000-000000000109",
+      "type": "Task",
+      "name": "What-If",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000112",
+      "parentId": "00000000-0000-4000-8000-000000000113",
+      "type": "Task",
+      "name": "Download every stack's what-if output",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000114",
+      "parentId": "00000000-0000-4000-8000-000000000115",
+      "type": "Task",
+      "name": "Initialize job",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000116",
+      "parentId": "00000000-0000-4000-8000-000000000117",
+      "type": "Checkpoint",
+      "name": "Checkpoint",
+      "identifier": "Checkpoint",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000118",
+      "parentId": "00000000-0000-4000-8000-000000000119",
+      "type": "Task",
+      "name": "Record What-If result for the Deploy gate",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000120",
+      "parentId": "00000000-0000-4000-8000-000000000113",
+      "type": "Task",
+      "name": "Checkout Platform.Deployment@main to s",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000121",
+      "parentId": "00000000-0000-4000-8000-000000000122",
+      "type": "Task",
+      "name": "Initialize job",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000123",
+      "parentId": "00000000-0000-4000-8000-000000000124",
+      "type": "Phase",
+      "name": "WhatIf",
+      "identifier": "WhatIf_WorkloadAlphaRegyProd.WhatIf",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000125",
+      "type": "Stage",
+      "name": "Stack 5 — Workload (alpha/REGX/dev) (Deploy)",
+      "identifier": "Deploy_WorkloadAlphaRegxDev",
+      "state": "completed",
+      "result": "skipped"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000113",
+      "parentId": "00000000-0000-4000-8000-000000000126",
+      "type": "Job",
+      "name": "Roll up every stack",
+      "identifier": "WhatIfRollup.Rollup.__default",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000127",
+      "type": "Stage",
+      "name": "Stack 3 — Platform (dev) (Deploy)",
+      "identifier": "Deploy_PlatformDev",
+      "state": "completed",
+      "result": "skipped"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000115",
+      "parentId": "00000000-0000-4000-8000-000000000128",
+      "type": "Job",
+      "name": "WhatIf",
+      "identifier": "WhatIf_PlatformDev.WhatIf.__default",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000129",
+      "type": "Stage",
+      "name": "Stack 3 — Platform (prod)",
+      "identifier": "WhatIf_PlatformProd",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000130",
+      "parentId": "00000000-0000-4000-8000-000000000115",
+      "type": "Task",
+      "name": "Finalize Job",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000131",
+      "parentId": "00000000-0000-4000-8000-000000000122",
+      "type": "Task",
+      "name": "Post-job: Checkout Platform.Deployment@main to s",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000132",
+      "parentId": "00000000-0000-4000-8000-000000000104",
+      "type": "Task",
+      "name": "Checkout Platform.Deployment@main to s",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000133",
+      "parentId": "00000000-0000-4000-8000-000000000134",
+      "type": "Job",
+      "name": "Diff changed files per stack",
+      "identifier": "DetectChanges.Changes.__default",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000122",
+      "parentId": "00000000-0000-4000-8000-000000000135",
+      "type": "Job",
+      "name": "WhatIf",
+      "identifier": "WhatIf_PlatformProd.WhatIf.__default",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000136",
+      "parentId": "00000000-0000-4000-8000-000000000137",
+      "type": "Phase",
+      "name": "Deploy",
+      "identifier": "Deploy_SharedInfra.Deploy",
+      "state": "completed",
+      "result": "skipped"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000138",
+      "parentId": "00000000-0000-4000-8000-000000000139",
+      "type": "Task",
+      "name": "Checkout Platform.Deployment@main to s",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000140",
+      "parentId": "00000000-0000-4000-8000-000000000141",
+      "type": "Task",
+      "name": "Post-job: Checkout Platform.Deployment@main to s",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000142",
+      "type": "Stage",
+      "name": "Stack 5 — Workload (alpha/REGX/dev)",
+      "identifier": "WhatIf_WorkloadAlphaRegxDev",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000143",
+      "parentId": "00000000-0000-4000-8000-000000000144",
+      "type": "Task",
+      "name": "Initialize job",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000145",
+      "type": "Stage",
+      "name": "Stack 3 — Platform (prod) (Deploy)",
+      "identifier": "Deploy_PlatformProd",
+      "state": "completed",
+      "result": "skipped"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000126",
+      "parentId": "00000000-0000-4000-8000-000000000146",
+      "type": "Phase",
+      "name": "Roll up every stack",
+      "identifier": "WhatIfRollup.Rollup",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000147",
+      "parentId": "00000000-0000-4000-8000-000000000146",
+      "type": "Checkpoint",
+      "name": "Checkpoint",
+      "identifier": "Checkpoint",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000148",
+      "parentId": "00000000-0000-4000-8000-000000000149",
+      "type": "Phase",
+      "name": "WhatIf",
+      "identifier": "WhatIf_WorkloadAlphaRegyDev.WhatIf",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000150",
+      "parentId": "00000000-0000-4000-8000-000000000149",
+      "type": "Checkpoint",
+      "name": "Checkpoint",
+      "identifier": "Checkpoint",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000151",
+      "parentId": "00000000-0000-4000-8000-000000000119",
+      "type": "Task",
+      "name": "Publish Results",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000152",
+      "parentId": "00000000-0000-4000-8000-000000000119",
+      "type": "Task",
+      "name": "Initialize job",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000153",
+      "type": "Stage",
+      "name": "Stack 1 — Network (Deploy)",
+      "identifier": "Deploy_Network",
+      "state": "completed",
+      "result": "skipped"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000154",
+      "parentId": "00000000-0000-4000-8000-000000000144",
+      "type": "Task",
+      "name": "Record What-If result for the Deploy gate",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000155",
+      "parentId": "00000000-0000-4000-8000-000000000156",
+      "type": "Task",
+      "name": "What-If",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000157",
+      "parentId": "00000000-0000-4000-8000-000000000104",
+      "type": "Task",
+      "name": "Record What-If result for the Deploy gate",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000158",
+      "parentId": "00000000-0000-4000-8000-000000000115",
+      "type": "Task",
+      "name": "What-If",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000159",
+      "parentId": "00000000-0000-4000-8000-000000000115",
+      "type": "Task",
+      "name": "Checkout Platform.Deployment@main to s",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000160",
+      "parentId": "00000000-0000-4000-8000-000000000161",
+      "type": "Phase",
+      "name": "WhatIf",
+      "identifier": "WhatIf_ClientAlpha.WhatIf",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000162",
+      "parentId": "00000000-0000-4000-8000-000000000122",
+      "type": "Task",
+      "name": "Finalize Job",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000163",
+      "parentId": "00000000-0000-4000-8000-000000000156",
+      "type": "Task",
+      "name": "Post-job: Checkout Platform.Deployment@main to s",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000164",
+      "parentId": "00000000-0000-4000-8000-000000000113",
+      "type": "Task",
+      "name": "Render the roll-up",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000165",
+      "parentId": "00000000-0000-4000-8000-000000000129",
+      "type": "Checkpoint",
+      "name": "Checkpoint",
+      "identifier": "Checkpoint",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000166",
+      "parentId": "00000000-0000-4000-8000-000000000109",
+      "type": "Task",
+      "name": "Post-job: Checkout Platform.Deployment@main to s",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000167",
+      "parentId": "00000000-0000-4000-8000-000000000141",
+      "type": "Task",
+      "name": "Publish Results",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000168",
+      "parentId": "00000000-0000-4000-8000-000000000115",
+      "type": "Task",
+      "name": "Post-job: Checkout Platform.Deployment@main to s",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000169",
+      "parentId": "00000000-0000-4000-8000-000000000113",
+      "type": "Task",
+      "name": "Finalize Job",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000170",
+      "parentId": "00000000-0000-4000-8000-000000000139",
+      "type": "Task",
+      "name": "Initialize job",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000171",
+      "parentId": "00000000-0000-4000-8000-000000000139",
+      "type": "Task",
+      "name": "Delete what-if result",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000172",
+      "parentId": "00000000-0000-4000-8000-000000000117",
+      "type": "Phase",
+      "name": "WhatIf",
+      "identifier": "WhatIf_WorkloadAlphaRegxProd.WhatIf",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000173",
+      "parentId": "00000000-0000-4000-8000-000000000139",
+      "type": "Task",
+      "name": "Post-job: Checkout Platform.Deployment@main to s",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000174",
+      "parentId": "00000000-0000-4000-8000-000000000104",
+      "type": "Task",
+      "name": "Finalize Job",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000175",
+      "parentId": "00000000-0000-4000-8000-000000000142",
+      "type": "Checkpoint",
+      "name": "Checkpoint",
+      "identifier": "Checkpoint",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000176",
+      "parentId": "00000000-0000-4000-8000-000000000133",
+      "type": "Task",
+      "name": "Diff against base and set per-stack flags",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000177",
+      "parentId": "00000000-0000-4000-8000-000000000145",
+      "type": "Phase",
+      "name": "Deploy",
+      "identifier": "Deploy_PlatformProd.Deploy",
+      "state": "completed",
+      "result": "skipped"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000178",
+      "parentId": "00000000-0000-4000-8000-000000000109",
+      "type": "Task",
+      "name": "Initialize job",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000134",
+      "parentId": "00000000-0000-4000-8000-000000000110",
+      "type": "Phase",
+      "name": "Diff changed files per stack",
+      "identifier": "DetectChanges.Changes",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000179",
+      "parentId": "00000000-0000-4000-8000-000000000102",
+      "type": "Phase",
+      "name": "Deploy",
+      "identifier": "Deploy_ClientAlpha.Deploy",
+      "state": "completed",
+      "result": "skipped"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000149",
+      "type": "Stage",
+      "name": "Stack 5 — Workload (alpha/REGY/dev)",
+      "identifier": "WhatIf_WorkloadAlphaRegyDev",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000141",
+      "parentId": "00000000-0000-4000-8000-000000000123",
+      "type": "Job",
+      "name": "WhatIf",
+      "identifier": "WhatIf_WorkloadAlphaRegyProd.WhatIf.__default",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000180",
+      "parentId": "00000000-0000-4000-8000-000000000144",
+      "type": "Task",
+      "name": "What-If",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000181",
+      "parentId": "00000000-0000-4000-8000-000000000127",
+      "type": "Phase",
+      "name": "Deploy",
+      "identifier": "Deploy_PlatformDev.Deploy",
+      "state": "completed",
+      "result": "skipped"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000182",
+      "parentId": "00000000-0000-4000-8000-000000000119",
+      "type": "Task",
+      "name": "Finalize Job",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000183",
+      "parentId": "00000000-0000-4000-8000-000000000156",
+      "type": "Task",
+      "name": "Finalize Job",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000119",
+      "parentId": "00000000-0000-4000-8000-000000000184",
+      "type": "Job",
+      "name": "WhatIf",
+      "identifier": "WhatIf_SharedInfra.WhatIf.__default",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000185",
+      "parentId": "00000000-0000-4000-8000-000000000110",
+      "type": "Checkpoint",
+      "name": "Checkpoint",
+      "identifier": "Checkpoint",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000186",
+      "parentId": "00000000-0000-4000-8000-000000000144",
+      "type": "Task",
+      "name": "Delete what-if result",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000106",
+      "type": "Stage",
+      "name": "Stack 5 — Workload (alpha/REGY/prod) (Deploy)",
+      "identifier": "Deploy_WorkloadAlphaRegyProd",
+      "state": "completed",
+      "result": "skipped"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000187",
+      "parentId": "00000000-0000-4000-8000-000000000156",
+      "type": "Task",
+      "name": "Publish Results",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000188",
+      "parentId": "00000000-0000-4000-8000-000000000122",
+      "type": "Task",
+      "name": "What-If",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000189",
+      "parentId": "00000000-0000-4000-8000-000000000139",
+      "type": "Task",
+      "name": "Publish Results",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000190",
+      "parentId": "00000000-0000-4000-8000-000000000142",
+      "type": "Phase",
+      "name": "WhatIf",
+      "identifier": "WhatIf_WorkloadAlphaRegxDev.WhatIf",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000191",
+      "parentId": "00000000-0000-4000-8000-000000000141",
+      "type": "Task",
+      "name": "What-If",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000192",
+      "parentId": "00000000-0000-4000-8000-000000000144",
+      "type": "Task",
+      "name": "Checkout Platform.Deployment@main to s",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000193",
+      "parentId": "00000000-0000-4000-8000-000000000125",
+      "type": "Phase",
+      "name": "Deploy",
+      "identifier": "Deploy_WorkloadAlphaRegxDev.Deploy",
+      "state": "completed",
+      "result": "skipped"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000146",
+      "type": "Stage",
+      "name": "What-If roll-up",
+      "identifier": "WhatIfRollup",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000117",
+      "type": "Stage",
+      "name": "Stack 5 — Workload (alpha/REGX/prod)",
+      "identifier": "WhatIf_WorkloadAlphaRegxProd",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000194",
+      "parentId": "00000000-0000-4000-8000-000000000104",
+      "type": "Task",
+      "name": "Delete what-if result",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000195",
+      "parentId": "00000000-0000-4000-8000-000000000156",
+      "type": "Task",
+      "name": "Checkout Platform.Deployment@main to s",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000196",
+      "parentId": "00000000-0000-4000-8000-000000000109",
+      "type": "Task",
+      "name": "Checkout Platform.Deployment@main to s",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000184",
+      "parentId": "00000000-0000-4000-8000-000000000197",
+      "type": "Phase",
+      "name": "WhatIf",
+      "identifier": "WhatIf_SharedInfra.WhatIf",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000197",
+      "type": "Stage",
+      "name": "Stack 2 — Shared Infrastructure",
+      "identifier": "WhatIf_SharedInfra",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000109",
+      "parentId": "00000000-0000-4000-8000-000000000160",
+      "type": "Job",
+      "name": "WhatIf",
+      "identifier": "WhatIf_ClientAlpha.WhatIf.__default",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000198",
+      "parentId": "00000000-0000-4000-8000-000000000199",
+      "type": "Phase",
+      "name": "WhatIf",
+      "identifier": "WhatIf_Network.WhatIf",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000200",
+      "parentId": "00000000-0000-4000-8000-000000000119",
+      "type": "Task",
+      "name": "Checkout Platform.Deployment@main to s",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000201",
+      "parentId": "00000000-0000-4000-8000-000000000141",
+      "type": "Task",
+      "name": "Delete what-if result",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000202",
+      "parentId": "00000000-0000-4000-8000-000000000122",
+      "type": "Task",
+      "name": "Delete what-if result",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000203",
+      "parentId": "00000000-0000-4000-8000-000000000197",
+      "type": "Checkpoint",
+      "name": "Checkpoint",
+      "identifier": "Checkpoint",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000204",
+      "parentId": "00000000-0000-4000-8000-000000000113",
+      "type": "Task",
+      "name": "Post-job: Checkout Platform.Deployment@main to s",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000205",
+      "parentId": "00000000-0000-4000-8000-000000000115",
+      "type": "Task",
+      "name": "Record What-If result for the Deploy gate",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000206",
+      "parentId": "00000000-0000-4000-8000-000000000119",
+      "type": "Task",
+      "name": "Delete what-if result",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000207",
+      "parentId": "00000000-0000-4000-8000-000000000156",
+      "type": "Task",
+      "name": "Initialize job",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000208",
+      "parentId": "00000000-0000-4000-8000-000000000139",
+      "type": "Task",
+      "name": "What-If",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000209",
+      "parentId": "00000000-0000-4000-8000-000000000133",
+      "type": "Task",
+      "name": "Checkout (full history for diff)",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000210",
+      "parentId": "00000000-0000-4000-8000-000000000144",
+      "type": "Task",
+      "name": "Publish Results",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000211",
+      "parentId": "00000000-0000-4000-8000-000000000104",
+      "type": "Task",
+      "name": "What-If",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000212",
+      "parentId": "00000000-0000-4000-8000-000000000141",
+      "type": "Task",
+      "name": "Record What-If result for the Deploy gate",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000213",
+      "parentId": "00000000-0000-4000-8000-000000000133",
+      "type": "Task",
+      "name": "Finalize Job",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000214",
+      "parentId": "00000000-0000-4000-8000-000000000122",
+      "type": "Task",
+      "name": "Checkout Platform.Deployment@main to s",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000215",
+      "parentId": "00000000-0000-4000-8000-000000000216",
+      "type": "Phase",
+      "name": "Deploy",
+      "identifier": "Deploy_WorkloadAlphaRegxProd.Deploy",
+      "state": "completed",
+      "result": "skipped"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000217",
+      "parentId": "00000000-0000-4000-8000-000000000141",
+      "type": "Task",
+      "name": "Checkout Platform.Deployment@main to s",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000218",
+      "parentId": "00000000-0000-4000-8000-000000000104",
+      "type": "Task",
+      "name": "Initialize job",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000219",
+      "parentId": "00000000-0000-4000-8000-000000000133",
+      "type": "Task",
+      "name": "Initialize job",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000144",
+      "parentId": "00000000-0000-4000-8000-000000000148",
+      "type": "Job",
+      "name": "WhatIf",
+      "identifier": "WhatIf_WorkloadAlphaRegyDev.WhatIf.__default",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000137",
+      "type": "Stage",
+      "name": "Stack 2 — Shared Infrastructure (Deploy)",
+      "identifier": "Deploy_SharedInfra",
+      "state": "completed",
+      "result": "skipped"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000220",
+      "parentId": "00000000-0000-4000-8000-000000000144",
+      "type": "Task",
+      "name": "Post-job: Checkout Platform.Deployment@main to s",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000221",
+      "parentId": "00000000-0000-4000-8000-000000000109",
+      "type": "Task",
+      "name": "Finalize Job",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000222",
+      "parentId": "00000000-0000-4000-8000-000000000109",
+      "type": "Task",
+      "name": "Publish Results",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000223",
+      "parentId": "00000000-0000-4000-8000-000000000119",
+      "type": "Task",
+      "name": "Post-job: Checkout Platform.Deployment@main to s",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000124",
+      "type": "Stage",
+      "name": "Stack 5 — Workload (alpha/REGY/prod)",
+      "identifier": "WhatIf_WorkloadAlphaRegyProd",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000199",
+      "type": "Stage",
+      "name": "Stack 1 — Network",
+      "identifier": "WhatIf_Network",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000224",
+      "parentId": "00000000-0000-4000-8000-000000000124",
+      "type": "Checkpoint",
+      "name": "Checkpoint",
+      "identifier": "Checkpoint",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000225",
+      "parentId": "00000000-0000-4000-8000-000000000226",
+      "type": "Phase",
+      "name": "Deploy",
+      "identifier": "Deploy_WorkloadAlphaRegyDev.Deploy",
+      "state": "completed",
+      "result": "skipped"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000227",
+      "parentId": "00000000-0000-4000-8000-000000000153",
+      "type": "Phase",
+      "name": "Deploy",
+      "identifier": "Deploy_Network.Deploy",
+      "state": "completed",
+      "result": "skipped"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000216",
+      "type": "Stage",
+      "name": "Stack 5 — Workload (alpha/REGX/prod) (Deploy)",
+      "identifier": "Deploy_WorkloadAlphaRegxProd",
+      "state": "completed",
+      "result": "skipped"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000139",
+      "parentId": "00000000-0000-4000-8000-000000000190",
+      "type": "Job",
+      "name": "WhatIf",
+      "identifier": "WhatIf_WorkloadAlphaRegxDev.WhatIf.__default",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000228",
+      "parentId": "00000000-0000-4000-8000-000000000133",
+      "type": "Task",
+      "name": "Post-job: Checkout (full history for diff)",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000128",
+      "parentId": "00000000-0000-4000-8000-000000000107",
+      "type": "Phase",
+      "name": "WhatIf",
+      "identifier": "WhatIf_PlatformDev.WhatIf",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000229",
+      "parentId": "00000000-0000-4000-8000-000000000161",
+      "type": "Checkpoint",
+      "name": "Checkpoint",
+      "identifier": "Checkpoint",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000230",
+      "parentId": "00000000-0000-4000-8000-000000000107",
+      "type": "Checkpoint",
+      "name": "Checkpoint",
+      "identifier": "Checkpoint",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000231",
+      "parentId": "00000000-0000-4000-8000-000000000139",
+      "type": "Task",
+      "name": "Finalize Job",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000232",
+      "parentId": "00000000-0000-4000-8000-000000000141",
+      "type": "Task",
+      "name": "Finalize Job",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000233",
+      "parentId": "00000000-0000-4000-8000-000000000156",
+      "type": "Task",
+      "name": "Delete what-if result",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000234",
+      "parentId": "00000000-0000-4000-8000-000000000113",
+      "type": "Task",
+      "name": "Initialize job",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000156",
+      "parentId": "00000000-0000-4000-8000-000000000172",
+      "type": "Job",
+      "name": "WhatIf",
+      "identifier": "WhatIf_WorkloadAlphaRegxProd.WhatIf.__default",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000235",
+      "parentId": "00000000-0000-4000-8000-000000000199",
+      "type": "Checkpoint",
+      "name": "Checkpoint",
+      "identifier": "Checkpoint",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000135",
+      "parentId": "00000000-0000-4000-8000-000000000129",
+      "type": "Phase",
+      "name": "WhatIf",
+      "identifier": "WhatIf_PlatformProd.WhatIf",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000236",
+      "parentId": "00000000-0000-4000-8000-000000000139",
+      "type": "Task",
+      "name": "Record What-If result for the Deploy gate",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000237",
+      "parentId": "00000000-0000-4000-8000-000000000122",
+      "type": "Task",
+      "name": "Record What-If result for the Deploy gate",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000238",
+      "parentId": "00000000-0000-4000-8000-000000000156",
+      "type": "Task",
+      "name": "Record What-If result for the Deploy gate",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000239",
+      "parentId": "00000000-0000-4000-8000-000000000115",
+      "type": "Task",
+      "name": "Publish Results",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000240",
+      "parentId": "00000000-0000-4000-8000-000000000109",
+      "type": "Task",
+      "name": "Record What-If result for the Deploy gate",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000226",
+      "type": "Stage",
+      "name": "Stack 5 — Workload (alpha/REGY/dev) (Deploy)",
+      "identifier": "Deploy_WorkloadAlphaRegyDev",
+      "state": "completed",
+      "result": "skipped"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000241",
+      "parentId": "00000000-0000-4000-8000-000000000122",
+      "type": "Task",
+      "name": "Publish Results",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000242",
+      "parentId": "00000000-0000-4000-8000-000000000144",
+      "type": "Task",
+      "name": "Finalize Job",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000243",
+      "parentId": "00000000-0000-4000-8000-000000000119",
+      "type": "Task",
+      "name": "What-If",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000104",
+      "parentId": "00000000-0000-4000-8000-000000000198",
+      "type": "Job",
+      "name": "WhatIf",
+      "identifier": "WhatIf_Network.WhatIf.__default",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000244",
+      "parentId": "00000000-0000-4000-8000-000000000104",
+      "type": "Task",
+      "name": "Post-job: Checkout Platform.Deployment@main to s",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000245",
+      "parentId": "00000000-0000-4000-8000-000000000141",
+      "type": "Task",
+      "name": "Initialize job",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000246",
+      "parentId": "00000000-0000-4000-8000-000000000115",
+      "type": "Task",
+      "name": "Delete what-if result",
+      "state": "completed",
+      "result": "succeeded"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000161",
+      "type": "Stage",
+      "name": "Stack 4 — Client (alpha)",
+      "identifier": "WhatIf_ClientAlpha",
+      "state": "completed",
+      "result": "succeeded"
+    }
+  ],
+  "attachments": {
+    "whatif.stack.json": [
+      {
+        "name": "client-alpha",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/contoso/00000000-0000-4000-8000-000000000247/_apis/build/builds/7700078/00000000-0000-4000-8000-000000000101/00000000-0000-4000-8000-000000000111/attachments/whatif.stack.json/client-alpha"
+          }
+        }
+      },
+      {
+        "name": "workload-alpha-regx-prod",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/contoso/00000000-0000-4000-8000-000000000247/_apis/build/builds/7700078/00000000-0000-4000-8000-000000000101/00000000-0000-4000-8000-000000000155/attachments/whatif.stack.json/workload-alpha-regx-prod"
+          }
+        }
+      },
+      {
+        "name": "platform-dev",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/contoso/00000000-0000-4000-8000-000000000247/_apis/build/builds/7700078/00000000-0000-4000-8000-000000000101/00000000-0000-4000-8000-000000000158/attachments/whatif.stack.json/platform-dev"
+          }
+        }
+      },
+      {
+        "name": "workload-alpha-regy-dev",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/contoso/00000000-0000-4000-8000-000000000247/_apis/build/builds/7700078/00000000-0000-4000-8000-000000000101/00000000-0000-4000-8000-000000000180/attachments/whatif.stack.json/workload-alpha-regy-dev"
+          }
+        }
+      },
+      {
+        "name": "platform-prod",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/contoso/00000000-0000-4000-8000-000000000247/_apis/build/builds/7700078/00000000-0000-4000-8000-000000000101/00000000-0000-4000-8000-000000000188/attachments/whatif.stack.json/platform-prod"
+          }
+        }
+      },
+      {
+        "name": "workload-alpha-regy-prod",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/contoso/00000000-0000-4000-8000-000000000247/_apis/build/builds/7700078/00000000-0000-4000-8000-000000000101/00000000-0000-4000-8000-000000000191/attachments/whatif.stack.json/workload-alpha-regy-prod"
+          }
+        }
+      },
+      {
+        "name": "workload-alpha-regx-dev",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/contoso/00000000-0000-4000-8000-000000000247/_apis/build/builds/7700078/00000000-0000-4000-8000-000000000101/00000000-0000-4000-8000-000000000208/attachments/whatif.stack.json/workload-alpha-regx-dev"
+          }
+        }
+      },
+      {
+        "name": "network",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/contoso/00000000-0000-4000-8000-000000000247/_apis/build/builds/7700078/00000000-0000-4000-8000-000000000101/00000000-0000-4000-8000-000000000211/attachments/whatif.stack.json/network"
+          }
+        }
+      },
+      {
+        "name": "shared-infra",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/contoso/00000000-0000-4000-8000-000000000247/_apis/build/builds/7700078/00000000-0000-4000-8000-000000000101/00000000-0000-4000-8000-000000000243/attachments/whatif.stack.json/shared-infra"
+          }
+        }
+      }
+    ],
+    "whatif.stack.sidecar": [
+      {
+        "name": "client-alpha",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/contoso/00000000-0000-4000-8000-000000000247/_apis/build/builds/7700078/00000000-0000-4000-8000-000000000101/00000000-0000-4000-8000-000000000111/attachments/whatif.stack.sidecar/client-alpha"
+          }
+        }
+      },
+      {
+        "name": "workload-alpha-regx-prod",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/contoso/00000000-0000-4000-8000-000000000247/_apis/build/builds/7700078/00000000-0000-4000-8000-000000000101/00000000-0000-4000-8000-000000000155/attachments/whatif.stack.sidecar/workload-alpha-regx-prod"
+          }
+        }
+      },
+      {
+        "name": "platform-dev",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/contoso/00000000-0000-4000-8000-000000000247/_apis/build/builds/7700078/00000000-0000-4000-8000-000000000101/00000000-0000-4000-8000-000000000158/attachments/whatif.stack.sidecar/platform-dev"
+          }
+        }
+      },
+      {
+        "name": "workload-alpha-regy-dev",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/contoso/00000000-0000-4000-8000-000000000247/_apis/build/builds/7700078/00000000-0000-4000-8000-000000000101/00000000-0000-4000-8000-000000000180/attachments/whatif.stack.sidecar/workload-alpha-regy-dev"
+          }
+        }
+      },
+      {
+        "name": "platform-prod",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/contoso/00000000-0000-4000-8000-000000000247/_apis/build/builds/7700078/00000000-0000-4000-8000-000000000101/00000000-0000-4000-8000-000000000188/attachments/whatif.stack.sidecar/platform-prod"
+          }
+        }
+      },
+      {
+        "name": "workload-alpha-regy-prod",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/contoso/00000000-0000-4000-8000-000000000247/_apis/build/builds/7700078/00000000-0000-4000-8000-000000000101/00000000-0000-4000-8000-000000000191/attachments/whatif.stack.sidecar/workload-alpha-regy-prod"
+          }
+        }
+      },
+      {
+        "name": "workload-alpha-regx-dev",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/contoso/00000000-0000-4000-8000-000000000247/_apis/build/builds/7700078/00000000-0000-4000-8000-000000000101/00000000-0000-4000-8000-000000000208/attachments/whatif.stack.sidecar/workload-alpha-regx-dev"
+          }
+        }
+      },
+      {
+        "name": "network",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/contoso/00000000-0000-4000-8000-000000000247/_apis/build/builds/7700078/00000000-0000-4000-8000-000000000101/00000000-0000-4000-8000-000000000211/attachments/whatif.stack.sidecar/network"
+          }
+        }
+      },
+      {
+        "name": "shared-infra",
+        "_links": {
+          "self": {
+            "href": "https://dev.azure.com/contoso/00000000-0000-4000-8000-000000000247/_apis/build/builds/7700078/00000000-0000-4000-8000-000000000101/00000000-0000-4000-8000-000000000243/attachments/whatif.stack.sidecar/shared-infra"
+          }
+        }
+      }
+    ]
+  },
+  "sidecars": {
+    "client-alpha": {
+      "schemaVersion": 1,
+      "stackId": "client-alpha",
+      "layer": 4,
+      "whatIfResultName": "whatif-client-alpha-7700078",
+      "whatIfResultId": "/subscriptions/00000000-0000-4000-8000-000000000001/providers/Microsoft.Resources/deploymentStacksWhatIfResults/whatif-client-alpha-7700078",
+      "azCliVersion": "2.89.1",
+      "status": "succeeded",
+      "error": null
+    },
+    "network": {
+      "schemaVersion": 1,
+      "stackId": "network",
+      "layer": 1,
+      "whatIfResultName": "whatif-network-7700078",
+      "whatIfResultId": "/subscriptions/00000000-0000-4000-8000-000000000001/providers/Microsoft.Resources/deploymentStacksWhatIfResults/whatif-network-7700078",
+      "azCliVersion": "2.89.1",
+      "status": "succeeded",
+      "error": null
+    },
+    "platform-dev": {
+      "schemaVersion": 1,
+      "stackId": "platform-dev",
+      "layer": 3,
+      "whatIfResultName": "whatif-platform-dev-7700078",
+      "whatIfResultId": "/subscriptions/00000000-0000-4000-8000-000000000001/providers/Microsoft.Resources/deploymentStacksWhatIfResults/whatif-platform-dev-7700078",
+      "azCliVersion": "2.89.1",
+      "status": "succeeded",
+      "error": null
+    },
+    "platform-prod": {
+      "schemaVersion": 1,
+      "stackId": "platform-prod",
+      "layer": 3,
+      "whatIfResultName": "whatif-platform-prod-7700078",
+      "whatIfResultId": "/subscriptions/00000000-0000-4000-8000-000000000001/providers/Microsoft.Resources/deploymentStacksWhatIfResults/whatif-platform-prod-7700078",
+      "azCliVersion": "2.89.1",
+      "status": "succeeded",
+      "error": null
+    },
+    "shared-infra": {
+      "schemaVersion": 1,
+      "stackId": "shared-infra",
+      "layer": 2,
+      "whatIfResultName": "whatif-shared-infra-7700078",
+      "whatIfResultId": "/subscriptions/00000000-0000-4000-8000-000000000001/providers/Microsoft.Resources/deploymentStacksWhatIfResults/whatif-shared-infra-7700078",
+      "azCliVersion": "2.89.1",
+      "status": "succeeded",
+      "error": null
+    },
+    "workload-alpha-regx-dev": {
+      "schemaVersion": 1,
+      "stackId": "workload-alpha-regx-dev",
+      "layer": 5,
+      "whatIfResultName": "whatif-workload-alpha-regx-dev-7700078",
+      "whatIfResultId": "/subscriptions/00000000-0000-4000-8000-000000000001/providers/Microsoft.Resources/deploymentStacksWhatIfResults/whatif-workload-alpha-regx-dev-7700078",
+      "azCliVersion": "2.89.1",
+      "status": "succeeded",
+      "error": null
+    },
+    "workload-alpha-regx-prod": {
+      "schemaVersion": 1,
+      "stackId": "workload-alpha-regx-prod",
+      "layer": 5,
+      "whatIfResultName": "whatif-workload-alpha-regx-prod-7700078",
+      "whatIfResultId": "/subscriptions/00000000-0000-4000-8000-000000000001/providers/Microsoft.Resources/deploymentStacksWhatIfResults/whatif-workload-alpha-regx-prod-7700078",
+      "azCliVersion": "2.89.1",
+      "status": "succeeded",
+      "error": null
+    },
+    "workload-alpha-regy-dev": {
+      "schemaVersion": 1,
+      "stackId": "workload-alpha-regy-dev",
+      "layer": 5,
+      "whatIfResultName": "whatif-workload-alpha-regy-dev-7700078",
+      "whatIfResultId": "/subscriptions/00000000-0000-4000-8000-000000000001/providers/Microsoft.Resources/deploymentStacksWhatIfResults/whatif-workload-alpha-regy-dev-7700078",
+      "azCliVersion": "2.89.1",
+      "status": "succeeded",
+      "error": null
+    },
+    "workload-alpha-regy-prod": {
+      "schemaVersion": 1,
+      "stackId": "workload-alpha-regy-prod",
+      "layer": 5,
+      "whatIfResultName": "whatif-workload-alpha-regy-prod-7700078",
+      "whatIfResultId": "/subscriptions/00000000-0000-4000-8000-000000000001/providers/Microsoft.Resources/deploymentStacksWhatIfResults/whatif-workload-alpha-regy-prod-7700078",
+      "azCliVersion": "2.89.1",
+      "status": "succeeded",
+      "error": null
+    }
+  }
+}

@@ -1,0 +1,294 @@
+# Publishes the **dev** extension — publisher `MichaelC`, `public: false`.
+#
+# Deliberately a separate workflow rather than a job bolted onto `whatif-ci.yml`:
+#
+#   * **Different trigger.** `whatif-ci.yml` never fires on tags, so a publish job
+#     living there could only be reached by `if:`-guarding a ref its own `on:`
+#     block does not subscribe to.
+#   * **A publish must never be built from an unverified tree**, so the whole
+#     chain runs again here rather than trusting an artifact from an earlier
+#     run. It costs a couple of billable minutes per *tag*, which is rare, and
+#     it means there is no path to the Marketplace that skipped a test.
+#
+# The **release** publish is not automated here yet. See
+# `packages/extension/README.md`, "Publishing".
+name: Bicep What-If Publish
+
+# Tags carry the extension's name because this repo holds more than one
+# extension, and a bare `v0.2.0` would not say which one it releases.
+
+on:
+  push:
+    tags: ['whatif-v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Extension version, e.g. 0.1.1 (no leading v)'
+        required: true
+      wait_for_validation:
+        description: 'Wait for Marketplace validation (~8 min of billable time). Off for dev iteration.'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# **`cancel-in-progress: false`, unlike `whatif-ci.yml`.** A superseded CI run is
+# waste; a superseded publish can leave the Marketplace having accepted an
+# upload this workflow then reports as failed.
+# Everything below runs inside the extension's own npm project. `uses:` steps
+# ignore this, so their paths spell out the folder.
+defaults:
+  run:
+    working-directory: bicep-whatif
+
+concurrency:
+  group: publish-whatif
+  cancel-in-progress: false
+
+env:
+  EXTENSION_ID: bicep-whatif-dev
+  SERVICE_URL: https://marketplace.visualstudio.com/
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    # Gates `secrets.MARKETPLACE_PAT` to this job alone. `whatif-ci.yml` declares no
+    # environment and therefore structurally cannot read the token.
+    environment: marketplace
+    # Without this the job inherits GitHub's 6-hour default. This repo is
+    # private, so a wedged run bills 360 minutes against the quota. The chain
+    # takes ~1m15s plus validation; 20 minutes is generous.
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Check for unscrubbed identifiers
+        run: npm run check:identifiers
+
+      # Node 20 for the reason spelled out in `whatif-ci.yml` — it is the line the
+      # shipped task runs on and the floor the workspace claims. The action
+      # versions and `node-version` are different Nodes and move independently.
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: bicep-whatif/package-lock.json
+
+      # ── The version, which is the only thing that can collide ──────────────
+      #
+      # Republishing an existing version is rejected and a version can never be
+      # reclaimed, so it has to come from something unique by construction. A
+      # git tag is; a commit is not.
+      #
+      # `--rev-version` is NOT an option and must not be reintroduced: it is
+      # handed to `tfx` after `package.mjs` has staged the manifest into
+      # `build/`, so it bumps a throwaway copy that is deleted next run and
+      # always re-derives from the committed version. Two runs would both
+      # produce the same number and the second would collide. Verified.
+      - name: Resolve version
+        id: v
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            version='${{ inputs.version }}'
+          else
+            version="${GITHUB_REF_NAME#whatif-v}"
+          fi
+          if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::Version '$version' is not MAJOR.MINOR.PATCH." && exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Install
+        run: npm ci
+
+      # ── Refuse a collision before spending four minutes on it ──────────────
+      #
+      # Runs straight after `npm ci`, which is the earliest point `tfx` exists.
+      # Without it a duplicate version is discovered only at the publish step,
+      # after a full typecheck, test and build, and the rejection reads as a
+      # publish failure rather than as "you already shipped this".
+      #
+      # `isvalid` answers in three shapes, established by running it:
+      #   exit 0  and a line reading exactly `Valid`   -> published already
+      #   exit != 0 with "Could not find extension version" -> free to use
+      #   anything else -> exists in some other state; refuse and let a human look
+      - name: Refuse an already-published version
+        env:
+          TFX_TOKEN: ${{ secrets.MARKETPLACE_PAT }}
+          PUBLISHER: ${{ vars.EXTENSION_PUBLISHER }}
+          VERSION: ${{ steps.v.outputs.version }}
+        run: |
+          out="$(node_modules/.bin/tfx extension isvalid \
+            --publisher "$PUBLISHER" --extension-id "$EXTENSION_ID" \
+            --version "$VERSION" --service-url "$SERVICE_URL" \
+            --token "$TFX_TOKEN" --no-color 2>&1 || true)"
+          if printf '%s' "$out" | grep -q 'Could not find extension version'; then
+            echo "Version $VERSION is not taken. Proceeding."
+          elif printf '%s\n' "$out" | grep -qE '^[[:space:]]*Valid[[:space:]]*$'; then
+            echo "::error::$PUBLISHER.$EXTENSION_ID $VERSION is already published. Versions cannot be reclaimed — pick a new one."
+            exit 1
+          else
+            echo "::error::Unexpected state for version $VERSION; refusing to publish over it."
+            printf '%s\n' "$out"
+            exit 1
+          fi
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      # ── The dev identity, staged from overrides/dev.json ───────────────────
+      #
+      # Decision F1: extension identity is `{publisher}.{id}`, so the manifest
+      # names neither the publisher nor the dev id. dev.json supplies the
+      # `-dev` id, name, visibility and gallery flags; the publisher comes from
+      # the repo variable and the version from this run, so
+      # `vss-extension.json` stays untouched. The staged copy is gitignored.
+      #
+      # `EXTENSION_PUBLISHER` is a **variable, not a secret**, on purpose. It is
+      # public on the Marketplace, and as a secret GitHub would mask the string
+      # in every log line it appears in — including tfx's own output, which is
+      # what you read when a publish goes wrong.
+      - name: Stage the overrides
+        env:
+          PUBLISHER: ${{ vars.EXTENSION_PUBLISHER }}
+          VERSION: ${{ steps.v.outputs.version }}
+        run: |
+          node -e '
+            const fs = require("fs");
+            const d = JSON.parse(fs.readFileSync("packages/extension/overrides/dev.json", "utf8"));
+            if (d.id !== process.env.EXTENSION_ID) throw new Error(`dev.json id ${d.id} != EXTENSION_ID ${process.env.EXTENSION_ID}`);
+            d.publisher = process.env.PUBLISHER;
+            d.version = process.env.VERSION;
+            fs.writeFileSync("packages/extension/overrides/.staged-dev.json", JSON.stringify(d, null, 2));
+          '
+
+      # Through `npm run`, never `node scripts/package.mjs`: `package.mjs` shells
+      # out to a bare `tfx`, which resolves only because npm puts
+      # `node_modules/.bin` on PATH.
+      - name: Package
+        run: npm run package -w @bicep-whatif/extension -- --overrides overrides/.staged-dev.json
+
+      # ── Upload, then wait for validation ourselves ─────────────────────────
+      #
+      # **`--no-wait-validation` is load-bearing.** Left to itself `tfx` waits
+      # for Marketplace validation synchronously, gives up after a few minutes
+      # with "Validation is taking much longer than usual", and exits 255 — on
+      # an upload that was accepted and goes on to validate perfectly well. That
+      # produced a red job on a successful publish on 2026-08-26, which is the
+      # worst possible signal: it invites a re-run that then collides on a
+      # version that is already live.
+      #
+      # Its wait is also not configurable, so the timeout cannot be tuned — only
+      # taken away. The loop below is the replacement, with a bound you can read.
+      #
+      # The token is passed through `env` rather than argv so it never appears
+      # in `ps` output on the runner. GitHub masks the secret in logs itself, so
+      # unlike the local `tools/tfx-run` this needs no redaction filter.
+      - name: Publish
+        env:
+          TFX_TOKEN: ${{ secrets.MARKETPLACE_PAT }}
+          PUBLISHER: ${{ vars.EXTENSION_PUBLISHER }}
+          VERSION: ${{ steps.v.outputs.version }}
+        run: |
+          vsix="packages/extension/dist/${PUBLISHER}.${EXTENSION_ID}-${VERSION}.vsix"
+          [ -f "$vsix" ] || { echo "::error::No VSIX at $vsix"; exit 1; }
+          node_modules/.bin/tfx extension publish \
+            --vsix "$vsix" --service-url "$SERVICE_URL" \
+            --token "$TFX_TOKEN" --no-wait-validation --no-color
+
+      # Polls the same three shapes as the pre-flight check. The match anchors
+      # the whole line on purpose: a substring match would also accept
+      # "Invalid", while a bare `grep -qx` would miss an indented "Valid" and so
+      # time out a publish that had actually succeeded.
+      # ── Waiting is optional, and off by default for a dispatch ─────────────
+      #
+      # Marketplace validation is Microsoft's step and runs whether or not this
+      # job watches it. Crucially the organisation cannot pick up the new
+      # version until it passes, so the ~8 minutes is wall-clock nobody can
+      # avoid — the only question is *where* it is spent.
+      #
+      # Spending it here is expensive: this repo is private, so a publish that
+      # sits in a poll loop bills for the idling. A measured run was 10m15s, of
+      # which roughly 8 minutes was waiting, against ~3 minutes of actual work.
+      # During dev iteration that is the dominant cost of the whole cycle, and
+      # it buys a signal that can be had for free from a terminal afterwards
+      # (`tools/tfx-run extension isvalid`).
+      #
+      # A tag push still waits unconditionally: that is the deliberate,
+      # infrequent path, and there the job's colour should mean the version is
+      # actually live.
+      - name: Wait for Marketplace validation
+        if: github.event_name != 'workflow_dispatch' || inputs.wait_for_validation
+        env:
+          TFX_TOKEN: ${{ secrets.MARKETPLACE_PAT }}
+          PUBLISHER: ${{ vars.EXTENSION_PUBLISHER }}
+          VERSION: ${{ steps.v.outputs.version }}
+        run: |
+          deadline=$(( SECONDS + 900 ))
+          while :; do
+            out="$(node_modules/.bin/tfx extension isvalid \
+              --publisher "$PUBLISHER" --extension-id "$EXTENSION_ID" \
+              --version "$VERSION" --service-url "$SERVICE_URL" \
+              --token "$TFX_TOKEN" --no-color 2>&1 || true)"
+            if printf '%s\n' "$out" | grep -qE '^[[:space:]]*Valid[[:space:]]*$'; then
+              echo "Validated: $PUBLISHER.$EXTENSION_ID $VERSION"
+              break
+            fi
+            if [ "$SECONDS" -ge "$deadline" ]; then
+              echo "::error::Validation did not complete within 15 minutes. The upload was accepted, so the version is consumed — check before retrying."
+              printf '%s\n' "$out"
+              exit 1
+            fi
+            sleep 15
+          done
+
+      # ── Sharing, as its own step, after validation ─────────────────────────
+      #
+      # **Not `--share-with` on the publish call.** A private extension cannot be
+      # shared until it is valid, so a share bundled into the publish is applied
+      # while validation is still pending and silently does not happen — which is
+      # exactly what occurred on 2026-08-26, leaving an extension published and
+      # shared with nobody.
+      #
+      # Sharing persists across republishes, so this is a no-op after the first
+      # time. Unset `EXTENSION_SHARE_WITH` to skip it entirely.
+      # Gated on having waited, because **sharing requires a valid version** —
+      # that is the whole reason this is a separate step. Publishing without
+      # waiting therefore cannot share, which matters only on a first publish to
+      # a new organisation; sharing persists across versions, so for an
+      # organisation already shared with it is a no-op either way. The step
+      # below says so out loud when it is skipped, rather than leaving someone
+      # to discover an unshared extension.
+      - name: Share with the organisation
+        if: vars.EXTENSION_SHARE_WITH != '' && (github.event_name != 'workflow_dispatch' || inputs.wait_for_validation)
+        env:
+          TFX_TOKEN: ${{ secrets.MARKETPLACE_PAT }}
+          PUBLISHER: ${{ vars.EXTENSION_PUBLISHER }}
+          SHARE_WITH: ${{ vars.EXTENSION_SHARE_WITH }}
+        run: |
+          node_modules/.bin/tfx extension share \
+            --publisher "$PUBLISHER" --extension-id "$EXTENSION_ID" \
+            --share-with "$SHARE_WITH" --service-url "$SERVICE_URL" \
+            --token "$TFX_TOKEN" --no-color
+          echo "Note: sharing is not installing. A first-time organisation still needs the extension installed."
+
+      - name: Note that sharing was skipped
+        if: vars.EXTENSION_SHARE_WITH != '' && github.event_name == 'workflow_dispatch' && !inputs.wait_for_validation
+        run: |
+          echo "::notice::Sharing skipped: it needs a validated version and this run did not wait. Harmless for an organisation already shared with; re-run with wait_for_validation for a new one."
+
+      - name: Upload VSIX
+        uses: actions/upload-artifact@v7
+        with:
+          name: vsix-${{ steps.v.outputs.version }}
+          path: bicep-whatif/packages/extension/dist/*.vsix
+          if-no-files-found: error
+          retention-days: 14

@@ -1,0 +1,563 @@
+{
+  "id": "/subscriptions/00000000-0000-4000-8000-000000000001/providers/Microsoft.Resources/deploymentStacksWhatIfResults/whatif-shared-infra-7700017",
+  "location": "centralus",
+  "name": "whatif-shared-infra-7700017",
+  "properties": {
+    "actionOnUnmanage": {
+      "managementGroups": "detach",
+      "resourceGroups": "detach",
+      "resources": "detach",
+      "resourcesWithoutDeleteSupport": "fail"
+    },
+    "changes": {
+      "denySettingsChange": {
+        "after": {
+          "applyToChildScopes": false,
+          "excludedActions": [],
+          "excludedPrincipals": [],
+          "mode": "None"
+        },
+        "before": {
+          "applyToChildScopes": false,
+          "excludedActions": [],
+          "excludedPrincipals": [],
+          "mode": "None"
+        },
+        "delta": []
+      },
+      "deploymentScopeChange": null,
+      "resourceChanges": [
+        {
+          "apiVersion": null,
+          "changeCertainty": "definite",
+          "changeType": "modify",
+          "denyStatusChange": {
+            "after": "none",
+            "before": "none"
+          },
+          "deploymentId": null,
+          "extension": null,
+          "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/app-network-rg/providers/Microsoft.Network/privateEndpoints/appregistry-container-reg-pe",
+          "identifiers": null,
+          "managementStatusChange": {
+            "after": "managed",
+            "before": "managed"
+          },
+          "resourceConfigurationChanges": {
+            "after": {
+              "apiVersion": "2025-05-01",
+              "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/app-network-rg/providers/Microsoft.Network/privateEndpoints/appregistry-container-reg-pe",
+              "location": "centralus",
+              "name": "appregistry-container-reg-pe",
+              "properties": {
+                "customNetworkInterfaceName": "appregistry-container-reg-pe-nic",
+                "privateLinkServiceConnections": [
+                  {
+                    "name": "appregistry-container-reg-pe-plsc",
+                    "properties": {
+                      "groupIds": [
+                        "registry"
+                      ],
+                      "privateLinkServiceId": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/app-shared-infra-rg/providers/Microsoft.ContainerRegistry/registries/appregistry"
+                    }
+                  }
+                ],
+                "subnet": {
+                  "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/app-network-rg/providers/Microsoft.Network/virtualNetworks/app-cus-vnet/subnets/app-shared-subnet",
+                  "resourceGroup": "app-network-rg"
+                }
+              },
+              "resourceGroup": "app-network-rg",
+              "tags": {
+                "AllocationType": "No Allocation Type",
+                "Class": "Technology",
+                "CostCenter": "Engineering",
+                "Customer": "Multi-Tenant",
+                "Description": "Deployment stack — shared infrastructure",
+                "BusinessUnit": "Contoso",
+                "Product": "Contoso Platform",
+                "org:client": "shared",
+                "org:env-type": "shared",
+                "org:product": "app"
+              },
+              "type": "Microsoft.Network/privateEndpoints"
+            },
+            "before": {
+              "apiVersion": "2025-05-01",
+              "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/app-network-rg/providers/Microsoft.Network/privateEndpoints/appregistry-container-reg-pe",
+              "location": "centralus",
+              "name": "appregistry-container-reg-pe",
+              "properties": {
+                "customNetworkInterfaceName": "appregistry-container-reg-pe-nic",
+                "ipVersionType": "IPv4",
+                "privateLinkServiceConnections": [
+                  {
+                    "name": "appregistry-container-reg-pe-plsc",
+                    "properties": {
+                      "groupIds": [
+                        "registry"
+                      ],
+                      "privateLinkServiceId": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/app-shared-infra-rg/providers/Microsoft.ContainerRegistry/registries/appregistry"
+                    }
+                  }
+                ],
+                "subnet": {
+                  "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/app-network-rg/providers/Microsoft.Network/virtualNetworks/app-cus-vnet/subnets/app-shared-subnet",
+                  "resourceGroup": "app-network-rg"
+                }
+              },
+              "resourceGroup": "app-network-rg",
+              "tags": {
+                "AllocationType": "No Allocation Type",
+                "Class": "Technology",
+                "CostCenter": "Engineering",
+                "Customer": "Multi-Tenant",
+                "Description": "Deployment stack — shared infrastructure",
+                "BusinessUnit": "Contoso",
+                "Product": "Contoso Platform",
+                "org:client": "shared",
+                "org:env-type": "shared",
+                "org:product": "app"
+              },
+              "type": "Microsoft.Network/privateEndpoints"
+            },
+            "delta": [
+              {
+                "after": null,
+                "before": "IPv4",
+                "changeType": "delete",
+                "children": [],
+                "path": "properties.ipVersionType"
+              }
+            ]
+          },
+          "resourceGroup": "app-network-rg",
+          "symbolicName": null,
+          "type": "Microsoft.Network/privateEndpoints",
+          "unsupportedReason": null
+        },
+        {
+          "apiVersion": null,
+          "changeCertainty": "definite",
+          "changeType": "noChange",
+          "denyStatusChange": {
+            "after": "none",
+            "before": "none"
+          },
+          "deploymentId": null,
+          "extension": null,
+          "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/app-shared-infra-rg",
+          "identifiers": null,
+          "managementStatusChange": {
+            "after": "managed",
+            "before": "managed"
+          },
+          "resourceConfigurationChanges": {
+            "after": {
+              "apiVersion": "2025-04-01",
+              "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/app-shared-infra-rg",
+              "location": "centralus",
+              "name": "app-shared-infra-rg",
+              "tags": {
+                "AllocationType": "No Allocation Type",
+                "Class": "Technology",
+                "CostCenter": "Engineering",
+                "Customer": "Multi-Tenant",
+                "Description": "Deployment stack — shared infrastructure",
+                "BusinessUnit": "Contoso",
+                "Product": "Contoso Platform",
+                "org:client": "shared",
+                "org:env-type": "shared",
+                "org:product": "app"
+              },
+              "type": "Microsoft.Resources/resourceGroups"
+            },
+            "before": {
+              "apiVersion": "2025-04-01",
+              "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/app-shared-infra-rg",
+              "location": "centralus",
+              "name": "app-shared-infra-rg",
+              "tags": {
+                "AllocationType": "No Allocation Type",
+                "Class": "Technology",
+                "CostCenter": "Engineering",
+                "Customer": "Multi-Tenant",
+                "Description": "Deployment stack — shared infrastructure",
+                "BusinessUnit": "Contoso",
+                "Product": "Contoso Platform",
+                "org:client": "shared",
+                "org:env-type": "shared",
+                "org:product": "app"
+              },
+              "type": "Microsoft.Resources/resourceGroups"
+            },
+            "delta": []
+          },
+          "symbolicName": null,
+          "type": "Microsoft.Resources/resourceGroups",
+          "unsupportedReason": null
+        },
+        {
+          "apiVersion": null,
+          "changeCertainty": "definite",
+          "changeType": "modify",
+          "denyStatusChange": {
+            "after": "none",
+            "before": "none"
+          },
+          "deploymentId": null,
+          "extension": null,
+          "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/app-shared-infra-rg/providers/Microsoft.ContainerRegistry/registries/appregistry",
+          "identifiers": null,
+          "managementStatusChange": {
+            "after": "managed",
+            "before": "managed"
+          },
+          "resourceConfigurationChanges": {
+            "after": {
+              "apiVersion": "2026-01-01-preview",
+              "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/app-shared-infra-rg/providers/Microsoft.ContainerRegistry/registries/appregistry",
+              "location": "centralus",
+              "name": "appregistry",
+              "properties": {
+                "adminUserEnabled": false,
+                "anonymousPullEnabled": false,
+                "autoGeneratedDomainNameLabelScope": "Unsecure",
+                "dataEndpointEnabled": false,
+                "metadataSearch": "Disabled",
+                "networkRuleBypassOptions": "AzureServices",
+                "networkRuleSet": {
+                  "defaultAction": "Allow"
+                },
+                "policies": {
+                  "azureADAuthenticationAsArmPolicy": {
+                    "status": "enabled"
+                  },
+                  "exportPolicy": {
+                    "status": "enabled"
+                  },
+                  "quarantinePolicy": {
+                    "status": "disabled"
+                  },
+                  "retentionPolicy": {
+                    "days": 7,
+                    "status": "disabled"
+                  },
+                  "softDeletePolicy": {
+                    "retentionDays": 7,
+                    "status": "disabled"
+                  },
+                  "trustPolicy": {
+                    "status": "disabled",
+                    "type": "Notary"
+                  }
+                },
+                "publicNetworkAccess": "Enabled",
+                "zoneRedundancy": "Enabled"
+              },
+              "resourceGroup": "app-shared-infra-rg",
+              "sku": {
+                "name": "Premium"
+              },
+              "tags": {
+                "AllocationType": "No Allocation Type",
+                "Class": "Technology",
+                "CostCenter": "Engineering",
+                "Customer": "Multi-Tenant",
+                "Description": "Deployment stack — shared infrastructure",
+                "BusinessUnit": "Contoso",
+                "Product": "Contoso Platform",
+                "org:client": "shared",
+                "org:env-type": "shared",
+                "org:product": "app"
+              },
+              "type": "Microsoft.ContainerRegistry/registries"
+            },
+            "before": {
+              "apiVersion": "2026-01-01-preview",
+              "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/app-shared-infra-rg/providers/Microsoft.ContainerRegistry/registries/appregistry",
+              "location": "centralus",
+              "name": "appregistry",
+              "properties": {
+                "adminUserEnabled": false,
+                "anonymousPullEnabled": false,
+                "autoGeneratedDomainNameLabelScope": "Unsecure",
+                "dataEndpointEnabled": false,
+                "encryption": {
+                  "status": "disabled"
+                },
+                "endpointProtocol": "IPv4",
+                "metadataSearch": "Disabled",
+                "networkRuleBypassAllowedForTasks": false,
+                "networkRuleBypassOptions": "AzureServices",
+                "networkRuleSet": {
+                  "defaultAction": "Deny",
+                  "ipRules": [
+                    {
+                      "action": "Allow",
+                      "value": "203.0.113.1"
+                    }
+                  ]
+                },
+                "policies": {
+                  "azureADAuthenticationAsArmPolicy": {
+                    "status": "enabled"
+                  },
+                  "exportPolicy": {
+                    "status": "enabled"
+                  },
+                  "quarantinePolicy": {
+                    "status": "disabled"
+                  },
+                  "retentionPolicy": {
+                    "days": 7,
+                    "status": "disabled"
+                  },
+                  "softDeletePolicy": {
+                    "retentionDays": 7,
+                    "status": "disabled"
+                  },
+                  "trustPolicy": {
+                    "status": "disabled",
+                    "type": "Notary"
+                  }
+                },
+                "publicNetworkAccess": "Enabled",
+                "regionalEndpoints": "Disabled",
+                "roleAssignmentMode": "LegacyRegistryPermissions",
+                "zoneRedundancy": "Enabled"
+              },
+              "resourceGroup": "app-shared-infra-rg",
+              "sku": {
+                "name": "Premium"
+              },
+              "tags": {
+                "AllocationType": "No Allocation Type",
+                "Class": "Technology",
+                "CostCenter": "Engineering",
+                "Customer": "Multi-Tenant",
+                "Description": "Deployment stack — shared infrastructure",
+                "BusinessUnit": "Contoso",
+                "Product": "Contoso Platform",
+                "org:client": "shared",
+                "org:env-type": "shared",
+                "org:product": "app"
+              },
+              "type": "Microsoft.ContainerRegistry/registries"
+            },
+            "delta": [
+              {
+                "after": null,
+                "before": {
+                  "status": "disabled"
+                },
+                "changeType": "delete",
+                "children": [],
+                "path": "properties.encryption"
+              },
+              {
+                "after": null,
+                "before": "IPv4",
+                "changeType": "delete",
+                "children": [],
+                "path": "properties.endpointProtocol"
+              },
+              {
+                "after": null,
+                "before": false,
+                "changeType": "delete",
+                "children": [],
+                "path": "properties.networkRuleBypassAllowedForTasks"
+              },
+              {
+                "after": "Allow",
+                "before": "Deny",
+                "changeType": "modify",
+                "children": [],
+                "path": "properties.networkRuleSet.defaultAction"
+              },
+              {
+                "after": null,
+                "before": [
+                  {
+                    "action": "Allow",
+                    "value": "203.0.113.1"
+                  }
+                ],
+                "changeType": "delete",
+                "children": [],
+                "path": "properties.networkRuleSet.ipRules"
+              },
+              {
+                "after": null,
+                "before": "Disabled",
+                "changeType": "delete",
+                "children": [],
+                "path": "properties.regionalEndpoints"
+              },
+              {
+                "after": null,
+                "before": "LegacyRegistryPermissions",
+                "changeType": "delete",
+                "children": [],
+                "path": "properties.roleAssignmentMode"
+              }
+            ]
+          },
+          "resourceGroup": "app-shared-infra-rg",
+          "symbolicName": null,
+          "type": "Microsoft.ContainerRegistry/registries",
+          "unsupportedReason": null
+        },
+        {
+          "apiVersion": null,
+          "changeCertainty": "definite",
+          "changeType": "noChange",
+          "denyStatusChange": {
+            "after": "none",
+            "before": "none"
+          },
+          "deploymentId": null,
+          "extension": null,
+          "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/app-shared-infra-rg/providers/Microsoft.OperationalInsights/workspaces/app-loganalyticsworkspace",
+          "identifiers": null,
+          "managementStatusChange": {
+            "after": "managed",
+            "before": "managed"
+          },
+          "resourceConfigurationChanges": {
+            "after": {
+              "apiVersion": "2025-07-01",
+              "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/app-shared-infra-rg/providers/Microsoft.OperationalInsights/workspaces/app-loganalyticsworkspace",
+              "location": "centralus",
+              "name": "app-loganalyticsworkspace",
+              "properties": {
+                "publicNetworkAccessForIngestion": "Enabled",
+                "publicNetworkAccessForQuery": "Enabled",
+                "retentionInDays": 730,
+                "sku": {
+                  "name": "PerGB2018"
+                },
+                "workspaceCapping": {
+                  "dailyQuotaGb": -1
+                }
+              },
+              "resourceGroup": "app-shared-infra-rg",
+              "tags": {
+                "AllocationType": "No Allocation Type",
+                "Class": "Technology",
+                "CostCenter": "Engineering",
+                "Customer": "Multi-Tenant",
+                "BusinessUnit": "Contoso",
+                "Product": "Contoso Platform"
+              },
+              "type": "Microsoft.OperationalInsights/workspaces"
+            },
+            "before": {
+              "apiVersion": "2025-07-01",
+              "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/app-shared-infra-rg/providers/Microsoft.OperationalInsights/workspaces/app-loganalyticsworkspace",
+              "location": "centralus",
+              "name": "app-loganalyticsworkspace",
+              "properties": {
+                "publicNetworkAccessForIngestion": "Enabled",
+                "publicNetworkAccessForQuery": "Enabled",
+                "retentionInDays": 730,
+                "sku": {
+                  "name": "PerGB2018"
+                },
+                "workspaceCapping": {
+                  "dailyQuotaGb": -1
+                }
+              },
+              "resourceGroup": "app-shared-infra-rg",
+              "tags": {
+                "AllocationType": "No Allocation Type",
+                "Class": "Technology",
+                "CostCenter": "Engineering",
+                "Customer": "Multi-Tenant",
+                "BusinessUnit": "Contoso",
+                "Product": "Contoso Platform"
+              },
+              "type": "Microsoft.OperationalInsights/workspaces"
+            },
+            "delta": []
+          },
+          "resourceGroup": "app-shared-infra-rg",
+          "symbolicName": null,
+          "type": "Microsoft.OperationalInsights/workspaces",
+          "unsupportedReason": null
+        }
+      ]
+    },
+    "correlationId": "00000000-0000-4000-8000-000000000004",
+    "debugSetting": null,
+    "denySettings": {
+      "applyToChildScopes": false,
+      "excludedActions": [],
+      "excludedPrincipals": [],
+      "mode": "none"
+    },
+    "deploymentScope": null,
+    "deploymentStackLastModified": "2026-05-21T23:39:53+00:00",
+    "deploymentStackResourceId": "/subscriptions/00000000-0000-4000-8000-000000000001/providers/Microsoft.Resources/deploymentStacks/app-shared-infra",
+    "description": null,
+    "diagnostics": [],
+    "error": null,
+    "extensionConfigs": null,
+    "externalInputDefinitions": null,
+    "externalInputs": null,
+    "parameters": {
+      "adoptContainerRegistry": {
+        "expression": null,
+        "reference": null,
+        "type": "bool",
+        "value": true
+      },
+      "containerRegistryAdminUserEnabled": {
+        "expression": null,
+        "reference": null,
+        "type": "bool",
+        "value": false
+      },
+      "containerRegistryName": {
+        "expression": null,
+        "reference": null,
+        "type": "string",
+        "value": "appregistry"
+      },
+      "containerRegistryNetworkIpRules": {
+        "expression": null,
+        "reference": null,
+        "type": "array",
+        "value": []
+      },
+      "location": {
+        "expression": null,
+        "reference": null,
+        "type": "string",
+        "value": "centralus"
+      },
+      "resourceTags": {
+        "expression": null,
+        "reference": null,
+        "type": null,
+        "value": null
+      },
+      "stackPrefix": {
+        "expression": null,
+        "reference": null,
+        "type": "string",
+        "value": "app"
+      }
+    },
+    "parametersLink": null,
+    "provisioningState": "succeeded",
+    "retentionInterval": "3:00:00",
+    "template": null,
+    "templateLink": null,
+    "validationLevel": null
+  },
+  "systemData": null,
+  "tags": {},
+  "type": "Microsoft.Resources/deploymentStacksWhatIfResults"
+}

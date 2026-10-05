@@ -1,0 +1,55 @@
+# pipeline-insights
+
+## Layout and commands
+
+One npm workspace in this folder: `core`, `ui`, `dev`, `extension`, with the project's tools in
+`tools/`. The README has the tree. From here:
+
+```bash
+npm ci
+npm run typecheck        # every package
+npm test                 # every package
+npm run check:denylist   # every file, against the private denylist
+task pre-commit          # all three; run it before every commit
+```
+
+Every package has `typecheck` and `test` scripts. A package that depends on another builds it
+first through `pre*` scripts, because cross-package imports resolve to the dependency's `dist/`.
+
+## Docs
+
+`docs/design.md` and `docs/build-out-plan.md` are the source of truth. Read them before changing
+behaviour. When a decision changes, or a milestone lands, update the doc in the same commit as
+the code.
+
+## Publishing
+
+- **No publisher in the manifest.** Extension identity is `{publisher}.{id}`, so the publisher
+  comes only from an overrides file passed to `extension/scripts/package.mjs` with
+  `--overrides <path>`. There is no default path, and the script refuses to run without one.
+- **Dev** builds use `extension/overrides/dev.json`, which is committed: the `pipeline-insights-dev`
+  id, the dev publisher, private, Preview, a "(dev)" name. `zsh -lc 'tools/publish-dev'` runs the whole dev publish (version
+  check, tests, package, publish, wait for validation, share and install in the test
+  organization once). Publishing changes a real Marketplace account and a version can never be
+  reused, so **ask before running it**. `tfx-run extension isvalid` and `show` are read-only.
+- **Release** copies `extension/overrides/release.example.json` to `release.json` (gitignored)
+  and fills in the release publisher, `MichaelC`, the same as dev. The release keeps the manifest's
+  `pipeline-insights` id, so it is a different extension from the dev one, not an upgrade.
+- `tools/tfx-run` wraps every Marketplace call: it supplies `--service-url` and redacts the PAT
+  from output. `tfx` exits 255 on uploads the Marketplace accepted, so read success from
+  `tfx extension isvalid`, never the exit code. Never read, print or ask for the PAT itself.
+
+## Fixtures
+
+The committed fixture is synthetic: `core/fixtures/contoso.json`, built by `contoso.ts`. Edit
+the generator and run `npm run fixture -w @pipeline-insights/core`; a golden test fails if the
+JSON is not what the generator builds. After a change to the estate or the rules, review the
+diffs `npx vitest run -u` makes to the `*.golden.json` files before keeping them.
+
+- **Never commit a recording of a real project.** `capture-fixture` writes to
+  `core/fixtures/recorded/`, which git ignores.
+- Only tests and the dev page import fixtures. Nothing reachable from an extension's entry point
+  may import them, so the bundler never sees them.
+- `tools/check-identifiers.mjs` is the second guard. `package.mjs` runs it over the staged
+  `build/` directory, and it fails a package that carries any name or GUID the fixtures hold,
+  a run URL, a subscription path, or a denylist match.

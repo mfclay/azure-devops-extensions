@@ -1,0 +1,25 @@
+node_modules/
+dist/
+# An extension's staging directory, assembled fresh on every package.
+build/
+*.tsbuildinfo
+.DS_Store
+Icon[[:cntrl:]]
+coverage/
+*.vsix
+.env
+.env.*
+
+# Editor window tinting, per-machine and personal — not project config.
+.vscode/
+
+# The release publisher, filled in by hand and never committed: extension identity is
+# {publisher}.{id}, so committing one makes the dev-to-release swap a silent change of
+# identity rather than a deliberate act. The .example alongside it is the template.
+extension/overrides/release.json
+# publish-dev's per-run copy of dev.json with the version filled in.
+extension/overrides/.staged-dev.json
+test-results.xml
+
+# Recordings of real projects, from `npm run capture-fixture`. Never committed.
+core/fixtures/recorded/

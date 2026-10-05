@@ -1,0 +1,143 @@
+#!/usr/bin/env bash
+#
+# Build and run the containerised Azure Pipelines agent that the harness needs
+# when the organisation has no hosted parallelism.
+#
+#   tools/harness-agent build
+#   tools/harness-agent up            # build if needed, then register and run
+#   tools/harness-agent up --once     # take one job, then exit
+#   tools/harness-agent up --dry-run  # print what would run, token redacted
+#
+# --- Where the token comes from, and why not ~/.zshenv ----------------------
+#
+# The agent PAT needs **Agent Pools (Read & manage)**, which is write-capable:
+# it can register an agent, and an agent receives and executes jobs. That is a
+# real escalation path, so unlike the read-only tokens it does NOT belong in
+# ~/.zshenv where every process inherits it. See AGENTS.md, "Azure DevOps in the
+# test organisation".
+#
+# So it is resolved in this order, stopping at the first hit:
+#
+#   1. $azp_agent_pat, if you have deliberately exported it for this shell
+#   2. the macOS Keychain, under the service name `azp-agent-pat`
+#   3. an interactive prompt (never echoed, never stored)
+#
+# The Keychain is the good middle: stored encrypted, unlocked per use, and not
+# sitting in the environment of every process on the machine. Put it there once:
+#
+#   security add-generic-password -a "$USER" -s azp-agent-pat -w
+#
+# and remove it when the agent is no longer needed:
+#
+#   security delete-generic-password -s azp-agent-pat
+#
+# --- Why the token never appears in argv ------------------------------------
+#
+# `docker run -e AZP_TOKEN=$tok` puts the value on docker's command line, where
+# any `ps` on the host can read it. `docker run -e AZP_TOKEN` (no `=`) passes it
+# through from this script's environment instead, so it never becomes an
+# argument. That is the whole reason for the export below.
+set -euo pipefail
+
+IMAGE="${HARNESS_AGENT_IMAGE:-whatif-harness-agent}"
+ORG_URL="${AZP_URL:-https://dev.azure.com/moneymikec}"
+POOL="${AZP_POOL:-Default}"
+AGENT_NAME="${AZP_AGENT_NAME:-$(hostname -s)-docker}"
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+context="$root/packages/extension/harness/agent"
+
+die() { echo "harness-agent: $*" >&2; exit 1; }
+
+require_docker() {
+  command -v docker >/dev/null 2>&1 || die "docker is not installed."
+  docker info >/dev/null 2>&1 || die "the Docker daemon is not running — start Docker Desktop."
+}
+
+do_build() {
+  require_docker
+  echo "Building $IMAGE from $context"
+  docker build -t "$IMAGE" "$context"
+}
+
+resolve_token() {
+  if [ -n "${azp_agent_pat:-}" ]; then
+    AZP_TOKEN="$azp_agent_pat"
+    echo "Using \$azp_agent_pat from the environment." >&2
+    return
+  fi
+  if command -v security >/dev/null 2>&1 &&
+     AZP_TOKEN="$(security find-generic-password -w -s azp-agent-pat 2>/dev/null)" &&
+     [ -n "$AZP_TOKEN" ]; then
+    echo "Using the Keychain entry 'azp-agent-pat'." >&2
+    return
+  fi
+  # -s so it is not echoed; it never reaches the shell history or a transcript.
+  printf 'Azure DevOps PAT (Agent Pools: Read & manage): ' >&2
+  read -rs AZP_TOKEN
+  printf '\n' >&2
+  [ -n "$AZP_TOKEN" ] || die "no token given."
+}
+
+do_up() {
+  local once="" dry=""
+  for a in "$@"; do
+    case "$a" in
+      --once)    once=1 ;;
+      --dry-run) dry=1 ;;
+      *)         die "unknown option: $a" ;;
+    esac
+  done
+
+  # --dry-run deliberately skips the docker checks: its whole purpose is to show
+  # what would happen, including on a machine where the daemon is not up.
+  if [ -z "$dry" ]; then
+    require_docker
+    docker image inspect "$IMAGE" >/dev/null 2>&1 || do_build
+  fi
+
+  resolve_token
+  export AZP_TOKEN
+
+  if [ -n "$dry" ]; then
+    echo "would run:"
+    echo "  docker run --rm -it -e AZP_URL=$ORG_URL -e AZP_TOKEN -e AZP_POOL=$POOL \\"
+    echo "    -e AZP_AGENT_NAME=$AGENT_NAME ${once:+-e AZP_ONCE=1 }$IMAGE"
+    echo "  (AZP_TOKEN passed through from the environment — [REDACTED], never in argv)"
+    return
+  fi
+
+  echo "Registering '$AGENT_NAME' into pool '$POOL' at $ORG_URL"
+  echo "Ctrl-C to stop — the container unregisters the agent on the way out."
+
+  # All output through a redaction filter, matching tools/tfx-run and
+  # tools/ado-run: the agent echoes a good deal, and a tool printing its own
+  # credential in an error is a normal thing for tools to do.
+  # shellcheck disable=SC2016
+  docker run --rm -i \
+    -e AZP_URL="$ORG_URL" \
+    -e AZP_TOKEN \
+    -e AZP_POOL="$POOL" \
+    -e AZP_AGENT_NAME="$AGENT_NAME" \
+    ${once:+-e AZP_ONCE=1} \
+    "$IMAGE" 2>&1 \
+    | TOKEN="$AZP_TOKEN" perl -pe 's/\Q$ENV{TOKEN}\E/[REDACTED]/g'
+
+  return "${PIPESTATUS[0]}"
+}
+
+case "${1:-}" in
+  build) shift; do_build "$@" ;;
+  up)    shift; do_up "$@" ;;
+  *)     cat >&2 <<USAGE
+usage: tools/harness-agent <command>
+
+  build              build the agent image
+  up [--once]        register and run the agent (builds first if needed)
+  up --dry-run       print what would run, without a container
+
+Environment: AZP_URL (default $ORG_URL), AZP_POOL (default Default),
+AZP_AGENT_NAME, HARNESS_AGENT_IMAGE.
+USAGE
+         exit 2 ;;
+esac

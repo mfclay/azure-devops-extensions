@@ -1,0 +1,24 @@
+{
+  "name": "bicep-whatif",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Azure DevOps extension that renders Azure Deployment Stacks what-if output \u2014 filterable, severity-ranked, and honest about what it could not evaluate.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "check:identifiers": "node tools/check-identifiers.mjs"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}

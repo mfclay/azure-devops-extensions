@@ -1,0 +1,58 @@
+{
+ "lines": {
+  "file-import-app": {
+   "pipelines": "build → deploy",
+   "folder": "\\services\\production",
+   "formedBy": [{"kind":"trigger"}]
+  },
+  "pricing-app": {
+   "pipelines": "build → deploy",
+   "folder": "\\services\\production",
+   "formedBy": [{"kind":"trigger"}]
+  },
+  "catalog-sync-etl": {
+   "pipelines": "build → deploy",
+   "folder": "\\in-development",
+   "formedBy": [{"kind":"trigger"}]
+  },
+  "db-tool": {
+   "pipelines": "ci, job-build",
+   "folder": "\\tools",
+   "formedBy": [{"kind":"name and folder","folder":"src/db-tool"}]
+  },
+  "webapp-storefront": {
+   "pipelines": "ci, build → deploy",
+   "folder": "\\tools",
+   "formedBy": [{"kind":"trigger"},{"kind":"name and folder","folder":"src/webapp-storefront"}]
+  },
+  "webapp-admin": {
+   "pipelines": "ci, build → deploy",
+   "folder": "\\tools",
+   "formedBy": [{"kind":"trigger"},{"kind":"name and folder","folder":"src/webapp-admin"}]
+  }
+ },
+ "suggestions": [
+  {
+   "pipelines": ["legacy-export-build-deploy","legacy-export-run"],
+   "signal": "name"
+  },
+  {
+   "pipelines": ["pricing-app-build","price-check-gate-job-build"],
+   "signal": "folder",
+   "folder": "src/app-pricing"
+  },
+  {
+   "pipelines": ["admin-app-ci","db-tool-ci"],
+   "signal": "folder",
+   "folder": "src/db-tool"
+  },
+  {
+   "pipelines": ["db-tool-ci","db-tool-job-run"],
+   "signal": "name"
+  },
+  {
+   "pipelines": ["price-check-gate-job-build","price-check-gate"],
+   "signal": "name"
+  }
+ ]
+}

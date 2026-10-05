@@ -1,0 +1,770 @@
+/* ---------- shell ---------- */
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.app__body {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  border-top: 1px solid var(--w-line);
+}
+
+.app__grid {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- the not-evaluated banner ---------- */
+/*
+ * The one correctness rule, stated at the top of the page. It is not a toast and
+ * it does not dismiss: a stage that never ran is a fact about the run, and it
+ * stays visible for as long as it is true.
+ */
+.banner {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  padding: 9px 16px;
+  background: var(--w-surface-3);
+  border-bottom: 1px solid var(--w-line);
+  border-left: 3px solid var(--w-warning);
+}
+
+.banner__glyph {
+  font-family: var(--w-mono);
+  font-weight: 700;
+  color: var(--w-warning);
+}
+
+.banner__text {
+  margin: 0;
+}
+
+.banner__text strong {
+  font-weight: 600;
+}
+
+.banner__stacks {
+  color: var(--w-text-2);
+  font-family: var(--w-mono);
+  font-size: 12px;
+}
+
+/* ---------- summary strip ---------- */
+.strip {
+  padding: 12px 16px 10px;
+  background: var(--w-surface);
+}
+
+.strip__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: baseline;
+  color: var(--w-text-2);
+  font-size: 12px;
+  margin-bottom: 9px;
+}
+
+.strip__meta b {
+  color: var(--w-text);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.strip__sep {
+  color: var(--w-text-3);
+}
+
+.strip__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/*
+ * Chips are the severity filter, not a separate readout of it. Filled means
+ * shown, outlined means filtered out — one control, so the count and the filter
+ * can never disagree.
+ */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 3px 10px 3px 8px;
+  border: 1px solid var(--w-line-strong);
+  border-radius: 11px;
+  background: transparent;
+  color: var(--w-text-2);
+  cursor: pointer;
+  transition: background-color 100ms ease, color 100ms ease;
+}
+
+.chip:hover {
+  background: var(--w-row-hover);
+}
+
+.chip__glyph {
+  font-family: var(--w-mono);
+  font-weight: 700;
+  font-size: 13px;
+  line-height: 1;
+  width: 9px;
+  text-align: center;
+}
+
+.chip__count {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.chip__label {
+  font-size: 12px;
+}
+
+.chip[data-on='true'] {
+  color: var(--w-text);
+  background: var(--w-surface-3);
+  border-color: var(--w-line-strong);
+}
+
+.chip[data-on='true'][data-tone='critical'] {
+  color: var(--w-critical);
+  border-color: currentColor;
+}
+.chip[data-on='true'][data-tone='warning'] {
+  color: var(--w-warning);
+  border-color: currentColor;
+}
+.chip[data-on='true'][data-tone='positive'] {
+  color: var(--w-positive);
+  border-color: currentColor;
+}
+
+.chip[data-empty='true'] {
+  opacity: 0.5;
+}
+
+/* ---------- toolbar ---------- */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 16px;
+  background: var(--w-surface);
+  border-top: 1px solid var(--w-line);
+}
+
+.toolbar__search {
+  flex: 0 1 280px;
+  min-width: 160px;
+  padding: 4px 8px;
+  font: inherit;
+  color: var(--w-text);
+  background: var(--w-bg);
+  border: 1px solid var(--w-line-strong);
+  border-radius: var(--w-radius);
+}
+
+.toolbar__search::placeholder {
+  color: var(--w-text-3);
+}
+
+.toolbar__spacer {
+  flex: 1 1 auto;
+}
+
+.toolbar__status {
+  color: var(--w-text-2);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.btn {
+  padding: 4px 10px;
+  background: var(--w-bg);
+  border: 1px solid var(--w-line-strong);
+  border-radius: var(--w-radius);
+  cursor: pointer;
+}
+
+.btn:hover {
+  background: var(--w-row-hover);
+}
+
+.btn[data-active='true'] {
+  border-color: var(--w-accent);
+  color: var(--w-accent-fg);
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--w-text-2);
+  cursor: pointer;
+  user-select: none;
+}
+
+/* ---------- stack filter menu ---------- */
+.stackmenu {
+  position: relative;
+}
+
+.stackmenu__panel {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  left: 0;
+  width: 320px;
+  max-height: 380px;
+  display: flex;
+  flex-direction: column;
+  background: var(--w-surface);
+  border: 1px solid var(--w-line-strong);
+  border-radius: var(--w-radius);
+  box-shadow: 0 4px 16px var(--callout-shadow-color, rgba(0, 0, 0, 0.14));
+}
+
+.stackmenu__search {
+  margin: 8px;
+  padding: 4px 8px;
+  font: inherit;
+  color: var(--w-text);
+  background: var(--w-bg);
+  border: 1px solid var(--w-line-strong);
+  border-radius: var(--w-radius);
+}
+
+.stackmenu__list {
+  overflow-y: auto;
+  padding: 0 0 8px;
+}
+
+.stackmenu__group {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px 3px;
+  color: var(--w-text-2);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.stackmenu__grouplabel {
+  font-family: var(--w-mono);
+  letter-spacing: 0.04em;
+}
+
+.stackmenu__grouplinks {
+  display: flex;
+  gap: 8px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.linkbtn {
+  padding: 0;
+  background: none;
+  border: 0;
+  color: var(--w-accent-fg);
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.linkbtn:hover {
+  text-decoration: underline;
+}
+
+.stackmenu__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 4px 10px;
+  background: none;
+  border: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.stackmenu__item:hover {
+  background: var(--w-row-hover);
+}
+
+.stackmenu__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--w-mono);
+  font-size: 12px;
+}
+
+.stackmenu__worst {
+  font-family: var(--w-mono);
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.stackmenu__count {
+  color: var(--w-text-2);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  min-width: 24px;
+  text-align: right;
+}
+
+.stackmenu__empty {
+  padding: 10px;
+  color: var(--w-text-2);
+}
+
+/* ---------- grid ---------- */
+.grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.grid__head,
+.grid__row {
+  display: grid;
+  grid-template-columns: 20px 26px minmax(180px, 2.4fr) minmax(120px, 1.4fr) minmax(120px, 1.2fr) 92px;
+  align-items: center;
+  gap: 10px;
+  padding-right: 14px;
+}
+
+.grid__head {
+  padding-top: 7px;
+  padding-bottom: 7px;
+  border-bottom: 1px solid var(--w-line-strong);
+  background: var(--w-surface);
+  color: var(--w-text-2);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.grid__scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  contain: strict;
+}
+
+.grid__row {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: var(--w-row-h);
+  border-bottom: 1px solid var(--w-row-line);
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.grid__row:hover {
+  background: var(--w-row-hover);
+}
+
+.grid__row[data-selected='true'] {
+  background: var(--w-row-selected);
+}
+
+/*
+ * The severity rail. Opacity tracks SEVERITY_RANK, so rows of the same rung form
+ * one contiguous band and the left edge of the grid reads as a vertical
+ * histogram of the run.
+ */
+.rail {
+  justify-self: stretch;
+  align-self: stretch;
+  width: 3px;
+  margin-left: 8px;
+}
+
+.rail[data-tone='critical'] {
+  background: var(--w-critical);
+}
+.rail[data-tone='warning'] {
+  background: var(--w-warning);
+}
+.rail[data-tone='positive'] {
+  background: var(--w-positive);
+}
+.rail[data-tone='neutral'] {
+  background: var(--w-neutral);
+}
+
+.rail[data-rank='5'] { opacity: 1; }
+.rail[data-rank='4'] { opacity: 0.95; }
+.rail[data-rank='3'] { opacity: 0.6; }
+.rail[data-rank='2'] { opacity: 0.28; }
+.rail[data-rank='0'] { opacity: 0.12; }
+
+/*
+ * `unevaluated` gets hatching rather than a colour. It is not a severity — it is
+ * the absence of an answer — and hatching reads as that without competing with
+ * the rungs on either side of it.
+ */
+.rail[data-rank='1'] {
+  opacity: 0.85;
+  background: repeating-linear-gradient(
+    135deg,
+    var(--w-warning) 0 2px,
+    transparent 2px 5px
+  );
+}
+
+.glyph {
+  font-family: var(--w-mono);
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 1;
+  text-align: center;
+}
+
+.glyph[data-tone='critical'] { color: var(--w-critical); }
+.glyph[data-tone='warning'] { color: var(--w-warning); }
+.glyph[data-tone='positive'] { color: var(--w-positive); }
+.glyph[data-tone='neutral'] { color: var(--w-neutral); }
+
+.cell {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cell--name {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+}
+
+.cell__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+/*
+ * The "why" line shows only when the ranking is not what the change type alone
+ * would predict — a noChange resource that lost management, say. Printing a
+ * reason on every row would train people to stop reading it.
+ */
+.cell__why {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--w-text-2);
+  font-size: 11px;
+}
+
+.cell--mono {
+  font-family: var(--w-mono);
+  font-size: 12px;
+  color: var(--w-text-2);
+}
+
+.cell--change {
+  font-family: var(--w-mono);
+  font-size: 12px;
+}
+
+.cell--change[data-known='false'] {
+  color: var(--w-text-2);
+  font-style: italic;
+}
+
+.grid__empty {
+  padding: 40px 16px;
+  text-align: center;
+  color: var(--w-text-2);
+}
+
+.grid__empty p {
+  margin: 0 0 12px;
+}
+
+/* ---------- detail panel ---------- */
+.detail {
+  flex: 0 0 420px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-left: 1px solid var(--w-line-strong);
+  background: var(--w-surface);
+  animation: detail-in 120ms ease-out;
+}
+
+@keyframes detail-in {
+  from {
+    transform: translateX(8px);
+    opacity: 0;
+  }
+}
+
+.detail__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 12px 10px 14px;
+  border-bottom: 1px solid var(--w-line);
+}
+
+.detail__title {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.detail__name {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.detail__sub {
+  margin: 2px 0 0;
+  color: var(--w-text-2);
+  font-family: var(--w-mono);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.detail__close {
+  flex: 0 0 auto;
+  padding: 2px 7px;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--w-radius);
+  color: var(--w-text-2);
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+.detail__close:hover {
+  background: var(--w-row-hover);
+  border-color: var(--w-line-strong);
+}
+
+.detail__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 12px 14px 24px;
+}
+
+.section {
+  margin: 0 0 18px;
+}
+
+.section__head {
+  margin: 0 0 7px;
+  color: var(--w-text-2);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+/* Ordered most-severe first by core, and rendered in that order. */
+.reasons {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.reason {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.reason__detail {
+  overflow-wrap: anywhere;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px 12px;
+  margin: 0;
+}
+
+.facts dt {
+  color: var(--w-text-2);
+  font-size: 12px;
+}
+
+.facts dd {
+  margin: 0;
+  font-family: var(--w-mono);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+/* ---------- property delta tree ---------- */
+.delta {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.delta--nested {
+  margin-left: 9px;
+  padding-left: 9px;
+  border-left: 1px solid var(--w-line);
+}
+
+.delta__node {
+  padding: 3px 0;
+}
+
+.delta__head {
+  display: flex;
+  gap: 7px;
+  align-items: baseline;
+}
+
+/*
+ * The property-level change type is a *different enum* from the resource-level
+ * one — it adds `array` and `noEffect` and drops `detach` and `noChange`. It gets
+ * its own marks; borrowing the resource glyphs here would render wrong.
+ */
+.delta__mark {
+  flex: 0 0 auto;
+  font-family: var(--w-mono);
+  font-size: 11px;
+  font-weight: 700;
+  min-width: 34px;
+  color: var(--w-text-2);
+}
+
+.delta__mark[data-ct='create'] { color: var(--w-positive); }
+.delta__mark[data-ct='delete'] { color: var(--w-critical); }
+.delta__mark[data-ct='modify'] { color: var(--w-warning); }
+.delta__mark[data-known='false'] {
+  color: var(--w-text-2);
+  font-style: italic;
+}
+
+.delta__path {
+  font-family: var(--w-mono);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.delta__values {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: baseline;
+  margin: 2px 0 0 41px;
+  font-family: var(--w-mono);
+  font-size: 11.5px;
+}
+
+.val {
+  padding: 0 4px;
+  border-radius: var(--w-radius);
+  overflow-wrap: anywhere;
+  max-width: 100%;
+}
+
+.val--before {
+  background: var(--diff-color-original, rgba(205, 59, 59, 0.14));
+}
+
+.val--after {
+  background: var(--diff-color-modified, rgba(16, 124, 16, 0.14));
+}
+
+.val--empty {
+  color: var(--w-text-3);
+  font-style: italic;
+}
+
+.delta__arrow {
+  color: var(--w-text-3);
+}
+
+.delta__note {
+  color: var(--w-text-2);
+  font-size: 11px;
+}
+
+.muted {
+  color: var(--w-text-2);
+}
+
+.notes {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--w-text-2);
+  font-size: 12px;
+}
+
+.notes li {
+  margin-bottom: 4px;
+  overflow-wrap: anywhere;
+}
+
+/* ---------- load / error ---------- */
+.center {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 24px;
+  text-align: center;
+  color: var(--w-text-2);
+}
+
+.center h1 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--w-text);
+}
+
+.center code {
+  font-family: var(--w-mono);
+  font-size: 12px;
+}
+
+@media (max-width: 860px) {
+  .detail {
+    flex-basis: 320px;
+  }
+  .grid__head,
+  .grid__row {
+    grid-template-columns: 20px 26px minmax(140px, 2.4fr) minmax(90px, 1.2fr) 0 78px;
+  }
+  .cell--type {
+    display: none;
+  }
+}

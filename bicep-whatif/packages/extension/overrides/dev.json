@@ -1,0 +1,7 @@
+{
+  "publisher": "MichaelC",
+  "id": "bicep-whatif-dev",
+  "public": false,
+  "galleryFlags": ["Preview"],
+  "name": "Bicep What-If for Deployment Stacks (dev)"
+}

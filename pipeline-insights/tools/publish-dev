@@ -1,0 +1,94 @@
+#!/bin/zsh
+#
+# Publish a Pipeline Insights dev build to the Marketplace under the personal publisher, then
+# share it with and install it into the test organization the first time.
+#
+#   tools/publish-dev [--version X.Y.Z] [--no-wait]      (run from a login shell: zsh -lc)
+#
+# Publishes the checkout this script lives in. With no --version, the next patch after the
+# newest published version is used (0.1.0 for the first publish).
+#
+# The steps follow docs/build-out-plan.md, "A dev publish, in order".
+emulate -L zsh
+set -euo pipefail
+
+repo="${0:A:h:h}"
+PUBLISHER=MichaelC
+EXT_ID=pipeline-insights-dev
+ORG=moneymikec
+
+die() { print -u2 "publish-dev: $*"; exit 1; }
+
+version="" wait=1
+while (( $# )); do
+  case "$1" in
+    --version) version="${2:-}"; shift 2 ;;
+    --no-wait) wait=0; shift ;;
+    *) die "unknown option: $1 (usage: tools/publish-dev [--version X.Y.Z] [--no-wait])" ;;
+  esac
+done
+[[ -n "${tfx_pat:-}" ]] || die "tfx_pat is not set; run under zsh -lc."
+tfx=("$repo/tools/tfx-run")
+
+show_json() { "$tfx[@]" extension show --publisher $PUBLISHER --extension-id $EXT_ID --json 2>/dev/null || true; }
+
+# The newest published version, or nothing on the first publish.
+current=$(show_json | python3 -c 'import json,sys
+try: d=json.load(sys.stdin)
+except Exception: d=None
+print(d["versions"][0]["version"] if d and d.get("versions") else "")')
+if [[ -z "$version" ]]; then
+  if [[ -z "$current" ]]; then version=0.1.0
+  else version=$(python3 -c "a=\"$current\".split('.'); a[2]=str(int(a[2])+1); print('.'.join(a))"); fi
+fi
+[[ "$version" =~ '^[0-9]+\.[0-9]+\.[0-9]+$' ]] || die "version '$version' is not MAJOR.MINOR.PATCH."
+print "publish-dev: $PUBLISHER.$EXT_ID $version (newest published: ${current:-none})"
+
+# 1. The version must be free. Versions can never be reused.
+if [[ -n "$current" ]]; then
+  out=$("$tfx[@]" extension isvalid --no-color --publisher $PUBLISHER --extension-id $EXT_ID --version "$version" 2>&1 || true)
+  [[ "$out" == *"Could not find extension version"* ]] || die "version $version is taken: $out"
+fi
+
+# 2. Typecheck and test, then build the hub.
+(cd "$repo" && npm run typecheck >/dev/null && npm test >/dev/null) || die "typecheck or tests failed in $repo."
+(cd "$repo" && npm run build >/dev/null) || die "the build failed in $repo."
+
+# 3. Package with the dev overrides plus this run's version.
+ext="$repo/extension"
+staged="$ext/overrides/.staged-dev.json"
+python3 -c "import json; d=json.load(open('$ext/overrides/dev.json')); d['version']='$version'; json.dump(d, open('$staged','w'), indent=2)"
+rm -f "$ext"/dist/*.vsix(N)
+(cd "$ext" && node scripts/package.mjs --overrides "$staged")
+vsix=("$ext"/dist/*.vsix(N))
+(( ${#vsix} == 1 )) || die "expected one .vsix in $ext/dist."
+
+# 4. Publish, without --share-with. tfx exits 255 on uploads the Marketplace accepted.
+"$tfx[@]" extension publish --vsix "$vsix[1]" --no-wait-validation || true
+
+# 5. Wait for validation: isvalid prints exactly "Valid" once it passes.
+if (( wait )); then
+  print "publish-dev: waiting for Marketplace validation (about 8 minutes)…"
+  for i in {1..40}; do
+    out=$("$tfx[@]" extension isvalid --no-color --publisher $PUBLISHER --extension-id $EXT_ID --version "$version" 2>&1 || true)
+    if print -r -- "$out" | grep -qx 'Valid'; then print "publish-dev: $version is valid."; break; fi
+    if [[ "$out" == *"Could not find extension version"* && $i -gt 3 ]]; then die "the Marketplace has no $version; the upload failed."; fi
+    sleep 20
+  done
+else
+  print "publish-dev: not waiting. Check with: tools/tfx-run extension isvalid --no-color --publisher $PUBLISHER --extension-id $EXT_ID --version $version"
+  exit 0
+fi
+
+# 6. Share with the test organization, once. Sharing persists across versions.
+if ! show_json | grep -q "\"name\": *\"$ORG\""; then
+  "$tfx[@]" extension share --publisher $PUBLISHER --extension-id $EXT_ID --share-with $ORG || true
+fi
+
+# 7. Install, once. Sharing is not installing.
+ado_run="$repo/../bicep-whatif/tools/ado-run"
+if [[ -x $ado_run ]] && ! $ado_run devops extension show --publisher-id $PUBLISHER --extension-id $EXT_ID -o none >/dev/null 2>&1; then
+  $ado_run devops extension install --publisher-id $PUBLISHER --extension-id $EXT_ID -o none \
+    || print -u2 "publish-dev: install it by hand: Organization settings → Extensions → Shared."
+fi
+print "publish-dev: done. https://dev.azure.com/$ORG/pipeline-insights-test/_build"

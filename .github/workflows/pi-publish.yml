@@ -1,0 +1,181 @@
+# Publishes the Pipeline Insights **dev** extension: the committed overrides/dev.json, with the
+# publisher taken from `vars.EXTENSION_PUBLISHER` and this run's version.
+#
+# Same shape as whatif-publish.yml, which explains each step at length: a separate workflow
+# because the trigger differs, the whole chain re-run because nothing reaches the Marketplace
+# untested, a pre-flight refusal of a taken version, `--no-wait-validation` with its own wait
+# loop, and sharing as a separate step once the version is valid.
+#
+# The local equivalent is pipeline-insights/tools/publish-dev.
+name: Pipeline Insights Publish
+
+on:
+  push:
+    tags: ['pi-v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Extension version, e.g. 0.1.4 (no leading v)'
+        required: true
+      wait_for_validation:
+        description: 'Wait for Marketplace validation (~8 min of billable time). Off for dev iteration.'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# `uses:` steps ignore this, so their paths spell out the folder.
+defaults:
+  run:
+    working-directory: pipeline-insights
+
+# A superseded publish can leave the Marketplace holding an upload this run reports as failed.
+concurrency:
+  group: publish-pi
+  cancel-in-progress: false
+
+env:
+  EXTENSION_ID: pipeline-insights-dev
+  SERVICE_URL: https://marketplace.visualstudio.com/
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: marketplace
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: pipeline-insights/package-lock.json
+
+      - name: Resolve version
+        id: v
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            version='${{ inputs.version }}'
+          else
+            version="${GITHUB_REF_NAME#pi-v}"
+          fi
+          if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::Version '$version' is not MAJOR.MINOR.PATCH." && exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Install
+        run: npm ci
+
+      - name: Refuse an already-published version
+        env:
+          TFX_TOKEN: ${{ secrets.MARKETPLACE_PAT }}
+          PUBLISHER: ${{ vars.EXTENSION_PUBLISHER }}
+          VERSION: ${{ steps.v.outputs.version }}
+        run: |
+          out="$(node_modules/.bin/tfx extension isvalid \
+            --publisher "$PUBLISHER" --extension-id "$EXTENSION_ID" \
+            --version "$VERSION" --service-url "$SERVICE_URL" \
+            --token "$TFX_TOKEN" --no-color 2>&1 || true)"
+          if printf '%s' "$out" | grep -q 'Could not find extension version'; then
+            echo "Version $VERSION is not taken. Proceeding."
+          elif printf '%s\n' "$out" | grep -qE '^[[:space:]]*Valid[[:space:]]*$'; then
+            echo "::error::$PUBLISHER.$EXTENSION_ID $VERSION is already published. Versions cannot be reclaimed — pick a new one."
+            exit 1
+          else
+            echo "::error::Unexpected state for version $VERSION; refusing to publish over it."
+            printf '%s\n' "$out"
+            exit 1
+          fi
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      # dev.json supplies the name, visibility and gallery flags; the publisher comes from the
+      # repo variable so both extensions publish under the one value, and the version from
+      # this run. The staged copy is gitignored.
+      - name: Stage the overrides
+        env:
+          PUBLISHER: ${{ vars.EXTENSION_PUBLISHER }}
+          VERSION: ${{ steps.v.outputs.version }}
+        run: |
+          node -e '
+            const fs = require("fs");
+            const d = JSON.parse(fs.readFileSync("extension/overrides/dev.json", "utf8"));
+            if (d.id !== process.env.EXTENSION_ID) throw new Error(`dev.json id ${d.id} != EXTENSION_ID ${process.env.EXTENSION_ID}`);
+            d.publisher = process.env.PUBLISHER;
+            d.version = process.env.VERSION;
+            fs.writeFileSync("extension/overrides/.staged-dev.json", JSON.stringify(d, null, 2));
+          '
+
+      # Through `npm run`: package.mjs shells out to a bare `tfx`.
+      - name: Package
+        working-directory: pipeline-insights/extension
+        run: npm run package -- --overrides overrides/.staged-dev.json
+
+      - name: Publish
+        env:
+          TFX_TOKEN: ${{ secrets.MARKETPLACE_PAT }}
+          PUBLISHER: ${{ vars.EXTENSION_PUBLISHER }}
+          VERSION: ${{ steps.v.outputs.version }}
+        run: |
+          vsix="extension/dist/${PUBLISHER}.${EXTENSION_ID}-${VERSION}.vsix"
+          [ -f "$vsix" ] || { echo "::error::No VSIX at $vsix"; exit 1; }
+          node_modules/.bin/tfx extension publish \
+            --vsix "$vsix" --service-url "$SERVICE_URL" \
+            --token "$TFX_TOKEN" --no-wait-validation --no-color
+
+      - name: Wait for Marketplace validation
+        if: github.event_name != 'workflow_dispatch' || inputs.wait_for_validation
+        env:
+          TFX_TOKEN: ${{ secrets.MARKETPLACE_PAT }}
+          PUBLISHER: ${{ vars.EXTENSION_PUBLISHER }}
+          VERSION: ${{ steps.v.outputs.version }}
+        run: |
+          deadline=$(( SECONDS + 900 ))
+          while :; do
+            out="$(node_modules/.bin/tfx extension isvalid \
+              --publisher "$PUBLISHER" --extension-id "$EXTENSION_ID" \
+              --version "$VERSION" --service-url "$SERVICE_URL" \
+              --token "$TFX_TOKEN" --no-color 2>&1 || true)"
+            if printf '%s\n' "$out" | grep -qE '^[[:space:]]*Valid[[:space:]]*$'; then
+              echo "Validated: $PUBLISHER.$EXTENSION_ID $VERSION"
+              break
+            fi
+            if [ "$SECONDS" -ge "$deadline" ]; then
+              echo "::error::Validation did not complete within 15 minutes. The upload was accepted, so the version is consumed — check before retrying."
+              printf '%s\n' "$out"
+              exit 1
+            fi
+            sleep 15
+          done
+
+      - name: Share with the organisation
+        if: vars.EXTENSION_SHARE_WITH != '' && (github.event_name != 'workflow_dispatch' || inputs.wait_for_validation)
+        env:
+          TFX_TOKEN: ${{ secrets.MARKETPLACE_PAT }}
+          PUBLISHER: ${{ vars.EXTENSION_PUBLISHER }}
+          SHARE_WITH: ${{ vars.EXTENSION_SHARE_WITH }}
+        run: |
+          node_modules/.bin/tfx extension share \
+            --publisher "$PUBLISHER" --extension-id "$EXTENSION_ID" \
+            --share-with "$SHARE_WITH" --service-url "$SERVICE_URL" \
+            --token "$TFX_TOKEN" --no-color
+          echo "Note: sharing is not installing. A first-time organisation still needs the extension installed."
+
+      - name: Upload VSIX
+        uses: actions/upload-artifact@v7
+        with:
+          name: pi-vsix-${{ steps.v.outputs.version }}
+          path: pipeline-insights/extension/dist/*.vsix
+          if-no-files-found: error
+          retention-days: 14

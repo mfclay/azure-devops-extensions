@@ -1,0 +1,63 @@
+#!/bin/zsh
+#
+# Run `tfx` against the Marketplace with the publish PAT, without the token ever
+# becoming readable by whoever — or whatever — is reading the output.
+#
+#   tools/tfx-run extension isvalid --publisher MichaelC \
+#     --extension-id bicep-whatif-dev --version 0.1.0
+#
+# The PAT is never passed as an argument, never written to a file, and never
+# printed. Two independent things make that true, and both are needed:
+#
+#   1. **The value is never typed.** Only the string "$tfx_pat" is, and the
+#      shell expands it. A transcript of the command shows the variable name.
+#
+#   2. **Output is filtered.** Every byte tfx writes goes through a perl filter
+#      that rewrites the token to [REDACTED]. This is the half that matters:
+#      point 1 alone is defeated the moment a tool echoes its own credential
+#      back in an error message, which is a normal thing for tools to do.
+#      \Q..\E quotes regex metacharacters so a token containing / + = is safe.
+#
+# Why this exists at all: the PAT is Manage-scoped and lives in the shell
+# profile. Anything that reads the file, or pastes the value into a terminal an
+# agent can see, moves a live credential somewhere it cannot be recalled from.
+# Passing it by expansion and scrubbing the output means an agent can run the
+# read-only commands — isvalid, show — with no exposure at all.
+#
+# --- Invocation -------------------------------------------------------------
+#
+# tfx_pat must be exported by the shell profile, so run this under a login
+# shell if the caller's environment does not already carry it:
+#
+#   zsh -lc 'tools/tfx-run extension show --publisher MichaelC --extension-id bicep-whatif-dev'
+#
+# --- What it does NOT protect against ---------------------------------------
+#
+# The token is in this process's environment and on tfx's argv, so anything
+# that can read /proc or run `ps` on this machine during the call can see it.
+# That is a local-attacker problem, not a transcript problem, and it is not
+# what this guards.
+emulate -L zsh
+set -uo pipefail
+
+if [[ -z "${tfx_pat:-}" ]]; then
+  print -u2 "tfx-run: tfx_pat is not set. Run under a login shell: zsh -lc 'tools/tfx-run ...'"
+  exit 64
+fi
+
+# Resolve the repo root from this script rather than the caller's cwd, so the
+# local tfx is used wherever it is invoked from. The local one is deliberate:
+# it is the version CI would run, unlike whatever is on PATH globally.
+root="${0:A:h:h}"
+tfx="$root/node_modules/.bin/tfx"
+if [[ ! -x "$tfx" ]]; then
+  print -u2 "tfx-run: no tfx at $tfx — run npm ci first."
+  exit 66
+fi
+
+# --service-url defaults here because every Marketplace command needs it and
+# omitting it silently targets the wrong service.
+"$tfx" "$@" --service-url https://marketplace.visualstudio.com/ --token "$tfx_pat" 2>&1 \
+  | TOKEN="$tfx_pat" perl -pe 's/\Q$ENV{TOKEN}\E/[REDACTED]/g'
+
+exit ${pipestatus[1]}

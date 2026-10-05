@@ -1,0 +1,9 @@
+version: '3'
+
+tasks:
+  pre-commit:
+    desc: Typecheck and test every package, and check every file against the private denylist
+    cmds:
+      - npm run typecheck
+      - npm test
+      - npm run check:denylist

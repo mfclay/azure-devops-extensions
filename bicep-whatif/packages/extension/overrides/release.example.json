@@ -1,0 +1,11 @@
+{
+  "_comment": [
+    "Copy to release.json and fill in the Contoso publisher before packaging a release.",
+    "Not committed with a real value on purpose: extension identity is {publisher}.{id}, so the",
+    "dev-to-release swap creates a DIFFERENT extension with no upgrade path and no install",
+    "continuity. That has to be a deliberate act, not a default someone inherits."
+  ],
+  "publisher": "REPLACE-WITH-THE-RELEASE-PUBLISHER",
+  "public": false,
+  "galleryFlags": ["Preview"]
+}

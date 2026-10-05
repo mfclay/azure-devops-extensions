@@ -1,0 +1,161 @@
+# A pipeline that produces what the tab reads, without producing it for real.
+#
+# Point a pipeline in your own Azure DevOps organisation at this file. It attaches
+# the fixtures committed in this repo as build attachments, which is the only
+# thing the tab actually consumes — it never checks what produced one. So this
+# exercises the whole live path: the SDK handshake, `getAttachments`, the
+# `_links.self.href` parsing, the timeline join, and the rendering. No Azure
+# subscription and no deployment stacks — but it does need a placeholder service
+# connection, for the reason in the disabled task step below.
+#
+# What it is NOT: evidence about Azure. Every payload here is a committed
+# fixture, and each sidecar says `"producer": "harness"` so a harness run can
+# never be mistaken for a real one.
+#
+# ── The one thing that will waste your time ──────────────────────────────────
+#
+# The tab does not appear at all unless the `StackWhatIf` task is present in the
+# build **definition** — that is `supportsTasks`, and there is no runtime control
+# over whether a tab renders (azure-devops-extension-sdk issue #85, open). It
+# fails silently: no tab, no error, nothing logged. That is what the disabled
+# task step in the first stage is for. If the tab still does not appear, see
+# "If the tab does not show up" in README.md before suspecting the handshake.
+
+trigger: none
+pr: none
+
+# Empty means the Microsoft-hosted ubuntu-latest image, which is what you want
+# once the organisation has a hosted parallel job. Set it to a self-hosted pool
+# name — `Default`, usually — to run on your own agent, which needs no grant.
+# See README.md, "A brand-new organisation has no agent to run this on", and
+# `agent/` for a containerised agent.
+#
+# A parameter rather than an edit, because the choice is per-run and
+# organisation-specific: committing either value would be wrong for someone.
+# **The pool is set per job, not at the pipeline root.** A root-level `pool:`
+# takes no template expression at all — neither `${{ if }}` conditional keys nor
+# whole-object substitution — and either form fails at queue time with
+# "A template expression is not allowed in this context", before anything runs
+# and with no hint that the *position* is the problem. Inside a `job:` both work.
+#
+# So each job carries `pool: ${{ parameters.pool }}`. Repetitive, but the
+# alternative is committing one organisation's answer into a file every other
+# organisation has to edit.
+parameters:
+- name: pool
+  displayName: 'Agent pool — default is the hosted image; pass {"name":"<pool>"} for self-hosted'
+  type: object
+  default:
+    vmImage: ubuntu-latest
+
+variables:
+  # Fixtures are addressed from the repo root, the way they appear in the repo.
+  REAL: packages/core/fixtures/real
+  SYNTH: packages/core/fixtures/synthetic
+
+stages:
+
+# ── Layer 1 ─────────────────────────────────────────────────────────────────
+# Also the stage carrying the visibility-gating task, so it is the one to look
+# at first if the tab is missing entirely.
+- stage: WhatIf_Network
+  displayName: 'Stack 1 — Network'
+  dependsOn: []
+  jobs:
+  - job: WhatIf
+    pool: ${{ parameters.pool }}
+    steps:
+    # Never runs. Present only so `supportsTasks` is satisfied and the tab
+    # appears — which it does: verified 2026-08-26 against a real installed
+    # extension, where the What-If tab rendered with this step disabled. A step
+    # that never executes still counts as being in the definition.
+    #
+    # **`condition: false` does not exempt this step from validation.** The
+    # condition governs runtime; inputs are resolved when the pipeline is
+    # queued, before any stage starts. So `azureSubscription` must name a
+    # service connection that exists and is authorised even though the step
+    # never executes — which is why the harness needs a placeholder connection
+    # despite never authenticating with it. `azureSubscription` is
+    # `required: true` and typed `connectedService:AzureRM` in task.json, so it
+    # cannot simply be dropped.
+    #
+    # Established the hard way: a run failed at queue time with "input
+    # azureSubscription references service connection
+    # harness-placeholder-connection which could not be found", having executed
+    # nothing at all.
+    - task: StackWhatIf@0
+      displayName: 'StackWhatIf (never runs — here to make the tab visible)'
+      condition: false
+      inputs:
+        mode: whatif
+        azureSubscription: 'harness-placeholder-connection'
+        stackId: network
+        templateFile: '$(Build.SourcesDirectory)/does-not-exist.json'
+        location: CentralUS
+        actionOnUnmanage: detachAll
+        denySettingsMode: none
+
+    - script: node packages/extension/harness/attach-fixture.mjs --stack network --layer 1 --payload $(REAL)/build-7700017-app-network.json
+      displayName: 'Attach: a real capture, 7 resource changes'
+
+# ── Layer 2 ─────────────────────────────────────────────────────────────────
+- stage: WhatIf_SharedInfra
+  displayName: 'Stack 2 — Shared Infrastructure'
+  dependsOn: []
+  jobs:
+  - job: WhatIf
+    pool: ${{ parameters.pool }}
+    steps:
+    - script: node packages/extension/harness/attach-fixture.mjs --stack shared-infra --layer 2 --payload $(REAL)/build-7700017-app-shared-infra.json
+      displayName: 'Attach: a real capture, 4 resource changes'
+
+# ── The severe rungs, which no real capture in this repo contains ───────────
+- stage: WhatIf_Destructive
+  displayName: 'Stack 3 — Destructive (synthetic)'
+  dependsOn: []
+  jobs:
+  - job: WhatIf
+    pool: ${{ parameters.pool }}
+    steps:
+    - script: node packages/extension/harness/attach-fixture.mjs --stack destructive --layer 3 --payload $(SYNTH)/synthetic-destructive-and-protection-loss.json
+      displayName: 'Attach: delete, detach, and a weakened deny mode'
+
+- stage: WhatIf_SchemaDrift
+  displayName: 'Stack 4 — Schema drift (synthetic)'
+  dependsOn: []
+  jobs:
+  - job: WhatIf
+    pool: ${{ parameters.pool }}
+    steps:
+    - script: node packages/extension/harness/attach-fixture.mjs --stack schema-drift --layer 4 --payload $(SYNTH)/synthetic-schema-drift.json
+      displayName: 'Attach: change types and a delta the parser has never seen'
+
+# ── The two ways a stack can produce no result ──────────────────────────────
+# These are the point of the whole design, so they are worth seeing rendered.
+
+# Tried and failed: a sidecar, no payload. Must read as "we looked and could
+# not evaluate it", not as "no changes".
+- stage: WhatIf_Failed
+  displayName: 'Stack 5 — Evaluation failed'
+  dependsOn: []
+  jobs:
+  - job: WhatIf
+    pool: ${{ parameters.pool }}
+    steps:
+    # Quoted because the error text contains a colon, which would otherwise end
+    # the YAML scalar and produce a parse error rather than a wrong value.
+    - script: "node packages/extension/harness/attach-fixture.mjs --stack failed-compile --layer 5 --status failed --error 'Bicep compilation failed: unexpected token at line 42'"
+      displayName: 'Attach: sidecar only, no payload'
+
+# Never looked at: no attachments of any kind. The stage exists in the timeline
+# and nowhere else, and the tab has to surface it as `unevaluated` rather than
+# let it vanish. This stage deliberately attaches nothing.
+- stage: WhatIf_NeverEvaluated
+  displayName: 'Stack 6 — Never evaluated'
+  dependsOn: []
+  jobs:
+  - job: WhatIf
+    pool: ${{ parameters.pool }}
+    steps:
+    - script: echo "Attaching nothing on purpose — this stage must still reach the tab."
+      displayName: 'Attach nothing'

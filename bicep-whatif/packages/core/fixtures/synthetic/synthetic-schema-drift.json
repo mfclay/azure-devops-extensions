@@ -1,0 +1,58 @@
+{
+  "_synthetic": {
+    "warning": "SYNTHETIC — NOT A CAPTURED PAYLOAD.",
+    "why": "Stands in for a payload written by a future ARM schema, or by a service that changed its mind. The extension must render a payload it does not fully understand rather than fail on it, because it will be asked to re-render old runs after a schema change.",
+    "contains": "An unrecognised resource changeType, an unrecognised property changeType, an unrecognised deny status, a resource with no id, a resource with no changeType, and a delta that is not an array."
+  },
+  "id": "/subscriptions/00000000-0000-4000-8000-000000000001/providers/Microsoft.Resources/deploymentStacks/synthetic-drift",
+  "name": "synthetic-drift",
+  "type": "Microsoft.Resources/deploymentStacks/deploymentStackWhatIfResults",
+  "properties": {
+    "provisioningState": "succeeded",
+    "actionOnUnmanage": { "managementGroups": "detach", "resourceGroups": "detach", "resources": "detach" },
+    "denySettings": { "applyToChildScopes": false, "excludedActions": [], "excludedPrincipals": [], "mode": "none" },
+    "retentionInterval": "3:00:00",
+    "changes": {
+      "denySettingsChange": null,
+      "deploymentScopeChange": null,
+      "resourceChanges": [
+        {
+          "changeType": "quarantine",
+          "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/drift-rg/providers/Microsoft.Storage/storageAccounts/driftfuture",
+          "type": "Microsoft.Storage/storageAccounts",
+          "denyStatusChange": { "before": "none", "after": "denySomethingNew" },
+          "managementStatusChange": { "before": "managed", "after": "managed" },
+          "resourceConfigurationChanges": { "before": {}, "after": {}, "delta": [] }
+        },
+        {
+          "changeType": "modify",
+          "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/drift-rg/providers/Microsoft.Network/virtualNetworks/drift-vnet",
+          "type": "Microsoft.Network/virtualNetworks",
+          "denyStatusChange": { "before": "none", "after": "none" },
+          "managementStatusChange": { "before": "managed", "after": "managed" },
+          "resourceConfigurationChanges": {
+            "before": {},
+            "after": {},
+            "delta": [
+              { "path": "properties.futureThing", "changeType": "teleport", "before": "a", "after": "b", "children": [] },
+              { "path": "properties.subnets", "changeType": "array", "before": [], "after": [], "children": [
+                  { "path": "0", "changeType": "modify", "before": null, "after": null, "children": [
+                      { "path": "properties.addressPrefix", "changeType": "modify", "before": "10.10.0.0/24", "after": "10.10.1.0/24", "children": [] }
+                  ] }
+              ] }
+            ]
+          }
+        },
+        {
+          "changeType": "modify",
+          "type": "Microsoft.Storage/storageAccounts",
+          "resourceConfigurationChanges": { "before": {}, "after": {}, "delta": "not-an-array" }
+        },
+        {
+          "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/drift-rg/providers/Microsoft.Web/sites/drift-site",
+          "type": "Microsoft.Web/sites"
+        }
+      ]
+    }
+  }
+}

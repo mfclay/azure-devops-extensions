@@ -1,0 +1,57 @@
+{
+  "manifestVersion": 1,
+  "id": "bicep-whatif",
+  "version": "0.1.0",
+  "name": "Bicep What-If for Deployment Stacks",
+  "description": "Renders Azure Deployment Stacks what-if output across every stack in a run — filterable, severity-ranked, and honest about what it could not evaluate.",
+  "categories": ["Azure Pipelines"],
+  "tags": [
+    "azure",
+    "bicep",
+    "deployment stacks",
+    "what-if",
+    "infrastructure as code",
+    "arm"
+  ],
+  "targets": [{ "id": "Microsoft.VisualStudio.Services" }],
+  "icons": { "default": "images/extension-icon.png" },
+  "content": {
+    "details": { "path": "overview.md" },
+    "license": { "path": "LICENSE" }
+  },
+  "links": {
+    "repository": { "uri": "https://github.com/mfclay/azure-devops-extensions/tree/main/bicep-whatif" },
+    "issues": { "uri": "https://github.com/mfclay/azure-devops-extensions/issues" }
+  },
+  "repository": {
+    "type": "git",
+    "uri": "https://github.com/mfclay/azure-devops-extensions/tree/main/bicep-whatif"
+  },
+  "branding": { "color": "#161C23", "theme": "dark" },
+  "scopes": ["vso.build"],
+  "files": [
+    { "path": "task", "addressable": false },
+    { "path": "ui", "addressable": true, "packagePath": "ui" },
+    { "path": "images", "addressable": true },
+    { "path": "overview.md", "addressable": true },
+    { "path": "LICENSE", "addressable": true }
+  ],
+  "contributions": [
+    {
+      "id": "stack-whatif-task",
+      "type": "ms.vss-distributed-task.task",
+      "targets": ["ms.vss-distributed-task.tasks"],
+      "properties": { "name": "task" }
+    },
+    {
+      "id": "stack-whatif-results-tab",
+      "type": "ms.vss-build-web.build-results-tab",
+      "targets": ["ms.vss-build-web.build-results-view"],
+      "properties": {
+        "name": "What-If",
+        "uri": "ui/index.html",
+        "supportsTasks": ["b34d630d-2819-48d6-a62f-9412768de7c5"]
+      }
+    }
+  ]
+}

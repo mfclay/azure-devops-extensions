@@ -1,0 +1,68 @@
+# Pipeline Insights: the whole chain in one job, on Node 20 (the floor the project claims).
+#
+# Same cost rules as whatif-ci.yml: this repo is private, so minutes are billable. One job,
+# never a matrix; superseded runs are cancelled; path-filtered to this extension.
+#
+# It never publishes. Dev builds go out from a terminal with tools/publish-dev.
+name: Pipeline Insights CI
+
+on:
+  push:
+    branches: [main]
+    paths: ['pipeline-insights/**', '.github/workflows/pi-ci.yml']
+  pull_request:
+    paths: ['pipeline-insights/**', '.github/workflows/pi-ci.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# `uses:` steps ignore this, so their paths spell out the folder.
+defaults:
+  run:
+    working-directory: pipeline-insights
+
+concurrency:
+  group: pi-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: pipeline-insights/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      # Packaging runs check-identifiers over the staged build, so a fixture name or GUID
+      # reaching the VSIX fails here. The private denylist is not on the runner; that check
+      # runs locally in `task pre-commit`.
+      # Through `npm run`, never `node scripts/package.mjs`: package.mjs shells out to a
+      # bare `tfx`, which resolves only because npm puts node_modules/.bin on PATH.
+      - name: Package extension
+        working-directory: pipeline-insights/extension
+        run: npm run package -- --overrides overrides/dev.json
+
+      - name: Upload VSIX
+        uses: actions/upload-artifact@v7
+        with:
+          name: pi-vsix-${{ github.sha }}
+          path: pipeline-insights/extension/dist/*.vsix
+          if-no-files-found: error
+          retention-days: 14

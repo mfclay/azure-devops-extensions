@@ -1,0 +1,22 @@
+node_modules/
+dist/
+# The extension's staging directory, assembled fresh on every package.
+build/
+*.tsbuildinfo
+.DS_Store
+Icon[[:cntrl:]]
+coverage/
+*.vsix
+# Written by azure-pipelines-task-lib when it initializes. Build residue.
+.taskkey
+.env
+.env.*
+
+# Editor window tinting, per-machine and personal — not project config.
+.vscode/
+
+# The release publisher, filled in by hand and never committed: extension identity is
+# {publisher}.{id}, so committing one makes the dev-to-release swap a silent change of
+# identity rather than a deliberate act. The .example alongside it is the template.
+packages/extension/overrides/release.json
+packages/extension/overrides/.staged-dev.json

@@ -1,0 +1,1426 @@
+{
+  "id": "/subscriptions/00000000-0000-4000-8000-000000000001/providers/Microsoft.Resources/deploymentStacksWhatIfResults/whatif-network-7700017",
+  "location": "centralus",
+  "name": "whatif-network-7700017",
+  "properties": {
+    "actionOnUnmanage": {
+      "managementGroups": "detach",
+      "resourceGroups": "detach",
+      "resources": "detach",
+      "resourcesWithoutDeleteSupport": "fail"
+    },
+    "changes": {
+      "denySettingsChange": {
+        "after": {
+          "applyToChildScopes": false,
+          "excludedActions": [],
+          "excludedPrincipals": [],
+          "mode": "None"
+        },
+        "before": {
+          "applyToChildScopes": false,
+          "excludedActions": [],
+          "excludedPrincipals": [],
+          "mode": "None"
+        },
+        "delta": []
+      },
+      "deploymentScopeChange": null,
+      "resourceChanges": [
+        {
+          "apiVersion": null,
+          "changeCertainty": "definite",
+          "changeType": "noChange",
+          "denyStatusChange": {
+            "after": "none",
+            "before": "none"
+          },
+          "deploymentId": null,
+          "extension": null,
+          "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/app-network-rg",
+          "identifiers": null,
+          "managementStatusChange": {
+            "after": "managed",
+            "before": "managed"
+          },
+          "resourceConfigurationChanges": {
+            "after": {
+              "apiVersion": "2025-04-01",
+              "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/app-network-rg",
+              "location": "centralus",
+              "name": "app-network-rg",
+              "tags": {
+                "AllocationType": "No Allocation Type",
+                "Class": "Technology",
+                "CostCenter": "Engineering",
+                "Customer": "Multi-Tenant",
+                "Description": "Platform production network — stack managed",
+                "BusinessUnit": "Contoso",
+                "Product": "Contoso Platform",
+                "org:client": "shared",
+                "org:env-type": "shared",
+                "org:product": "app"
+              },
+              "type": "Microsoft.Resources/resourceGroups"
+            },
+            "before": {
+              "apiVersion": "2025-04-01",
+              "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/app-network-rg",
+              "location": "centralus",
+              "name": "app-network-rg",
+              "tags": {
+                "AllocationType": "No Allocation Type",
+                "Class": "Technology",
+                "CostCenter": "Engineering",
+                "Customer": "Multi-Tenant",
+                "Description": "Platform production network — stack managed",
+                "BusinessUnit": "Contoso",
+                "Product": "Contoso Platform",
+                "org:client": "shared",
+                "org:env-type": "shared",
+                "org:product": "app"
+              },
+              "type": "Microsoft.Resources/resourceGroups"
+            },
+            "delta": []
+          },
+          "symbolicName": null,
+          "type": "Microsoft.Resources/resourceGroups",
+          "unsupportedReason": null
+        },
+        {
+          "apiVersion": null,
+          "changeCertainty": "definite",
+          "changeType": "noChange",
+          "denyStatusChange": {
+            "after": "none",
+            "before": "none"
+          },
+          "deploymentId": null,
+          "extension": null,
+          "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/app-network-rg/providers/Microsoft.Network/networkSecurityGroups/app-shared-nsg",
+          "identifiers": null,
+          "managementStatusChange": {
+            "after": "managed",
+            "before": "managed"
+          },
+          "resourceConfigurationChanges": {
+            "after": {
+              "apiVersion": "2025-01-01",
+              "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/app-network-rg/providers/Microsoft.Network/networkSecurityGroups/app-shared-nsg",
+              "location": "centralus",
+              "name": "app-shared-nsg",
+              "properties": {
+                "securityRules": [
+                  {
+                    "name": "Allow-APIM-Management-Inbound",
+                    "properties": {
+                      "access": "Allow",
+                      "destinationAddressPrefix": "*",
+                      "destinationPortRange": "3443",
+                      "direction": "Inbound",
+                      "priority": 100,
+                      "protocol": "Tcp",
+                      "sourceAddressPrefix": "ApiManagement",
+                      "sourcePortRange": "*"
+                    }
+                  }
+                ]
+              },
+              "resourceGroup": "app-network-rg",
+              "tags": {
+                "AllocationType": "No Allocation Type",
+                "Class": "Technology",
+                "CostCenter": "Engineering",
+                "Customer": "Multi-Tenant",
+                "Description": "Platform production network — stack managed",
+                "BusinessUnit": "Contoso",
+                "Product": "Contoso Platform",
+                "org:client": "shared",
+                "org:env-type": "shared",
+                "org:product": "app"
+              },
+              "type": "Microsoft.Network/networkSecurityGroups"
+            },
+            "before": {
+              "apiVersion": "2025-01-01",
+              "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/app-network-rg/providers/Microsoft.Network/networkSecurityGroups/app-shared-nsg",
+              "location": "centralus",
+              "name": "app-shared-nsg",
+              "properties": {
+                "securityRules": [
+                  {
+                    "name": "Allow-APIM-Management-Inbound",
+                    "properties": {
+                      "access": "Allow",
+                      "destinationAddressPrefix": "*",
+                      "destinationPortRange": "3443",
+                      "direction": "Inbound",
+                      "priority": 100,
+                      "protocol": "Tcp",
+                      "sourceAddressPrefix": "ApiManagement",
+                      "sourcePortRange": "*"
+                    }
+                  }
+                ]
+              },
+              "resourceGroup": "app-network-rg",
+              "tags": {
+                "AllocationType": "No Allocation Type",
+                "Class": "Technology",
+                "CostCenter": "Engineering",
+                "Customer": "Multi-Tenant",
+                "Description": "Platform production network — stack managed",
+                "BusinessUnit": "Contoso",
+                "Product": "Contoso Platform",
+                "org:client": "shared",
+                "org:env-type": "shared",
+                "org:product": "app"
+              },
+              "type": "Microsoft.Network/networkSecurityGroups"
+            },
+            "delta": []
+          },
+          "resourceGroup": "app-network-rg",
+          "symbolicName": null,
+          "type": "Microsoft.Network/networkSecurityGroups",
+          "unsupportedReason": null
+        },
+        {
+          "apiVersion": null,
+          "changeCertainty": "definite",
+          "changeType": "modify",
+          "denyStatusChange": {
+            "after": "none",
+            "before": "none"
+          },
+          "deploymentId": null,
+          "extension": null,
+          "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/app-network-rg/providers/Microsoft.Network/virtualNetworks/app-cus-vnet",
+          "identifiers": null,
+          "managementStatusChange": {
+            "after": "managed",
+            "before": "managed"
+          },
+          "resourceConfigurationChanges": {
+            "after": {
+              "apiVersion": "2025-01-01",
+              "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/app-network-rg/providers/Microsoft.Network/virtualNetworks/app-cus-vnet",
+              "location": "centralus",
+              "name": "app-cus-vnet",
+              "properties": {
+                "addressSpace": {
+                  "addressPrefixes": [
+                    "10.10.45.0/24"
+                  ]
+                },
+                "dhcpOptions": {
+                  "dnsServers": [
+                    "10.10.45.180"
+                  ]
+                },
+                "enableDdosProtection": false,
+                "subnets": [
+                  {
+                    "name": "app-api-subnet",
+                    "properties": {
+                      "addressPrefixes": [
+                        "10.10.45.96/28"
+                      ],
+                      "defaultOutboundAccess": false,
+                      "networkSecurityGroup": {
+                        "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/app-network-rg/providers/Microsoft.Network/networkSecurityGroups/app-shared-nsg",
+                        "resourceGroup": "app-network-rg"
+                      },
+                      "privateEndpointNetworkPolicies": "Disabled",
+                      "privateLinkServiceNetworkPolicies": "Enabled",
+                      "routeTable": {
+                        "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/lab-cus-network-rg/providers/Microsoft.Network/routeTables/lab-cus-rt",
+                        "resourceGroup": "lab-cus-network-rg"
+                      }
+                    }
+                  },
+                  {
+                    "name": "app-dns-vm-subnet",
+                    "properties": {
+                      "addressPrefix": "10.10.45.176/28",
+                      "defaultOutboundAccess": false,
+                      "privateEndpointNetworkPolicies": "Disabled",
+                      "privateLinkServiceNetworkPolicies": "Enabled"
+                    }
+                  },
+                  {
+                    "name": "app-shared-subnet",
+                    "properties": {
+                      "addressPrefixes": [
+                        "10.10.45.32/27"
+                      ],
+                      "defaultOutboundAccess": false,
+                      "networkSecurityGroup": {
+                        "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/app-network-rg/providers/Microsoft.Network/networkSecurityGroups/app-shared-nsg",
+                        "resourceGroup": "app-network-rg"
+                      },
+                      "privateEndpointNetworkPolicies": "Disabled",
+                      "privateLinkServiceNetworkPolicies": "Enabled",
+                      "routeTable": {
+                        "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/lab-cus-network-rg/providers/Microsoft.Network/routeTables/lab-cus-rt",
+                        "resourceGroup": "lab-cus-network-rg"
+                      }
+                    }
+                  }
+                ],
+                "virtualNetworkPeerings": [
+                  {
+                    "name": "peering-to-app-internal",
+                    "properties": {
+                      "allowForwardedTraffic": true,
+                      "allowVirtualNetworkAccess": true,
+                      "remoteVirtualNetwork": {
+                        "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/app-network-rg/providers/Microsoft.Network/virtualNetworks/app-internal-vnet",
+                        "resourceGroup": "app-network-rg"
+                      },
+                      "useRemoteGateways": false
+                    }
+                  },
+                  {
+                    "name": "peering-to-mgmt-cus-vnet",
+                    "properties": {
+                      "allowForwardedTraffic": true,
+                      "allowVirtualNetworkAccess": true,
+                      "remoteVirtualNetwork": {
+                        "id": "/subscriptions/00000000-0000-4000-8000-000000000002/resourceGroups/mgmt-cus-network-rg/providers/Microsoft.Network/virtualNetworks/mgmt-cus-vnet",
+                        "resourceGroup": "mgmt-cus-network-rg"
+                      },
+                      "useRemoteGateways": false
+                    }
+                  }
+                ]
+              },
+              "resourceGroup": "app-network-rg",
+              "tags": {
+                "AllocationType": "No Allocation Type",
+                "Class": "Technology",
+                "CostCenter": "Engineering",
+                "Customer": "Multi-Tenant",
+                "Description": "Platform production network — stack managed",
+                "BusinessUnit": "Contoso",
+                "Product": "Contoso Platform",
+                "org:client": "shared",
+                "org:env-type": "shared",
+                "org:product": "app"
+              },
+              "type": "Microsoft.Network/virtualNetworks"
+            },
+            "before": {
+              "apiVersion": "2025-01-01",
+              "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/app-network-rg/providers/Microsoft.Network/virtualNetworks/app-cus-vnet",
+              "location": "centralus",
+              "name": "app-cus-vnet",
+              "properties": {
+                "addressSpace": {
+                  "addressPrefixes": [
+                    "10.10.45.0/24"
+                  ]
+                },
+                "dhcpOptions": {
+                  "dnsServers": [
+                    "10.10.45.180"
+                  ]
+                },
+                "enableDdosProtection": false,
+                "privateEndpointVNetPolicies": "Disabled",
+                "subnets": [
+                  {
+                    "name": "app-api-subnet",
+                    "properties": {
+                      "addressPrefixes": [
+                        "10.10.45.96/28"
+                      ],
+                      "defaultOutboundAccess": false,
+                      "networkSecurityGroup": {
+                        "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/app-network-rg/providers/Microsoft.Network/networkSecurityGroups/app-shared-nsg",
+                        "resourceGroup": "app-network-rg"
+                      },
+                      "privateEndpointNetworkPolicies": "Disabled",
+                      "privateLinkServiceNetworkPolicies": "Enabled",
+                      "routeTable": {
+                        "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/lab-cus-network-rg/providers/Microsoft.Network/routeTables/lab-cus-rt",
+                        "resourceGroup": "lab-cus-network-rg"
+                      }
+                    }
+                  },
+                  {
+                    "name": "app-dns-vm-subnet",
+                    "properties": {
+                      "addressPrefix": "10.10.45.176/28",
+                      "privateEndpointNetworkPolicies": "Disabled",
+                      "privateLinkServiceNetworkPolicies": "Enabled"
+                    }
+                  },
+                  {
+                    "name": "app-shared-subnet",
+                    "properties": {
+                      "addressPrefixes": [
+                        "10.10.45.32/27"
+                      ],
+                      "defaultOutboundAccess": false,
+                      "networkSecurityGroup": {
+                        "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/app-network-rg/providers/Microsoft.Network/networkSecurityGroups/app-shared-nsg",
+                        "resourceGroup": "app-network-rg"
+                      },
+                      "privateEndpointNetworkPolicies": "Disabled",
+                      "privateLinkServiceNetworkPolicies": "Enabled",
+                      "routeTable": {
+                        "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/lab-cus-network-rg/providers/Microsoft.Network/routeTables/lab-cus-rt",
+                        "resourceGroup": "lab-cus-network-rg"
+                      }
+                    }
+                  }
+                ],
+                "virtualNetworkPeerings": [
+                  {
+                    "name": "peering-to-app-internal",
+                    "properties": {
+                      "allowForwardedTraffic": true,
+                      "allowGatewayTransit": false,
+                      "allowVirtualNetworkAccess": true,
+                      "doNotVerifyRemoteGateways": false,
+                      "peerCompleteVnets": true,
+                      "peeringSyncLevel": "FullyInSync",
+                      "remoteAddressSpace": {
+                        "addressPrefixes": [
+                          "172.20.0.0/16"
+                        ]
+                      },
+                      "remoteVirtualNetwork": {
+                        "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/app-network-rg/providers/Microsoft.Network/virtualNetworks/app-internal-vnet",
+                        "resourceGroup": "app-network-rg"
+                      },
+                      "remoteVirtualNetworkAddressSpace": {
+                        "addressPrefixes": [
+                          "172.20.0.0/16"
+                        ]
+                      },
+                      "useRemoteGateways": false
+                    }
+                  },
+                  {
+                    "name": "peering-to-mgmt-cus-vnet",
+                    "properties": {
+                      "allowForwardedTraffic": true,
+                      "allowGatewayTransit": false,
+                      "allowVirtualNetworkAccess": true,
+                      "doNotVerifyRemoteGateways": false,
+                      "enableOnlyIPv6Peering": false,
+                      "peerCompleteVnets": true,
+                      "peeringSyncLevel": "FullyInSync",
+                      "remoteAddressSpace": {
+                        "addressPrefixes": [
+                          "10.30.0.0/16"
+                        ]
+                      },
+                      "remoteVirtualNetwork": {
+                        "id": "/subscriptions/00000000-0000-4000-8000-000000000002/resourceGroups/mgmt-cus-network-rg/providers/Microsoft.Network/virtualNetworks/mgmt-cus-vnet",
+                        "resourceGroup": "mgmt-cus-network-rg"
+                      },
+                      "remoteVirtualNetworkAddressSpace": {
+                        "addressPrefixes": [
+                          "10.30.0.0/16"
+                        ]
+                      },
+                      "useRemoteGateways": false
+                    }
+                  }
+                ]
+              },
+              "resourceGroup": "app-network-rg",
+              "tags": {
+                "AllocationType": "No Allocation Type",
+                "Class": "Technology",
+                "CostCenter": "Engineering",
+                "Customer": "Multi-Tenant",
+                "Description": "Platform production network — stack managed",
+                "BusinessUnit": "Contoso",
+                "Product": "Contoso Platform",
+                "org:client": "shared",
+                "org:env-type": "shared",
+                "org:product": "app"
+              },
+              "type": "Microsoft.Network/virtualNetworks"
+            },
+            "delta": [
+              {
+                "after": null,
+                "before": "Disabled",
+                "changeType": "delete",
+                "children": [],
+                "path": "properties.privateEndpointVNetPolicies"
+              },
+              {
+                "after": null,
+                "before": null,
+                "changeType": "array",
+                "children": [
+                  {
+                    "after": null,
+                    "before": null,
+                    "changeType": "modify",
+                    "children": [
+                      {
+                        "after": false,
+                        "before": null,
+                        "changeType": "create",
+                        "children": [],
+                        "path": "properties.defaultOutboundAccess"
+                      }
+                    ],
+                    "path": "1"
+                  }
+                ],
+                "path": "properties.subnets"
+              },
+              {
+                "after": null,
+                "before": null,
+                "changeType": "array",
+                "children": [
+                  {
+                    "after": null,
+                    "before": null,
+                    "changeType": "modify",
+                    "children": [
+                      {
+                        "after": null,
+                        "before": false,
+                        "changeType": "delete",
+                        "children": [],
+                        "path": "properties.allowGatewayTransit"
+                      },
+                      {
+                        "after": null,
+                        "before": false,
+                        "changeType": "delete",
+                        "children": [],
+                        "path": "properties.doNotVerifyRemoteGateways"
+                      },
+                      {
+                        "after": null,
+                        "before": true,
+                        "changeType": "delete",
+                        "children": [],
+                        "path": "properties.peerCompleteVnets"
+                      },
+                      {
+                        "after": null,
+                        "before": "FullyInSync",
+                        "changeType": "delete",
+                        "children": [],
+                        "path": "properties.peeringSyncLevel"
+                      },
+                      {
+                        "after": null,
+                        "before": {
+                          "addressPrefixes": [
+                            "172.20.0.0/16"
+                          ]
+                        },
+                        "changeType": "delete",
+                        "children": [],
+                        "path": "properties.remoteAddressSpace"
+                      },
+                      {
+                        "after": null,
+                        "before": {
+                          "addressPrefixes": [
+                            "172.20.0.0/16"
+                          ]
+                        },
+                        "changeType": "delete",
+                        "children": [],
+                        "path": "properties.remoteVirtualNetworkAddressSpace"
+                      }
+                    ],
+                    "path": "0"
+                  },
+                  {
+                    "after": null,
+                    "before": null,
+                    "changeType": "modify",
+                    "children": [
+                      {
+                        "after": null,
+                        "before": false,
+                        "changeType": "delete",
+                        "children": [],
+                        "path": "properties.allowGatewayTransit"
+                      },
+                      {
+                        "after": null,
+                        "before": false,
+                        "changeType": "delete",
+                        "children": [],
+                        "path": "properties.doNotVerifyRemoteGateways"
+                      },
+                      {
+                        "after": null,
+                        "before": false,
+                        "changeType": "delete",
+                        "children": [],
+                        "path": "properties.enableOnlyIPv6Peering"
+                      },
+                      {
+                        "after": null,
+                        "before": true,
+                        "changeType": "delete",
+                        "children": [],
+                        "path": "properties.peerCompleteVnets"
+                      },
+                      {
+                        "after": null,
+                        "before": "FullyInSync",
+                        "changeType": "delete",
+                        "children": [],
+                        "path": "properties.peeringSyncLevel"
+                      },
+                      {
+                        "after": null,
+                        "before": {
+                          "addressPrefixes": [
+                            "10.30.0.0/16"
+                          ]
+                        },
+                        "changeType": "delete",
+                        "children": [],
+                        "path": "properties.remoteAddressSpace"
+                      },
+                      {
+                        "after": null,
+                        "before": {
+                          "addressPrefixes": [
+                            "10.30.0.0/16"
+                          ]
+                        },
+                        "changeType": "delete",
+                        "children": [],
+                        "path": "properties.remoteVirtualNetworkAddressSpace"
+                      }
+                    ],
+                    "path": "1"
+                  }
+                ],
+                "path": "properties.virtualNetworkPeerings"
+              },
+              {
+                "after": "Microsoft.Network/virtualNetworks/virtualNetworkPeerings",
+                "before": null,
+                "changeType": "noEffect",
+                "children": [],
+                "path": "properties.virtualNetworkPeerings[0].type"
+              },
+              {
+                "after": "Microsoft.Network/virtualNetworks/virtualNetworkPeerings",
+                "before": null,
+                "changeType": "noEffect",
+                "children": [],
+                "path": "properties.virtualNetworkPeerings[1].type"
+              }
+            ]
+          },
+          "resourceGroup": "app-network-rg",
+          "symbolicName": null,
+          "type": "Microsoft.Network/virtualNetworks",
+          "unsupportedReason": null
+        },
+        {
+          "apiVersion": null,
+          "changeCertainty": "definite",
+          "changeType": "modify",
+          "denyStatusChange": {
+            "after": "none",
+            "before": "none"
+          },
+          "deploymentId": null,
+          "extension": null,
+          "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/app-network-rg/providers/Microsoft.Network/virtualNetworks/app-cus-vnet/virtualNetworkPeerings/peering-to-app-internal",
+          "identifiers": null,
+          "managementStatusChange": {
+            "after": "managed",
+            "before": "managed"
+          },
+          "resourceConfigurationChanges": {
+            "after": {
+              "apiVersion": "2025-05-01",
+              "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/app-network-rg/providers/Microsoft.Network/virtualNetworks/app-cus-vnet/virtualNetworkPeerings/peering-to-app-internal",
+              "name": "peering-to-app-internal",
+              "properties": {
+                "allowForwardedTraffic": true,
+                "allowVirtualNetworkAccess": true,
+                "remoteVirtualNetwork": {
+                  "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/app-network-rg/providers/Microsoft.Network/virtualNetworks/app-internal-vnet",
+                  "resourceGroup": "app-network-rg"
+                },
+                "useRemoteGateways": false
+              },
+              "resourceGroup": "app-network-rg",
+              "type": "Microsoft.Network/virtualNetworks/virtualNetworkPeerings"
+            },
+            "before": {
+              "apiVersion": "2025-05-01",
+              "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/app-network-rg/providers/Microsoft.Network/virtualNetworks/app-cus-vnet/virtualNetworkPeerings/peering-to-app-internal",
+              "name": "peering-to-app-internal",
+              "properties": {
+                "allowForwardedTraffic": true,
+                "allowGatewayTransit": false,
+                "allowVirtualNetworkAccess": true,
+                "doNotVerifyRemoteGateways": false,
+                "peerCompleteVnets": true,
+                "peeringSyncLevel": "FullyInSync",
+                "remoteAddressSpace": {
+                  "addressPrefixes": [
+                    "172.20.0.0/16"
+                  ]
+                },
+                "remoteVirtualNetwork": {
+                  "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/app-network-rg/providers/Microsoft.Network/virtualNetworks/app-internal-vnet",
+                  "resourceGroup": "app-network-rg"
+                },
+                "remoteVirtualNetworkAddressSpace": {
+                  "addressPrefixes": [
+                    "172.20.0.0/16"
+                  ]
+                },
+                "useRemoteGateways": false
+              },
+              "resourceGroup": "app-network-rg",
+              "type": "Microsoft.Network/virtualNetworks/virtualNetworkPeerings"
+            },
+            "delta": [
+              {
+                "after": null,
+                "before": false,
+                "changeType": "delete",
+                "children": [],
+                "path": "properties.allowGatewayTransit"
+              },
+              {
+                "after": null,
+                "before": false,
+                "changeType": "delete",
+                "children": [],
+                "path": "properties.doNotVerifyRemoteGateways"
+              },
+              {
+                "after": null,
+                "before": true,
+                "changeType": "delete",
+                "children": [],
+                "path": "properties.peerCompleteVnets"
+              },
+              {
+                "after": null,
+                "before": "FullyInSync",
+                "changeType": "delete",
+                "children": [],
+                "path": "properties.peeringSyncLevel"
+              },
+              {
+                "after": null,
+                "before": {
+                  "addressPrefixes": [
+                    "172.20.0.0/16"
+                  ]
+                },
+                "changeType": "delete",
+                "children": [],
+                "path": "properties.remoteAddressSpace"
+              },
+              {
+                "after": null,
+                "before": {
+                  "addressPrefixes": [
+                    "172.20.0.0/16"
+                  ]
+                },
+                "changeType": "delete",
+                "children": [],
+                "path": "properties.remoteVirtualNetworkAddressSpace"
+              }
+            ]
+          },
+          "resourceGroup": "app-network-rg",
+          "symbolicName": null,
+          "type": "Microsoft.Network/virtualNetworks/virtualNetworkPeerings",
+          "unsupportedReason": null
+        },
+        {
+          "apiVersion": null,
+          "changeCertainty": "definite",
+          "changeType": "modify",
+          "denyStatusChange": {
+            "after": "none",
+            "before": "none"
+          },
+          "deploymentId": null,
+          "extension": null,
+          "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/app-network-rg/providers/Microsoft.Network/virtualNetworks/app-cus-vnet/virtualNetworkPeerings/peering-to-mgmt-cus-vnet",
+          "identifiers": null,
+          "managementStatusChange": {
+            "after": "managed",
+            "before": "notManaged"
+          },
+          "resourceConfigurationChanges": {
+            "after": {
+              "apiVersion": "2025-05-01",
+              "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/app-network-rg/providers/Microsoft.Network/virtualNetworks/app-cus-vnet/virtualNetworkPeerings/peering-to-mgmt-cus-vnet",
+              "name": "peering-to-mgmt-cus-vnet",
+              "properties": {
+                "allowForwardedTraffic": true,
+                "allowVirtualNetworkAccess": true,
+                "remoteVirtualNetwork": {
+                  "id": "/subscriptions/00000000-0000-4000-8000-000000000002/resourceGroups/mgmt-cus-network-rg/providers/Microsoft.Network/virtualNetworks/mgmt-cus-vnet",
+                  "resourceGroup": "mgmt-cus-network-rg"
+                },
+                "useRemoteGateways": false
+              },
+              "resourceGroup": "app-network-rg",
+              "type": "Microsoft.Network/virtualNetworks/virtualNetworkPeerings"
+            },
+            "before": {
+              "apiVersion": "2025-05-01",
+              "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/app-network-rg/providers/Microsoft.Network/virtualNetworks/app-cus-vnet/virtualNetworkPeerings/peering-to-mgmt-cus-vnet",
+              "name": "peering-to-mgmt-cus-vnet",
+              "properties": {
+                "allowForwardedTraffic": true,
+                "allowGatewayTransit": false,
+                "allowVirtualNetworkAccess": true,
+                "doNotVerifyRemoteGateways": false,
+                "enableOnlyIPv6Peering": false,
+                "peerCompleteVnets": true,
+                "peeringSyncLevel": "FullyInSync",
+                "remoteAddressSpace": {
+                  "addressPrefixes": [
+                    "10.30.0.0/16"
+                  ]
+                },
+                "remoteVirtualNetwork": {
+                  "id": "/subscriptions/00000000-0000-4000-8000-000000000002/resourceGroups/mgmt-cus-network-rg/providers/Microsoft.Network/virtualNetworks/mgmt-cus-vnet",
+                  "resourceGroup": "mgmt-cus-network-rg"
+                },
+                "remoteVirtualNetworkAddressSpace": {
+                  "addressPrefixes": [
+                    "10.30.0.0/16"
+                  ]
+                },
+                "useRemoteGateways": false
+              },
+              "resourceGroup": "app-network-rg",
+              "type": "Microsoft.Network/virtualNetworks/virtualNetworkPeerings"
+            },
+            "delta": [
+              {
+                "after": null,
+                "before": false,
+                "changeType": "delete",
+                "children": [],
+                "path": "properties.allowGatewayTransit"
+              },
+              {
+                "after": null,
+                "before": false,
+                "changeType": "delete",
+                "children": [],
+                "path": "properties.doNotVerifyRemoteGateways"
+              },
+              {
+                "after": null,
+                "before": false,
+                "changeType": "delete",
+                "children": [],
+                "path": "properties.enableOnlyIPv6Peering"
+              },
+              {
+                "after": null,
+                "before": true,
+                "changeType": "delete",
+                "children": [],
+                "path": "properties.peerCompleteVnets"
+              },
+              {
+                "after": null,
+                "before": "FullyInSync",
+                "changeType": "delete",
+                "children": [],
+                "path": "properties.peeringSyncLevel"
+              },
+              {
+                "after": null,
+                "before": {
+                  "addressPrefixes": [
+                    "10.30.0.0/16"
+                  ]
+                },
+                "changeType": "delete",
+                "children": [],
+                "path": "properties.remoteAddressSpace"
+              },
+              {
+                "after": null,
+                "before": {
+                  "addressPrefixes": [
+                    "10.30.0.0/16"
+                  ]
+                },
+                "changeType": "delete",
+                "children": [],
+                "path": "properties.remoteVirtualNetworkAddressSpace"
+              }
+            ]
+          },
+          "resourceGroup": "app-network-rg",
+          "symbolicName": null,
+          "type": "Microsoft.Network/virtualNetworks/virtualNetworkPeerings",
+          "unsupportedReason": null
+        },
+        {
+          "apiVersion": null,
+          "changeCertainty": "definite",
+          "changeType": "modify",
+          "denyStatusChange": {
+            "after": "none",
+            "before": "none"
+          },
+          "deploymentId": null,
+          "extension": null,
+          "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/app-network-rg/providers/Microsoft.Network/virtualNetworks/app-internal-vnet",
+          "identifiers": null,
+          "managementStatusChange": {
+            "after": "managed",
+            "before": "managed"
+          },
+          "resourceConfigurationChanges": {
+            "after": {
+              "apiVersion": "2025-01-01",
+              "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/app-network-rg/providers/Microsoft.Network/virtualNetworks/app-internal-vnet",
+              "location": "centralus",
+              "name": "app-internal-vnet",
+              "properties": {
+                "addressSpace": {
+                  "addressPrefixes": [
+                    "172.20.0.0/16"
+                  ]
+                },
+                "dhcpOptions": {
+                  "dnsServers": [
+                    "10.10.45.180"
+                  ]
+                },
+                "enableDdosProtection": false,
+                "subnets": [
+                  {
+                    "name": "app-dnstest-cae-subnet",
+                    "properties": {
+                      "addressPrefix": "172.20.10.0/27",
+                      "delegations": [
+                        {
+                          "name": "aca-delegation",
+                          "properties": {
+                            "serviceName": "Microsoft.App/environments"
+                          }
+                        }
+                      ],
+                      "privateEndpointNetworkPolicies": "Disabled",
+                      "privateLinkServiceNetworkPolicies": "Enabled"
+                    }
+                  },
+                  {
+                    "name": "dev-api-subnet",
+                    "properties": {
+                      "addressPrefix": "172.20.50.0/24",
+                      "delegations": [
+                        {
+                          "name": "aca-delegation",
+                          "properties": {
+                            "serviceName": "Microsoft.App/environments"
+                          }
+                        }
+                      ],
+                      "privateEndpointNetworkPolicies": "Disabled",
+                      "privateLinkServiceNetworkPolicies": "Enabled"
+                    }
+                  },
+                  {
+                    "name": "dev-app-subnet",
+                    "properties": {
+                      "addressPrefix": "172.20.60.0/24",
+                      "delegations": [
+                        {
+                          "name": "aca-delegation",
+                          "properties": {
+                            "serviceName": "Microsoft.App/environments"
+                          }
+                        }
+                      ],
+                      "privateEndpointNetworkPolicies": "Disabled",
+                      "privateLinkServiceNetworkPolicies": "Enabled"
+                    }
+                  },
+                  {
+                    "name": "prod-api-subnet",
+                    "properties": {
+                      "addressPrefix": "172.20.30.0/24",
+                      "delegations": [
+                        {
+                          "name": "aca-delegation",
+                          "properties": {
+                            "serviceName": "Microsoft.App/environments"
+                          }
+                        }
+                      ],
+                      "privateEndpointNetworkPolicies": "Disabled",
+                      "privateLinkServiceNetworkPolicies": "Enabled"
+                    }
+                  },
+                  {
+                    "name": "prod-app-subnet",
+                    "properties": {
+                      "addressPrefix": "172.20.40.0/24",
+                      "delegations": [
+                        {
+                          "name": "aca-delegation",
+                          "properties": {
+                            "serviceName": "Microsoft.App/environments"
+                          }
+                        }
+                      ],
+                      "privateEndpointNetworkPolicies": "Disabled",
+                      "privateLinkServiceNetworkPolicies": "Enabled"
+                    }
+                  }
+                ],
+                "virtualNetworkPeerings": [
+                  {
+                    "name": "peering-to-app-cus",
+                    "properties": {
+                      "allowForwardedTraffic": true,
+                      "allowVirtualNetworkAccess": true,
+                      "remoteVirtualNetwork": {
+                        "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/app-network-rg/providers/Microsoft.Network/virtualNetworks/app-cus-vnet",
+                        "resourceGroup": "app-network-rg"
+                      },
+                      "useRemoteGateways": false
+                    }
+                  }
+                ]
+              },
+              "resourceGroup": "app-network-rg",
+              "tags": {
+                "AllocationType": "No Allocation Type",
+                "Class": "Technology",
+                "CostCenter": "Engineering",
+                "Customer": "Multi-Tenant",
+                "Description": "Platform production network — stack managed",
+                "BusinessUnit": "Contoso",
+                "Product": "Contoso Platform",
+                "org:client": "shared",
+                "org:env-type": "shared",
+                "org:product": "app"
+              },
+              "type": "Microsoft.Network/virtualNetworks"
+            },
+            "before": {
+              "apiVersion": "2025-01-01",
+              "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/app-network-rg/providers/Microsoft.Network/virtualNetworks/app-internal-vnet",
+              "location": "centralus",
+              "name": "app-internal-vnet",
+              "properties": {
+                "addressSpace": {
+                  "addressPrefixes": [
+                    "172.20.0.0/16"
+                  ]
+                },
+                "dhcpOptions": {
+                  "dnsServers": [
+                    "10.10.45.180"
+                  ]
+                },
+                "enableDdosProtection": false,
+                "privateEndpointVNetPolicies": "Disabled",
+                "subnets": [
+                  {
+                    "name": "app-dnstest-cae-subnet",
+                    "properties": {
+                      "addressPrefix": "172.20.10.0/27",
+                      "delegations": [
+                        {
+                          "name": "aca-delegation",
+                          "properties": {
+                            "serviceName": "Microsoft.App/environments"
+                          }
+                        }
+                      ],
+                      "privateEndpointNetworkPolicies": "Disabled",
+                      "privateLinkServiceNetworkPolicies": "Enabled"
+                    }
+                  },
+                  {
+                    "name": "dev-api-subnet",
+                    "properties": {
+                      "addressPrefix": "172.20.50.0/24",
+                      "delegations": [
+                        {
+                          "name": "aca-delegation",
+                          "properties": {
+                            "serviceName": "Microsoft.App/environments"
+                          }
+                        }
+                      ],
+                      "privateEndpointNetworkPolicies": "Disabled",
+                      "privateLinkServiceNetworkPolicies": "Enabled"
+                    }
+                  },
+                  {
+                    "name": "dev-app-subnet",
+                    "properties": {
+                      "addressPrefix": "172.20.60.0/24",
+                      "delegations": [
+                        {
+                          "name": "aca-delegation",
+                          "properties": {
+                            "serviceName": "Microsoft.App/environments"
+                          }
+                        }
+                      ],
+                      "privateEndpointNetworkPolicies": "Disabled",
+                      "privateLinkServiceNetworkPolicies": "Enabled"
+                    }
+                  },
+                  {
+                    "name": "prod-api-subnet",
+                    "properties": {
+                      "addressPrefix": "172.20.30.0/24",
+                      "delegations": [
+                        {
+                          "name": "aca-delegation",
+                          "properties": {
+                            "serviceName": "Microsoft.App/environments"
+                          }
+                        }
+                      ],
+                      "privateEndpointNetworkPolicies": "Disabled",
+                      "privateLinkServiceNetworkPolicies": "Enabled"
+                    }
+                  },
+                  {
+                    "name": "prod-app-subnet",
+                    "properties": {
+                      "addressPrefix": "172.20.40.0/24",
+                      "delegations": [
+                        {
+                          "name": "aca-delegation",
+                          "properties": {
+                            "serviceName": "Microsoft.App/environments"
+                          }
+                        }
+                      ],
+                      "privateEndpointNetworkPolicies": "Disabled",
+                      "privateLinkServiceNetworkPolicies": "Enabled"
+                    }
+                  }
+                ],
+                "virtualNetworkPeerings": [
+                  {
+                    "name": "peering-to-app-cus",
+                    "properties": {
+                      "allowForwardedTraffic": true,
+                      "allowGatewayTransit": false,
+                      "allowVirtualNetworkAccess": true,
+                      "doNotVerifyRemoteGateways": false,
+                      "peerCompleteVnets": true,
+                      "peeringSyncLevel": "FullyInSync",
+                      "remoteAddressSpace": {
+                        "addressPrefixes": [
+                          "10.10.45.0/24"
+                        ]
+                      },
+                      "remoteVirtualNetwork": {
+                        "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/app-network-rg/providers/Microsoft.Network/virtualNetworks/app-cus-vnet",
+                        "resourceGroup": "app-network-rg"
+                      },
+                      "remoteVirtualNetworkAddressSpace": {
+                        "addressPrefixes": [
+                          "10.10.45.0/24"
+                        ]
+                      },
+                      "useRemoteGateways": false
+                    }
+                  }
+                ]
+              },
+              "resourceGroup": "app-network-rg",
+              "tags": {
+                "AllocationType": "No Allocation Type",
+                "Class": "Technology",
+                "CostCenter": "Engineering",
+                "Customer": "Multi-Tenant",
+                "Description": "Platform production network — stack managed",
+                "BusinessUnit": "Contoso",
+                "Product": "Contoso Platform",
+                "org:client": "shared",
+                "org:env-type": "shared",
+                "org:product": "app"
+              },
+              "type": "Microsoft.Network/virtualNetworks"
+            },
+            "delta": [
+              {
+                "after": null,
+                "before": "Disabled",
+                "changeType": "delete",
+                "children": [],
+                "path": "properties.privateEndpointVNetPolicies"
+              },
+              {
+                "after": null,
+                "before": null,
+                "changeType": "array",
+                "children": [
+                  {
+                    "after": null,
+                    "before": null,
+                    "changeType": "modify",
+                    "children": [
+                      {
+                        "after": null,
+                        "before": false,
+                        "changeType": "delete",
+                        "children": [],
+                        "path": "properties.allowGatewayTransit"
+                      },
+                      {
+                        "after": null,
+                        "before": false,
+                        "changeType": "delete",
+                        "children": [],
+                        "path": "properties.doNotVerifyRemoteGateways"
+                      },
+                      {
+                        "after": null,
+                        "before": true,
+                        "changeType": "delete",
+                        "children": [],
+                        "path": "properties.peerCompleteVnets"
+                      },
+                      {
+                        "after": null,
+                        "before": "FullyInSync",
+                        "changeType": "delete",
+                        "children": [],
+                        "path": "properties.peeringSyncLevel"
+                      },
+                      {
+                        "after": null,
+                        "before": {
+                          "addressPrefixes": [
+                            "10.10.45.0/24"
+                          ]
+                        },
+                        "changeType": "delete",
+                        "children": [],
+                        "path": "properties.remoteAddressSpace"
+                      },
+                      {
+                        "after": null,
+                        "before": {
+                          "addressPrefixes": [
+                            "10.10.45.0/24"
+                          ]
+                        },
+                        "changeType": "delete",
+                        "children": [],
+                        "path": "properties.remoteVirtualNetworkAddressSpace"
+                      }
+                    ],
+                    "path": "0"
+                  }
+                ],
+                "path": "properties.virtualNetworkPeerings"
+              },
+              {
+                "after": "Microsoft.Network/virtualNetworks/virtualNetworkPeerings",
+                "before": null,
+                "changeType": "noEffect",
+                "children": [],
+                "path": "properties.virtualNetworkPeerings[0].type"
+              }
+            ]
+          },
+          "resourceGroup": "app-network-rg",
+          "symbolicName": null,
+          "type": "Microsoft.Network/virtualNetworks",
+          "unsupportedReason": null
+        },
+        {
+          "apiVersion": null,
+          "changeCertainty": "definite",
+          "changeType": "modify",
+          "denyStatusChange": {
+            "after": "none",
+            "before": "none"
+          },
+          "deploymentId": null,
+          "extension": null,
+          "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/app-network-rg/providers/Microsoft.Network/virtualNetworks/app-internal-vnet/virtualNetworkPeerings/peering-to-app-cus",
+          "identifiers": null,
+          "managementStatusChange": {
+            "after": "managed",
+            "before": "managed"
+          },
+          "resourceConfigurationChanges": {
+            "after": {
+              "apiVersion": "2025-05-01",
+              "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/app-network-rg/providers/Microsoft.Network/virtualNetworks/app-internal-vnet/virtualNetworkPeerings/peering-to-app-cus",
+              "name": "peering-to-app-cus",
+              "properties": {
+                "allowForwardedTraffic": true,
+                "allowVirtualNetworkAccess": true,
+                "remoteVirtualNetwork": {
+                  "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/app-network-rg/providers/Microsoft.Network/virtualNetworks/app-cus-vnet",
+                  "resourceGroup": "app-network-rg"
+                },
+                "useRemoteGateways": false
+              },
+              "resourceGroup": "app-network-rg",
+              "type": "Microsoft.Network/virtualNetworks/virtualNetworkPeerings"
+            },
+            "before": {
+              "apiVersion": "2025-05-01",
+              "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/app-network-rg/providers/Microsoft.Network/virtualNetworks/app-internal-vnet/virtualNetworkPeerings/peering-to-app-cus",
+              "name": "peering-to-app-cus",
+              "properties": {
+                "allowForwardedTraffic": true,
+                "allowGatewayTransit": false,
+                "allowVirtualNetworkAccess": true,
+                "doNotVerifyRemoteGateways": false,
+                "peerCompleteVnets": true,
+                "peeringSyncLevel": "FullyInSync",
+                "remoteAddressSpace": {
+                  "addressPrefixes": [
+                    "10.10.45.0/24"
+                  ]
+                },
+                "remoteVirtualNetwork": {
+                  "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/app-network-rg/providers/Microsoft.Network/virtualNetworks/app-cus-vnet",
+                  "resourceGroup": "app-network-rg"
+                },
+                "remoteVirtualNetworkAddressSpace": {
+                  "addressPrefixes": [
+                    "10.10.45.0/24"
+                  ]
+                },
+                "useRemoteGateways": false
+              },
+              "resourceGroup": "app-network-rg",
+              "type": "Microsoft.Network/virtualNetworks/virtualNetworkPeerings"
+            },
+            "delta": [
+              {
+                "after": null,
+                "before": false,
+                "changeType": "delete",
+                "children": [],
+                "path": "properties.allowGatewayTransit"
+              },
+              {
+                "after": null,
+                "before": false,
+                "changeType": "delete",
+                "children": [],
+                "path": "properties.doNotVerifyRemoteGateways"
+              },
+              {
+                "after": null,
+                "before": true,
+                "changeType": "delete",
+                "children": [],
+                "path": "properties.peerCompleteVnets"
+              },
+              {
+                "after": null,
+                "before": "FullyInSync",
+                "changeType": "delete",
+                "children": [],
+                "path": "properties.peeringSyncLevel"
+              },
+              {
+                "after": null,
+                "before": {
+                  "addressPrefixes": [
+                    "10.10.45.0/24"
+                  ]
+                },
+                "changeType": "delete",
+                "children": [],
+                "path": "properties.remoteAddressSpace"
+              },
+              {
+                "after": null,
+                "before": {
+                  "addressPrefixes": [
+                    "10.10.45.0/24"
+                  ]
+                },
+                "changeType": "delete",
+                "children": [],
+                "path": "properties.remoteVirtualNetworkAddressSpace"
+              }
+            ]
+          },
+          "resourceGroup": "app-network-rg",
+          "symbolicName": null,
+          "type": "Microsoft.Network/virtualNetworks/virtualNetworkPeerings",
+          "unsupportedReason": null
+        }
+      ]
+    },
+    "correlationId": "00000000-0000-4000-8000-000000000003",
+    "debugSetting": null,
+    "denySettings": {
+      "applyToChildScopes": false,
+      "excludedActions": [],
+      "excludedPrincipals": [],
+      "mode": "none"
+    },
+    "deploymentScope": null,
+    "deploymentStackLastModified": "2026-05-22T19:16:42+00:00",
+    "deploymentStackResourceId": "/subscriptions/00000000-0000-4000-8000-000000000001/providers/Microsoft.Resources/deploymentStacks/app-network",
+    "description": null,
+    "diagnostics": [],
+    "error": null,
+    "extensionConfigs": null,
+    "externalInputDefinitions": null,
+    "externalInputs": null,
+    "parameters": {
+      "location": {
+        "expression": null,
+        "reference": null,
+        "type": "string",
+        "value": "centralus"
+      },
+      "resourceTags": {
+        "expression": null,
+        "reference": null,
+        "type": null,
+        "value": null
+      }
+    },
+    "parametersLink": null,
+    "provisioningState": "succeeded",
+    "retentionInterval": "3:00:00",
+    "template": null,
+    "templateLink": null,
+    "validationLevel": null
+  },
+  "systemData": null,
+  "tags": {},
+  "type": "Microsoft.Resources/deploymentStacksWhatIfResults"
+}

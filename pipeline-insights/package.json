@@ -1,0 +1,27 @@
+{
+  "name": "pipeline-insights",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Pipeline Insights, an Azure DevOps extension: one page for a project's pipelines, leading with what needs attention.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "workspaces": [
+    "core",
+    "ui",
+    "dev",
+    "extension"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "check:denylist": "node tools/check-denylist.mjs"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "name": "@bicep-whatif/task",
+  "version": "0.1.0",
+  "description": "The Azure Pipelines task: runs deployment-stack what-if against ARM, redacts the response, and attaches it to the build.",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "prebuild": "npm run build --workspace @bicep-whatif/core",
+    "build": "tsc -p tsconfig.json --noEmit && node scripts/bundle.mjs",
+    "pretest": "npm run build --workspace @bicep-whatif/core",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "pretypecheck": "npm run build --workspace @bicep-whatif/core",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@bicep-whatif/core": "0.1.0",
+    "azure-pipelines-task-lib": "^5.2.1",
+    "azure-pipelines-tool-lib": "^2.0.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "esbuild": "^0.25.0"
+  }
+}

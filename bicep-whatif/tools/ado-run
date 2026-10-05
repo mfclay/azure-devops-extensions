@@ -1,0 +1,49 @@
+#!/bin/zsh
+#
+# Run `az devops` against the personal moneymikec organisation, with the PAT
+# redacted from every byte of output.
+#
+#   tools/ado-run devops extension list --output table
+#   tools/ado-run pipelines build list --output table
+#
+# Same two mechanisms as tools/tfx-run, for the same reasons — read that file's
+# header first. The addition here is the variable juggling `az` forces:
+#
+#   `az devops` authenticates from AZURE_DEVOPS_EXT_PAT and nothing else. That
+#   variable may already hold a token for another organisation that other
+#   tooling depends on. Exporting the personal token over it would break every
+#   read against that organisation with an auth error that reads like an expired
+#   token rather than like the wrong token.
+#
+#   So it is set for the duration of this one command only, as a prefix
+#   assignment on the az invocation. The caller's AZURE_DEVOPS_EXT_PAT is never
+#   modified, and nothing persists after the process exits.
+#
+# --- The rule this file exists to enforce -----------------------------------
+#
+# **Never interpolate a secret into an ad-hoc command to inspect it.** Not to
+# check whether it is set, not to check its length. `${var:-default}` returns
+# the VALUE when the variable is set — it substitutes only when unset — so the
+# obvious "is it set?" one-liner prints the secret. Use `${var:+yes}` alone, or
+# better, call this wrapper and read the exit code.
+emulate -L zsh
+set -uo pipefail
+
+if [[ -z "${ado_mmc_org_pat:-}" ]]; then
+  print -u2 "ado-run: ado_mmc_org_pat is not set in this shell."
+  print -u2 "         It is exported from ~/.zshenv, which zsh sources for every"
+  print -u2 "         invocation, so a login shell is enough:"
+  print -u2 ""
+  print -u2 "             zsh -lc 'tools/ado-run devops project list'"
+  print -u2 ""
+  print -u2 "         If that still fails the export is missing or has moved."
+  exit 64
+fi
+
+ORG="${ADO_RUN_ORG:-https://dev.azure.com/moneymikec}"
+
+AZURE_DEVOPS_EXT_PAT="$ado_mmc_org_pat" \
+  az "$@" --organization "$ORG" 2>&1 \
+  | TOKEN="$ado_mmc_org_pat" perl -pe 's/\Q$ENV{TOKEN}\E/[REDACTED]/g'
+
+exit ${pipestatus[1]}

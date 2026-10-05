@@ -1,0 +1,158 @@
+#!/usr/bin/env bash
+#
+# Drive this repo's GitHub Actions from the terminal.
+#
+#   tools/gh-run publish 0.1.2      # dispatch the Publish workflow
+#   tools/gh-run runs [workflow]    # recent runs (default: whatif-publish.yml)
+#   tools/gh-run watch [workflow]   # poll until the newest run finishes
+#
+# --- Why curl and not `gh` ---------------------------------------------------
+#
+# `gh` on this machine is **deliberately unauthenticated**, and must stay that
+# way: `gh auth login` offers to "authenticate Git with your GitHub credentials",
+# which writes a credential.https://github.com.helper into the **global**
+# gitconfig, machine-wide. That would quietly give every repo on this machine a
+# second way to authenticate to github.com, and it would bypass the SSH host
+# alias this repo's remote uses.
+#
+# curl writes no configuration at all. It sends one header and forgets.
+#
+# --- The token ---------------------------------------------------------------
+#
+# A **fine-grained** PAT scoped to this repository alone, with:
+#
+#   Repository access : Only select repositories -> azure-devops-extensions
+#   Permissions       : Actions -> Read and write
+#
+# Nothing else. It cannot read other repos, cannot push, cannot touch the
+# account. Actions:write can start a workflow, which can publish — so it is
+# write-capable, so it does not belong in ~/.zshenv
+# where every process would inherit it. Resolved in this order:
+#
+#   1. $gh_actions_pat, if deliberately exported for the shell
+#   2. the macOS Keychain, service name `gh-actions-pat`
+#   3. an interactive prompt
+#
+# Store it once:
+#   security add-generic-password -a "$USER" -s gh-actions-pat -w
+# Remove it:
+#   security delete-generic-password -s gh-actions-pat
+set -euo pipefail
+
+REPO="${GH_RUN_REPO:-mfclay/azure-devops-extensions}"
+API="https://api.github.com/repos/$REPO"
+REF="${GH_RUN_REF:-main}"
+
+die() { echo "gh-run: $*" >&2; exit 1; }
+
+resolve_token() {
+  if [ -n "${gh_actions_pat:-}" ]; then TOKEN="$gh_actions_pat"; return; fi
+  if command -v security >/dev/null 2>&1 &&
+     TOKEN="$(security find-generic-password -w -s gh-actions-pat 2>/dev/null)" &&
+     [ -n "$TOKEN" ]; then return; fi
+  printf 'GitHub fine-grained PAT (Actions: read and write): ' >&2
+  read -rs TOKEN; printf '\n' >&2
+  [ -n "$TOKEN" ] || die "no token given."
+}
+
+# Every response goes through a redaction filter, matching the other wrappers.
+# GitHub does not echo the token, but a proxy error or a redirect might, and the
+# cost of finding out the hard way is a rotation.
+api() {
+  local method="$1" path="$2" body="${3:-}"
+  local args=(-sS -X "$method"
+    -H "Accept: application/vnd.github+json"
+    -H "X-GitHub-Api-Version: 2022-11-28"
+    -H "Authorization: Bearer $TOKEN"
+    -w '\n%{http_code}')
+  [ -n "$body" ] && args+=(-H "Content-Type: application/json" -d "$body")
+  curl "${args[@]}" "$API$path" 2>&1 | TOKEN="$TOKEN" perl -pe 's/\Q$ENV{TOKEN}\E/[REDACTED]/g'
+}
+
+do_publish() {
+  local version="${1:-}"
+  [ -n "$version" ] || die "usage: gh-run publish <version>"
+  printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' \
+    || die "version '$version' is not MAJOR.MINOR.PATCH."
+  resolve_token
+  local out code
+  out="$(api POST "/actions/workflows/whatif-publish.yml/dispatches" \
+        "{\"ref\":\"$REF\",\"inputs\":{\"version\":\"$version\"}}")"
+  code="$(printf '%s' "$out" | tail -1)"
+  # 204 No Content is success here; the API returns no body to confirm with.
+  [ "$code" = "204" ] || { printf '%s\n' "$out" >&2; die "dispatch failed (HTTP $code)"; }
+  echo "Dispatched Publish for $version on $REF."
+}
+
+do_runs() {
+  local wf="${1:-whatif-publish.yml}"
+  resolve_token
+  api GET "/actions/workflows/$wf/runs?per_page=5" | sed '$d' | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+for r in d.get('workflow_runs', []):
+    print(f\"  #{r['run_number']:<4} {r['status']:<12} {str(r.get('conclusion')):<12} {r['created_at']}  {r['html_url']}\")
+"
+}
+
+do_watch() {
+  local wf="${1:-whatif-publish.yml}"
+  resolve_token
+  local n=0
+  while [ $n -lt 60 ]; do
+    local line
+    line="$(api GET "/actions/workflows/$wf/runs?per_page=1" | sed '$d' | python3 -c "
+import sys, json
+r = json.load(sys.stdin)['workflow_runs'][0]
+print(f\"#{r['run_number']} {r['status']} {r.get('conclusion')}\")
+")"
+    echo "  [$n] $line"
+    case "$line" in *completed*) return 0 ;; esac
+    n=$((n+1)); sleep 20
+  done
+  die "still running after 20 minutes."
+}
+
+# Steps of every job in a run, with each step's conclusion; a failed job also gets
+# the last lines of its log. Read-only: Actions read is enough.
+do_jobs() {
+  local run="${1:-}"
+  [ -n "$run" ] || die "usage: gh-run jobs <run-id>   (the number at the end of a run URL)"
+  resolve_token
+  local failed
+  failed="$(api GET "/actions/runs/$run/jobs" | sed '$d' | python3 -c "
+import sys, json
+for j in json.load(sys.stdin).get('jobs', []):
+    print(f\"job {j['name']}: {j['status']} {j.get('conclusion')}\", file=sys.stderr)
+    for s in j.get('steps', []):
+        print(f\"  {str(s.get('conclusion')):<10} {s['name']}\", file=sys.stderr)
+    if j.get('conclusion') == 'failure':
+        print(j['id'])
+")"
+  local id
+  for id in $failed; do
+    echo "--- job $id: the 30 log lines up to its first error (or the last 40 if none)"
+    curl -sSL -H "Authorization: Bearer $TOKEN" -H "X-GitHub-Api-Version: 2022-11-28" \
+      "$API/actions/jobs/$id/logs" 2>&1 | TOKEN="$TOKEN" perl -pe 's/\Q$ENV{TOKEN}\E/[REDACTED]/g' \
+      | awk '{ buf[NR % 31] = $0 } /##\[error\]/ && !hit { hit = 1; for (i = NR - 30; i <= NR; i++) if (i > 0) print buf[i % 31]; exit }
+             END { if (!hit) for (i = NR - 39; i <= NR; i++) if (i > 0) print buf[i % 31] }'
+  done
+}
+
+case "${1:-}" in
+  jobs)    shift; do_jobs "$@" ;;
+  publish) shift; do_publish "$@" ;;
+  runs)    shift; do_runs "$@" ;;
+  watch)   shift; do_watch "$@" ;;
+  *) cat >&2 <<USAGE
+usage: tools/gh-run <command>
+
+  publish <version>   dispatch the Publish workflow (e.g. 0.1.2)
+  runs [workflow]     recent runs, newest first (default whatif-publish.yml)
+  watch [workflow]    poll until the newest run completes
+  jobs <run-id>       each job's steps; the tail of a failed job's log
+
+Repo: $REPO   Ref: $REF   (override with GH_RUN_REPO / GH_RUN_REF)
+USAGE
+     exit 2 ;;
+esac

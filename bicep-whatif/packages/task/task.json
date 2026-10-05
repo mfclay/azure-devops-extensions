@@ -1,0 +1,209 @@
+{
+  "$schema": "https://raw.githubusercontent.com/Microsoft/azure-pipelines-task-lib/master/tasks.schema.json",
+  "id": "b34d630d-2819-48d6-a62f-9412768de7c5",
+  "name": "StackWhatIf",
+  "friendlyName": "Deployment stack what-if",
+  "description": "Preview or apply an Azure Deployment Stack, and attach the result for the What-If build tab to read.",
+  "helpMarkDown": "Runs `Microsoft.Resources/deploymentStacksWhatIfResults` against ARM and files the raw response as a build attachment, plus a sidecar manifest that is written even when the run fails. [Documentation](https://github.com/mfclay/azure-devops-extensions/tree/main/bicep-whatif)",
+  "category": "Deploy",
+  "author": "mfclay",
+  "version": { "Major": 0, "Minor": 1, "Patch": 0 },
+  "preview": true,
+  "minimumAgentVersion": "3.232.1",
+  "instanceNameFormat": "$(mode) $(stackId)",
+  "groups": [
+    { "name": "protection", "displayName": "Unmanage and deny settings", "isExpanded": true },
+    { "name": "advanced", "displayName": "Advanced", "isExpanded": false }
+  ],
+  "inputs": [
+    {
+      "name": "mode",
+      "type": "pickList",
+      "label": "Mode",
+      "defaultValue": "whatif",
+      "required": true,
+      "options": { "whatif": "What-if (preview only)", "deploy": "Deploy the stack" },
+      "helpMarkDown": "Both modes read the same inputs and take the same code path to ARM, so a preview cannot disagree with the deploy it previews."
+    },
+    {
+      "name": "azureSubscription",
+      "type": "connectedService:AzureRM",
+      "label": "Azure Resource Manager connection",
+      "required": true,
+      "helpMarkDown": "Service principal (secret), workload identity federation, or managed identity. Certificate-based service principals are not supported."
+    },
+    {
+      "name": "stackId",
+      "type": "string",
+      "label": "Stack id",
+      "required": true,
+      "helpMarkDown": "The logical id, e.g. `network`. Used as the attachment name and as the tab's filter key. Not the Azure resource name unless they happen to match — see **Stack name**."
+    },
+    {
+      "name": "stackName",
+      "type": "string",
+      "label": "Deployment stack name",
+      "required": false,
+      "helpMarkDown": "The Azure resource name of the stack, e.g. `app-network`. Defaults to **Stack id**."
+    },
+    {
+      "name": "templateFile",
+      "type": "filePath",
+      "label": "Template file",
+      "required": true,
+      "helpMarkDown": "A `.bicep` with `targetScope = 'subscription'`, or a compiled ARM `.json`."
+    },
+    {
+      "name": "parametersFile",
+      "type": "filePath",
+      "label": "Parameters file",
+      "required": false,
+      "helpMarkDown": "A `.bicepparam` or a JSON parameters file. A `.bicepparam` is compiled in one pass that yields both the template and the parameter values, which is what makes secret redaction reliable."
+    },
+    {
+      "name": "location",
+      "type": "string",
+      "label": "Location",
+      "required": true,
+      "helpMarkDown": "Where the stack — and, in what-if mode, the transient result resource — lives."
+    },
+    {
+      "name": "actionOnUnmanage",
+      "type": "pickList",
+      "label": "Action on unmanage",
+      "required": true,
+      "groupName": "protection",
+      "options": {
+        "detachAll": "detachAll — leave everything in Azure",
+        "deleteResources": "deleteResources — delete resources, detach their groups",
+        "deleteAll": "deleteAll — delete resources, groups and management groups"
+      },
+      "helpMarkDown": "An input to what-if, not just to the deploy: it decides whether a resource dropped from the template is previewed as **Detach** or as **Delete**."
+    },
+    {
+      "name": "denySettingsMode",
+      "type": "pickList",
+      "label": "Deny settings mode",
+      "required": true,
+      "groupName": "protection",
+      "options": {
+        "none": "none",
+        "denyDelete": "denyDelete",
+        "denyWriteAndDelete": "denyWriteAndDelete"
+      }
+    },
+    {
+      "name": "denySettingsApplyToChildScopes",
+      "type": "boolean",
+      "label": "Apply deny settings to child scopes",
+      "defaultValue": "false",
+      "required": false,
+      "groupName": "protection"
+    },
+    {
+      "name": "denySettingsExcludedActions",
+      "type": "string",
+      "label": "Excluded actions",
+      "required": false,
+      "groupName": "protection",
+      "helpMarkDown": "Space-, comma- or newline-separated management operations excluded from the lock."
+    },
+    {
+      "name": "denySettingsExcludedPrincipals",
+      "type": "string",
+      "label": "Excluded principals",
+      "required": false,
+      "groupName": "protection",
+      "helpMarkDown": "Up to five Entra principal object ids excluded from the lock."
+    },
+    {
+      "name": "retentionInterval",
+      "type": "string",
+      "label": "Result retention",
+      "defaultValue": "PT3H",
+      "required": false,
+      "groupName": "advanced",
+      "visibleRule": "mode = whatif",
+      "helpMarkDown": "ISO 8601. The service enforces one to three hours and rejects anything longer at run time, whatever the documentation says."
+    },
+    {
+      "name": "deleteWhatIfResult",
+      "type": "boolean",
+      "label": "Delete the what-if result when done",
+      "defaultValue": "true",
+      "required": false,
+      "groupName": "advanced",
+      "visibleRule": "mode = whatif",
+      "helpMarkDown": "Stack what-if creates a persistent subscription-scope resource that counts toward that scope's limits. Leave this on; retention is the backstop, not the mechanism."
+    },
+    {
+      "name": "bypassStackOutOfSyncError",
+      "type": "boolean",
+      "label": "Bypass stack out-of-sync error",
+      "defaultValue": "false",
+      "required": false,
+      "groupName": "advanced",
+      "visibleRule": "mode = deploy"
+    },
+    {
+      "name": "bicepVersion",
+      "type": "string",
+      "label": "Bicep version",
+      "defaultValue": "0.46.1",
+      "required": false,
+      "groupName": "advanced",
+      "helpMarkDown": "Pinned on purpose. Compiler output changes across versions, and every consumer's what-if should compile identically. A `bicep` already on PATH is deliberately ignored."
+    },
+    {
+      "name": "layer",
+      "type": "string",
+      "label": "Layer",
+      "required": false,
+      "groupName": "advanced",
+      "helpMarkDown": "The deployment layer, recorded in the sidecar and used to group the tab's stack filter. Derived from a leading number in the template file name (`05-workload-stack.bicep` → 5) when not set."
+    },
+    {
+      "name": "resultName",
+      "type": "string",
+      "label": "What-if result name",
+      "required": false,
+      "groupName": "advanced",
+      "visibleRule": "mode = whatif",
+      "helpMarkDown": "Defaults to `whatif-<stackId>-<Build.BuildId>`, which is what keeps two concurrent builds from colliding on the same resource."
+    },
+    {
+      "name": "description",
+      "type": "string",
+      "label": "Description",
+      "required": false,
+      "groupName": "advanced"
+    },
+    {
+      "name": "outputPath",
+      "type": "filePath",
+      "label": "Output directory",
+      "required": false,
+      "groupName": "advanced",
+      "helpMarkDown": "Where the payload, sidecar and summary are written before being attached. Defaults to a temporary directory. Point it at a staging directory to publish them as a pipeline artifact too."
+    },
+    {
+      "name": "publishSummary",
+      "type": "boolean",
+      "label": "Publish a markdown summary",
+      "defaultValue": "true",
+      "required": false,
+      "groupName": "advanced",
+      "helpMarkDown": "Also attach a `Distributedtask.Core.Summary` roll-up, which renders on the build summary page without this extension's tab."
+    }
+  ],
+  "restrictions": {
+    "settableVariables": {
+      "allowed": []
+    }
+  },
+  "execution": {
+    "Node20_1": {
+      "target": "index.js"
+    }
+  }
+}

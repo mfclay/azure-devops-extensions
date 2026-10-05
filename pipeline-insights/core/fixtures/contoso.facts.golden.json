@@ -1,0 +1,341 @@
+{
+ "facts": {
+  "legacy-export-build-deploy": {
+   "triggers": ["Unknown: the YAML could not be read"],
+   "purposeSource": "structural",
+   "purpose": "2 stages ending in Deploy",
+   "yaml": {"state":"unreadable","branch":"main"}
+  },
+  "legacy-export-run": {
+   "triggers": ["Schedule (pipeline settings): 09:00 Pacific Standard Time, all"],
+   "purposeSource": "structural",
+   "purpose": "1 stage, Run",
+   "yaml": {"state":"unreadable","branch":"main"}
+  },
+  "reports-api-build": {
+   "triggers": ["Unknown: the YAML could not be read"],
+   "purposeSource": "none",
+   "yaml": {"state":"unreadable","branch":"main"}
+  },
+  "file-import-app-build": {
+   "triggers": ["CI: `main` — paths `src/app-file-import/*`, `src/shared-lib/src/*`, `pipelines/file-import-app-build.yaml`"],
+   "purposeSource": "catalog",
+   "ciPaths": ["src/app-file-import/*","src/shared-lib/src/*","pipelines/file-import-app-build.yaml"],
+   "purpose": "Builds the file import app image and pushes it to the registry.",
+   "draft": true,
+   "metadataFile": "pipelines/pipelines.meta.yaml",
+   "described": true
+  },
+  "pricing-app-build": {
+   "triggers": ["CI: `main` — paths `src/app-pricing/*`, `src/shared-lib/src/*`, `src/models/src/*` +1 more"],
+   "purposeSource": "catalog",
+   "ciPaths": ["src/app-pricing/*","src/shared-lib/src/*","src/models/src/*","pipelines/pricing-app-build.yaml"],
+   "purpose": "Builds the pricing app image, with the models it loads, and pushes it to the registry.",
+   "draft": true,
+   "metadataFile": "pipelines/pipelines.meta.yaml",
+   "described": true
+  },
+  "orders-unit-tests": {
+   "triggers": ["CI: `main`, `develop`","PR: `main`"],
+   "purposeSource": "catalog",
+   "purpose": "Lints and unit-tests every package in the apps repo, on pushes and as a pull request check.",
+   "draft": true,
+   "metadataFile": "pipelines/pipelines.meta.yaml",
+   "described": true
+  },
+  "catalog-sync-etl-build": {
+   "triggers": ["CI: `main` — paths `src/app-catalog-sync-etl/*`, `src/shared-lib/src/*`, `pipelines/catalog-sync-etl-build.yaml`"],
+   "purposeSource": "catalog",
+   "ciPaths": ["src/app-catalog-sync-etl/*","src/shared-lib/src/*","pipelines/catalog-sync-etl-build.yaml"],
+   "purpose": "Builds the catalog sync job image.",
+   "draft": true,
+   "metadataFile": "pipelines/pipelines.meta.yaml",
+   "described": true
+  },
+  "orders-api-build-deploy": {
+   "triggers": ["CI: `main`, `dev`, `release/v1` — paths `src/*`, `pipelines/build-test_orders-api.yaml`, `pipelines/templates/**` +5 more"],
+   "purposeSource": "catalog",
+   "ciPaths": ["src/*","pipelines/build-test_orders-api.yaml","pipelines/templates/**","pipelines/dockerfiles/orders-api.Dockerfile","src/Orders.Gateway/**","pipelines/dockerfiles/orders-gateway.Dockerfile","tools/SchemaEmitter/**","api-schema.json"],
+   "purpose": "Builds, tests and deploys the orders API and its gateway.",
+   "draft": true,
+   "metadataFile": "pipelines/pipelines.meta.yaml",
+   "described": true
+  },
+  "admin-app-ci": {
+   "triggers": ["CI: `main` — paths `src/app-admin/**`, `src/shared-lib/**`, `src/db-tool/**` +2 more","PR: `main` — paths `src/app-admin/*`, `src/shared-lib/*`, `src/uv.lock` +1 more"],
+   "purposeSource": "catalog",
+   "ciPaths": ["src/app-admin/**","src/shared-lib/**","src/db-tool/**","src/uv.lock","pipelines/ci_app-admin.yaml"],
+   "purpose": "Tests the admin app on pushes to main and as a pull request check.",
+   "draft": true,
+   "metadataFile": "pipelines/pipelines.meta.yaml",
+   "described": true
+  },
+  "config-sync-build": {
+   "triggers": ["CI: `main` — paths `config/**`","PR: `main` — paths `config/*`"],
+   "purposeSource": "catalog",
+   "ciPaths": ["config/**"],
+   "purpose": "Renders the configuration and applies it to the configuration stores once approved.",
+   "draft": true,
+   "metadataFile": "pipelines/pipelines.meta.yaml",
+   "described": true
+  },
+  "vault-secret-scope-create": {
+   "triggers": ["Manual only"],
+   "purposeSource": "catalog",
+   "manualOnly": true,
+   "purpose": "Creates the secret scope a new warehouse region reads its credentials from.",
+   "draft": true,
+   "metadataFile": "pipelines/pipelines.meta.yaml",
+   "described": true
+  },
+  "warehouse-region-east-deploy": {
+   "triggers": ["CI: `main` — paths `warehouse/regions/east/**`, `warehouse/common/**`, `pipelines/warehouse_deploy-region-east.yaml` +2 more"],
+   "purposeSource": "catalog",
+   "ciPaths": ["warehouse/regions/east/**","warehouse/common/**","pipelines/warehouse_deploy-region-east.yaml","pipelines/templates/warehouse-region-deploy.yaml","pipelines/templates/warehouse-bundle-stage.yaml"],
+   "purpose": "Deploys the east region warehouse bundle.",
+   "draft": true,
+   "metadataFile": "pipelines/pipelines.meta.yaml",
+   "described": true
+  },
+  "warehouse-region-west-deploy": {
+   "triggers": ["CI: `main` — paths `warehouse/regions/west/**`, `warehouse/common/**`, `pipelines/warehouse_deploy-region-west.yaml` +2 more"],
+   "purposeSource": "catalog",
+   "ciPaths": ["warehouse/regions/west/**","warehouse/common/**","pipelines/warehouse_deploy-region-west.yaml","pipelines/templates/warehouse-region-deploy.yaml","pipelines/templates/warehouse-bundle-stage.yaml"],
+   "purpose": "Deploys the west region warehouse bundle.",
+   "draft": true,
+   "metadataFile": "pipelines/pipelines.meta.yaml",
+   "described": true
+  },
+  "db-tool-ci": {
+   "triggers": ["CI: `main` — paths `src/db-tool/**`, `src/uv.lock`, `database/config.yaml` +4 more","PR: `main` — paths `src/db-tool/*`, `database/*`, `pipelines/ci_db-tool.yaml`"],
+   "purposeSource": "catalog",
+   "ciPaths": ["src/db-tool/**","src/uv.lock","database/config.yaml","database/schema/orders.hcl","database/schema/catalog.hcl","database/api/api_schema.hcl","pipelines/ci_db-tool.yaml"],
+   "purpose": "Tests the database tool and checks the schema files on pushes and pull requests.",
+   "draft": true,
+   "metadataFile": "pipelines/pipelines.meta.yaml",
+   "described": true
+  },
+  "ml-ranker-build-deploy": {
+   "triggers": ["CI: `main` — paths `src/models/deployments/ranker-gpu/*`, `src/models/deployments/ranker-cpu/*`, `pipelines/build-deploy_ranker.yaml`"],
+   "purposeSource": "catalog",
+   "ciPaths": ["src/models/deployments/ranker-gpu/*","src/models/deployments/ranker-cpu/*","pipelines/build-deploy_ranker.yaml"],
+   "purpose": "Builds and deploys the GPU and CPU ranker model endpoints.",
+   "draft": true,
+   "metadataFile": "pipelines/pipelines.meta.yaml",
+   "described": true
+  },
+  "db-tool-job-build": {
+   "triggers": ["CI: `main` — paths `src/db-tool/*`, `database/*`, `src/pyproject.toml` +4 more","CI on `Platform/Orders.Deployment`: `main` — paths `config/_rendered/db-tool/*`"],
+   "purposeSource": "catalog",
+   "ciPaths": ["src/db-tool/*","database/*","src/pyproject.toml","src/uv.lock","src/shared-lib/src/reference/*","pipelines/dockerfiles/db-tool-job.Dockerfile","pipelines/db-tool-job-build.yaml"],
+   "otherRepos": ["Platform/Orders.Deployment"],
+   "purpose": "Builds the database tool job image that applies schema changes.",
+   "draft": true,
+   "metadataFile": "pipelines/pipelines.meta.yaml",
+   "described": true
+  },
+  "db-tool-job-run": {
+   "triggers": ["Manual only"],
+   "purposeSource": "catalog",
+   "manualOnly": true,
+   "purpose": "Runs the database tool job against one environment.",
+   "draft": true,
+   "metadataFile": "pipelines/pipelines.meta.yaml",
+   "described": true
+  },
+  "price-check-gate-job-build": {
+   "triggers": ["CI: `main` — paths `src/app-price-check/*`, `src/app-pricing/*`, `src/models/*` +5 more"],
+   "purposeSource": "catalog",
+   "ciPaths": ["src/app-price-check/*","src/app-pricing/*","src/models/*","src/shared-lib/*","src/pyproject.toml","src/uv.lock","pipelines/dockerfiles/price-check-gate-job.Dockerfile","pipelines/price-check-gate-job-build.yaml"],
+   "purpose": "Builds the price check gate job image.",
+   "draft": true,
+   "metadataFile": "pipelines/pipelines.meta.yaml",
+   "described": true
+  },
+  "infra-stacks": {
+   "triggers": ["CI: `main` — paths `deployment-stacks/**`, `pipelines/infra-stacks/**`, `config/_rendered/stack-params/**` +1 more"],
+   "purposeSource": "catalog",
+   "ciPaths": ["deployment-stacks/**","pipelines/infra-stacks/**","config/_rendered/stack-params/**","config/images.*.json"],
+   "purpose": "Runs what-if, then deploys, each infrastructure stack in order, with an approval before each deploy.",
+   "draft": true,
+   "metadataFile": "pipelines/pipelines.meta.yaml",
+   "described": true
+  },
+  "price-check-gate": {
+   "triggers": ["Manual only"],
+   "purposeSource": "catalog",
+   "manualOnly": true,
+   "purpose": "Scores a candidate pricing model against the current one and fails if it is worse.",
+   "draft": true,
+   "metadataFile": "pipelines/pipelines.meta.yaml",
+   "described": true
+  },
+  "model-retrain-run": {
+   "triggers": ["Schedule: `0 1 5 1,4,7,10 *` UTC Submit","Schedule: `0 5 5 1,4,7,10 *` UTC Check-4h","Schedule: `0 11 5 1,4,7,10 *` UTC Check-10h","Schedule: `0 1 6 1,4,7,10 *` UTC Check-24h"],
+   "purposeSource": "catalog",
+   "purpose": "Retrains the pricing model each quarter and checks on the job until it finishes.",
+   "draft": true,
+   "metadataFile": "pipelines/pipelines.meta.yaml",
+   "described": true
+  },
+  "pricing-app-deploy": {
+   "triggers": ["After `pricing-app-build`: `main`"],
+   "purposeSource": "catalog",
+   "runsAfter": "pricing-app-build",
+   "runsAfterAll": ["pricing-app-build"],
+   "purpose": "Deploys each new pricing app build to staging, then to production after approval.",
+   "draft": true,
+   "metadataFile": "pipelines/pipelines.meta.yaml",
+   "described": true
+  },
+  "file-import-app-deploy": {
+   "triggers": ["After `file-import-app-build`: `main`"],
+   "purposeSource": "catalog",
+   "runsAfter": "file-import-app-build",
+   "runsAfterAll": ["file-import-app-build"],
+   "purpose": "Deploys each new file import app build to staging, then to production after approval.",
+   "draft": true,
+   "metadataFile": "pipelines/pipelines.meta.yaml",
+   "described": true
+  },
+  "catalog-sync-etl-deploy": {
+   "triggers": ["After `catalog-sync-etl-build`: `main`"],
+   "purposeSource": "catalog",
+   "runsAfter": "catalog-sync-etl-build",
+   "runsAfterAll": ["catalog-sync-etl-build"],
+   "purpose": "Deploys each new catalog sync job build to staging, then to production after approval.",
+   "draft": true,
+   "metadataFile": "pipelines/pipelines.meta.yaml",
+   "described": true
+  },
+  "tools-proxy-build": {
+   "triggers": ["CI: `main` — paths `src/tools-proxy/*`, `pipelines/dockerfiles/tools-proxy.Dockerfile`, `pipelines/tools-proxy-build.yaml`"],
+   "purposeSource": "catalog",
+   "ciPaths": ["src/tools-proxy/*","pipelines/dockerfiles/tools-proxy.Dockerfile","pipelines/tools-proxy-build.yaml"],
+   "purpose": "Builds the tools proxy image.",
+   "draft": true,
+   "metadataFile": "pipelines/pipelines.meta.yaml",
+   "described": true
+  },
+  "smoke-environment": {
+   "triggers": ["Manual only"],
+   "purposeSource": "catalog",
+   "manualOnly": true,
+   "purpose": "Deploys a throwaway workload end to end, tests it, and tears it down.",
+   "draft": true,
+   "metadataFile": "pipelines/pipelines.meta.yaml",
+   "described": true
+  },
+  "webapp-storefront-ci": {
+   "triggers": ["CI: `main` — paths `src/webapp-storefront/**`, `src/shared-web/**`, `src/shared-lib/**` +2 more","PR: `main` — paths `src/webapp-storefront/*`, `src/shared-web/*`, `src/shared-lib/*` +2 more"],
+   "purposeSource": "catalog",
+   "ciPaths": ["src/webapp-storefront/**","src/shared-web/**","src/shared-lib/**","src/uv.lock","pipelines/webapp-storefront-ci.yaml"],
+   "purpose": "Tests the storefront web app on pushes to main and as a pull request check.",
+   "draft": true,
+   "metadataFile": "pipelines/pipelines.meta.yaml",
+   "described": true
+  },
+  "webapp-storefront-build": {
+   "triggers": ["CI: `main` — paths `src/webapp-storefront/*`, `src/shared-web/*`, `src/shared-lib/*` +7 more","CI on `Platform/Orders.Deployment`: `main` — paths `config/_rendered/db-tool/*`"],
+   "purposeSource": "catalog",
+   "ciPaths": ["src/webapp-storefront/*","src/shared-web/*","src/shared-lib/*","database/config.yaml","database/schema/catalog.hcl","src/pyproject.toml","src/uv.lock","pipelines/dockerfiles/webapp-storefront.Dockerfile","pipelines/dockerfiles/webapp-storefront.Dockerfile.dockerignore","pipelines/webapp-storefront-build.yaml"],
+   "otherRepos": ["Platform/Orders.Deployment"],
+   "purpose": "Builds the storefront web app image.",
+   "draft": true,
+   "metadataFile": "pipelines/pipelines.meta.yaml",
+   "described": true
+  },
+  "webapp-storefront-deploy": {
+   "triggers": ["After `webapp-storefront-build`: `main`"],
+   "purposeSource": "catalog",
+   "runsAfter": "webapp-storefront-build",
+   "runsAfterAll": ["webapp-storefront-build"],
+   "purpose": "Deploys each new storefront build to staging, then region by region to production after approval.",
+   "draft": true,
+   "metadataFile": "pipelines/pipelines.meta.yaml",
+   "described": true
+  },
+  "webapp-admin-build": {
+   "triggers": ["CI: `main` — paths `src/webapp-admin/*`, `src/shared-web/*`, `src/shared-lib/*` +6 more","CI on `Platform/Orders.Deployment`: `main` — paths `config/_rendered/db-tool/*`"],
+   "purposeSource": "catalog",
+   "ciPaths": ["src/webapp-admin/*","src/shared-web/*","src/shared-lib/*","database/config.yaml","src/pyproject.toml","src/uv.lock","pipelines/dockerfiles/webapp-admin.Dockerfile","pipelines/dockerfiles/webapp-admin.Dockerfile.dockerignore","pipelines/webapp-admin-build.yaml"],
+   "otherRepos": ["Platform/Orders.Deployment"],
+   "purpose": "Builds the admin web app image.",
+   "draft": true,
+   "metadataFile": "pipelines/pipelines.meta.yaml",
+   "described": true
+  },
+  "webapp-admin-ci": {
+   "triggers": ["CI: `main` — paths `src/webapp-admin/**`, `src/shared-web/**`, `src/shared-lib/**` +2 more"],
+   "purposeSource": "catalog",
+   "ciPaths": ["src/webapp-admin/**","src/shared-web/**","src/shared-lib/**","src/uv.lock","pipelines/webapp-admin-ci.yaml"],
+   "purpose": "Tests the admin web app on pushes to main.",
+   "draft": true,
+   "metadataFile": "pipelines/pipelines.meta.yaml",
+   "described": true
+  },
+  "webapp-admin-deploy": {
+   "triggers": ["After `webapp-admin-build`: `main`"],
+   "purposeSource": "catalog",
+   "runsAfter": "webapp-admin-build",
+   "runsAfterAll": ["webapp-admin-build"],
+   "purpose": "Deploys each new admin web app build to staging, then to production.",
+   "draft": true,
+   "metadataFile": "pipelines/pipelines.meta.yaml",
+   "described": true
+  },
+  "devtools-ci": {
+   "triggers": ["CI: `main`"],
+   "purposeSource": "derived",
+   "purpose": "Installs, typechecks, tests and builds the developer tools on every push to main.",
+   "metadataFolder": "pipelines"
+  }
+ },
+ "catalogs": [
+  {
+   "repo": "Orders.Api",
+   "path": "pipelines/pipelines.meta.yaml",
+   "problems": [],
+   "orphans": [],
+   "readable": true,
+   "foundBy": "well-known"
+  },
+  {
+   "repo": "Orders.Apps",
+   "path": "pipelines/pipelines.meta.yaml",
+   "problems": [],
+   "orphans": [],
+   "readable": true,
+   "foundBy": "well-known"
+  },
+  {
+   "repo": "Orders.Deployment",
+   "path": "pipelines/pipelines.meta.yaml",
+   "problems": [],
+   "orphans": [],
+   "readable": true,
+   "foundBy": "well-known"
+  },
+  {
+   "repo": "Orders.Legacy",
+   "path": null,
+   "problems": [],
+   "orphans": [],
+   "readable": false
+  },
+  {
+   "repo": "Orders.Reports",
+   "path": null,
+   "problems": [],
+   "orphans": [],
+   "readable": false
+  },
+  {
+   "repo": "Orders.Tools",
+   "path": null,
+   "problems": [],
+   "orphans": [],
+   "readable": true
+  }
+ ]
+}

@@ -1,0 +1,5 @@
+# Each extension folder carries its own .gitignore for build output. This one covers the root.
+.DS_Store
+Icon[[:cntrl:]]
+.vscode/
+node_modules/

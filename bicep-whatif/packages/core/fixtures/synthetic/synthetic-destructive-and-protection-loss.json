@@ -1,0 +1,152 @@
+{
+  "_synthetic": {
+    "warning": "SYNTHETIC — NOT A CAPTURED PAYLOAD. Hand-authored against the deploymentStacks/stable/2025-07-01 swagger.",
+    "why": "No live stack in the estate produces a Detach or a Delete, so the two most severe rungs of the severity ladder have no real example. These are constructed to exercise them.",
+    "shapeSource": "Field names, casing and nesting copied from the real build 7700017 captures in ../real/ so the parser sees an identical shape.",
+    "doNotTreatAsEvidence": "Nothing here proves how ARM behaves. It proves how this normalizer behaves when ARM says these things."
+  },
+  "id": "/subscriptions/00000000-0000-4000-8000-000000000001/providers/Microsoft.Resources/deploymentStacks/synthetic-severity",
+  "location": "centralus",
+  "name": "synthetic-severity",
+  "type": "Microsoft.Resources/deploymentStacks/deploymentStackWhatIfResults",
+  "tags": {},
+  "systemData": null,
+  "properties": {
+    "actionOnUnmanage": {
+      "managementGroups": "detach",
+      "resourceGroups": "detach",
+      "resources": "delete",
+      "resourcesWithoutDeleteSupport": "fail"
+    },
+    "correlationId": "00000000-0000-4000-8000-000000000004",
+    "debugSetting": null,
+    "denySettings": {
+      "applyToChildScopes": false,
+      "excludedActions": [],
+      "excludedPrincipals": [],
+      "mode": "denyWriteAndDelete"
+    },
+    "deploymentScope": null,
+    "deploymentStackLastModified": null,
+    "deploymentStackResourceId": "/subscriptions/00000000-0000-4000-8000-000000000001/providers/Microsoft.Resources/deploymentStacks/synthetic-severity",
+    "description": null,
+    "diagnostics": [],
+    "error": null,
+    "extensionConfigs": null,
+    "externalInputDefinitions": null,
+    "externalInputs": null,
+    "parameters": {},
+    "parametersLink": null,
+    "provisioningState": "succeeded",
+    "retentionInterval": "3:00:00",
+    "template": null,
+    "templateLink": null,
+    "validationLevel": "Provider",
+    "changes": {
+      "denySettingsChange": {
+        "before": { "applyToChildScopes": false, "excludedActions": [], "excludedPrincipals": [], "mode": "DenyWriteAndDelete" },
+        "after": { "applyToChildScopes": false, "excludedActions": [], "excludedPrincipals": [], "mode": "None" },
+        "delta": []
+      },
+      "deploymentScopeChange": null,
+      "resourceChanges": [
+        {
+          "apiVersion": "2025-05-01",
+          "changeCertainty": "definite",
+          "changeType": "delete",
+          "denyStatusChange": { "before": "denyWriteAndDelete", "after": "none" },
+          "deploymentId": null,
+          "extension": null,
+          "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/synthetic-rg/providers/Microsoft.Storage/storageAccounts/syntheticdoomed",
+          "identifiers": null,
+          "managementStatusChange": { "before": "managed", "after": "notManaged" },
+          "resourceConfigurationChanges": { "before": { "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/synthetic-rg/providers/Microsoft.Storage/storageAccounts/syntheticdoomed", "name": "syntheticdoomed", "type": "Microsoft.Storage/storageAccounts", "location": "centralus" }, "after": null, "delta": [] },
+          "resourceGroup": "synthetic-rg",
+          "symbolicName": "doomedStorage",
+          "type": "Microsoft.Storage/storageAccounts",
+          "unsupportedReason": null
+        },
+        {
+          "apiVersion": "2025-05-01",
+          "changeCertainty": "definite",
+          "changeType": "detach",
+          "denyStatusChange": { "before": "denyWriteAndDelete", "after": "removedBySystem" },
+          "deploymentId": null,
+          "extension": null,
+          "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/synthetic-rg/providers/Microsoft.Network/virtualNetworks/synthetic-vnet",
+          "identifiers": null,
+          "managementStatusChange": { "before": "managed", "after": "notManaged" },
+          "resourceConfigurationChanges": { "before": { "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/synthetic-rg/providers/Microsoft.Network/virtualNetworks/synthetic-vnet", "name": "synthetic-vnet", "type": "Microsoft.Network/virtualNetworks", "location": "centralus" }, "after": null, "delta": [] },
+          "resourceGroup": "synthetic-rg",
+          "symbolicName": "detachedVnet",
+          "type": "Microsoft.Network/virtualNetworks",
+          "unsupportedReason": null
+        },
+        {
+          "apiVersion": "2025-04-01",
+          "changeCertainty": "definite",
+          "changeType": "noChange",
+          "denyStatusChange": { "before": "denyWriteAndDelete", "after": "denyWriteAndDelete" },
+          "deploymentId": null,
+          "extension": null,
+          "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/synthetic-rg/providers/Microsoft.KeyVault/vaults/synthetic-kv",
+          "identifiers": null,
+          "managementStatusChange": { "before": "managed", "after": "notManaged" },
+          "resourceConfigurationChanges": { "before": {}, "after": {}, "delta": [] },
+          "resourceGroup": "synthetic-rg",
+          "symbolicName": "quietlyUnmanagedVault",
+          "type": "Microsoft.KeyVault/vaults",
+          "unsupportedReason": null
+        },
+        {
+          "apiVersion": "2025-04-01",
+          "changeCertainty": "definite",
+          "changeType": "modify",
+          "denyStatusChange": { "before": "denyWriteAndDelete", "after": "denyDelete" },
+          "deploymentId": null,
+          "extension": null,
+          "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/synthetic-rg/providers/Microsoft.ContainerRegistry/registries/syntheticacr",
+          "identifiers": null,
+          "managementStatusChange": { "before": "managed", "after": "managed" },
+          "resourceConfigurationChanges": { "before": { "properties": { "publicNetworkAccess": "Disabled" } }, "after": { "properties": { "publicNetworkAccess": "Enabled" } }, "delta": [ { "after": "Enabled", "before": "Disabled", "changeType": "modify", "children": [], "path": "properties.publicNetworkAccess" } ] },
+          "resourceGroup": "synthetic-rg",
+          "symbolicName": "weakenedRegistry",
+          "type": "Microsoft.ContainerRegistry/registries",
+          "unsupportedReason": null
+        },
+        {
+          "apiVersion": "2025-04-01",
+          "changeCertainty": "definite",
+          "changeType": "create",
+          "denyStatusChange": { "before": "none", "after": "denyWriteAndDelete" },
+          "deploymentId": null,
+          "extension": null,
+          "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/synthetic-rg/providers/Microsoft.Insights/components/synthetic-appi",
+          "identifiers": null,
+          "managementStatusChange": { "before": "notManaged", "after": "managed" },
+          "resourceConfigurationChanges": { "before": null, "after": { "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/synthetic-rg/providers/Microsoft.Insights/components/synthetic-appi", "name": "synthetic-appi", "type": "Microsoft.Insights/components", "location": "centralus" }, "delta": [] },
+          "resourceGroup": "synthetic-rg",
+          "symbolicName": "newInsights",
+          "type": "Microsoft.Insights/components",
+          "unsupportedReason": null
+        },
+        {
+          "apiVersion": null,
+          "changeCertainty": "imprecise",
+          "changeType": "unsupported",
+          "denyStatusChange": { "before": "none", "after": "none" },
+          "deploymentId": null,
+          "extension": null,
+          "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/synthetic-rg/providers/Contoso.Widgets/widgets/synthetic-widget",
+          "identifiers": null,
+          "managementStatusChange": { "before": "managed", "after": "managed" },
+          "resourceConfigurationChanges": { "before": null, "after": null, "delta": [] },
+          "resourceGroup": "synthetic-rg",
+          "symbolicName": "opaqueWidget",
+          "type": "Contoso.Widgets/widgets",
+          "unsupportedReason": "ResourceTypeUnsupported"
+        }
+      ]
+    }
+  }
+}

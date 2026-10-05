@@ -1,0 +1,29 @@
+{
+  "name": "@pipeline-insights/dev",
+  "version": "0.1.0",
+  "description": "Local dev page: ui and core on the synthetic fixture estate. Never packaged.",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "predev": "npm run build --workspace @pipeline-insights/ui",
+    "dev": "vite",
+    "prebuild": "npm run build --workspace @pipeline-insights/ui",
+    "build": "tsc -p tsconfig.json && vite build",
+    "test": "vitest run --passWithNoTests",
+    "pretypecheck": "npm run build --workspace @pipeline-insights/ui",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@pipeline-insights/core": "0.1.3",
+    "@pipeline-insights/ui": "0.1.3",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^6.1.0",
+    "vite": "^8.2.2"
+  }
+}
