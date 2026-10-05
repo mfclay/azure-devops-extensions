@@ -2,6 +2,8 @@
 
 One page in the Pipelines menu that shows a project's pipelines at a glance.
 
+![The Insights page: pipelines that need attention, most urgent first, beside the health of every pipeline in the project](images/screenshot-at-a-glance.png)
+
 - **Needs attention:** failing pipelines, runs waiting at an approval, and pipelines that have
   gone quiet, most urgent first.
 - **Pipeline health:** every pipeline by state, with run counts and success rates for the last 7,
@@ -11,6 +13,10 @@ One page in the Pipelines menu that shows a project's pipelines at a glance.
   subfolders.
 - **Get more from Insights:** a panel at the bottom of the page that says what your pipelines'
   descriptions are still missing and what each would unlock.
+
+![A folder block: each pipeline's last 15 runs, its latest run's stages, and its success rate](images/screenshot-failing-or-waiting.png)
+
+The page follows your Azure DevOps theme, light or dark, and switches with it without a reload.
 
 The page reads Azure DevOps with your own sign-in, so you see only the pipelines you can already
 open. Nothing is stored outside Azure DevOps; your browser only remembers whether you left the
