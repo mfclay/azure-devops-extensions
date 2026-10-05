@@ -25,6 +25,9 @@
   "content": {
     "details": {
       "path": "overview.md"
+    },
+    "license": {
+      "path": "LICENSE"
     }
   },
   "links": {
@@ -54,6 +57,10 @@
     },
     {
       "path": "images",
+      "addressable": true
+    },
+    {
+      "path": "LICENSE",
       "addressable": true
     }
   ],

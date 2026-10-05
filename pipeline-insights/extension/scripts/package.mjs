@@ -73,6 +73,7 @@ const staged = [
   ['The manifest', path.join(root, 'vss-extension.json'), 'it lives beside package.json'],
   ['The overview', path.join(root, 'overview.md'), 'it lives beside package.json'],
   ['The images', path.join(root, 'images'), 'they live beside package.json'],
+  ['The license', path.join(root, '..', 'LICENSE'), 'it lives at the top of pipeline-insights'],
 ];
 for (const [what, file, how] of staged) {
   if (!existsSync(file)) {
@@ -89,6 +90,7 @@ await fs.cp(hubDist, path.join(build, 'hub'), { recursive: true });
 await fs.cp(path.join(root, 'images'), path.join(build, 'images'), { recursive: true });
 await fs.copyFile(path.join(root, 'vss-extension.json'), path.join(build, 'vss-extension.json'));
 await fs.copyFile(path.join(root, 'overview.md'), path.join(build, 'overview.md'));
+await fs.copyFile(path.join(root, '..', 'LICENSE'), path.join(build, 'LICENSE'));
 
 // ── No real identifiers in what ships ────────────────────────────────────────
 
