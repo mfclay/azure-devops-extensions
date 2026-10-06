@@ -1,6 +1,6 @@
 <!-- Built from extension/overview.md by `npm run readme`. Edit that file, not this one. -->
 
-![Pipeline Insights. Every pipeline in a project at a glance: what's failing or waiting, how healthy each one is, and how they're organised.](extension/images/hero-banner.png)
+![Pipeline Insights. Every pipeline in a project at a glance: what's failing or waiting, how healthy each one is, and how they're organized.](extension/images/hero-banner.png)
 
 One page in the Pipelines menu that shows a project's pipelines at a glance.
 

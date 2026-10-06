@@ -1,4 +1,4 @@
-![Pipeline Insights. Every pipeline in a project at a glance: what's failing or waiting, how healthy each one is, and how they're organised.](images/hero-banner.png)
+![Pipeline Insights. Every pipeline in a project at a glance: what's failing or waiting, how healthy each one is, and how they're organized.](images/hero-banner.png)
 
 One page in the Pipelines menu that shows a project's pipelines at a glance.
 
