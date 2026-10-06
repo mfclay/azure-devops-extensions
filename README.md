@@ -6,7 +6,7 @@ own lockfile, tests, packaging and docs. Start with the extension's README.
 | Extension | Folder | What it is |
 |---|---|---|
 | Bicep What-If for Deployment Stacks | [`bicep-whatif/`](bicep-whatif) | A build-results tab and pipeline task for Azure Deployment Stacks what-if output, filterable and severity-ranked. |
-| Pipeline Insights | [`pipeline-insights/`](pipeline-insights) | One page in the Pipelines menu that shows a project's pipelines at a glance: what needs attention, estate health, and every folder's recent runs. |
+| Pipeline Insights | [`pipeline-insights/`](pipeline-insights) | One page in the Pipelines menu that shows a project's pipelines at a glance: what needs attention, pipeline health, and every folder's recent runs. |
 
 ```bash
 task pre-commit   # every extension's checks, plus the repo-wide identifier scan
