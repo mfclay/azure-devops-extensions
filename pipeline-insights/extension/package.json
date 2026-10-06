@@ -13,6 +13,8 @@
     "package": "node scripts/package.mjs",
     "pretest": "npm run build --workspace @pipeline-insights/ui",
     "test": "vitest run",
+    "precoverage": "npm run build --workspace @pipeline-insights/ui",
+    "coverage": "vitest run --coverage",
     "pretypecheck": "npm run build --workspace @pipeline-insights/ui",
     "typecheck": "tsc -p tsconfig.json"
   },

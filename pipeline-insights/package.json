@@ -17,12 +17,14 @@
   "scripts": {
     "build": "npm run build --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
+    "coverage": "npm run coverage --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "check:denylist": "node tools/check-denylist.mjs",
     "readme": "node tools/readme.mjs",
     "check:readme": "node tools/readme.mjs --check"
   },
   "devDependencies": {
+    "@vitest/coverage-v8": "3.2.7",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4"
   }

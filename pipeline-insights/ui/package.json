@@ -22,6 +22,8 @@
     "build": "tsc -p tsconfig.build.json",
     "pretest": "npm run build --workspace @pipeline-insights/core",
     "test": "vitest run",
+    "precoverage": "npm run build --workspace @pipeline-insights/core",
+    "coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "pretypecheck": "npm run build --workspace @pipeline-insights/core",
     "typecheck": "tsc -p tsconfig.json"

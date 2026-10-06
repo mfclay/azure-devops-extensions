@@ -85,6 +85,9 @@ describe('parseCatalog', () => {
 
   it('says what is wrong with a file it cannot use', () => {
     expect(parseCatalog('').problems).toEqual(['The file is empty.']);
+    // A document with nothing in it is empty too, not a file with no sections.
+    expect(parseCatalog('---\n').problems).toEqual(['The file is empty.']);
+    expect(parseCatalog('# owners go here\n  # later\n').problems).toEqual(['The file is empty.']);
     expect(parseCatalog('- a\n- b\n').problems).toEqual(['The file should be a set of sections, starting with `pipelines:`.']);
     expect(parseCatalog('pipelines: [a]\n').problems).toEqual(["`pipelines:` should map each pipeline's YAML path to its fields."]);
     const [invalid] = parseCatalog('pipelines:\n  a.yaml:\n    owner: o\n    owner: p\n').problems;

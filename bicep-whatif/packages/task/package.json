@@ -10,6 +10,8 @@
     "build": "tsc -p tsconfig.json --noEmit && node scripts/bundle.mjs",
     "pretest": "npm run build --workspace @bicep-whatif/core",
     "test": "vitest run",
+    "precoverage": "npm run build --workspace @bicep-whatif/core",
+    "coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "pretypecheck": "npm run build --workspace @bicep-whatif/core",
     "typecheck": "tsc -p tsconfig.json --noEmit"

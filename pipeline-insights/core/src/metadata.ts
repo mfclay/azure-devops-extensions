@@ -63,7 +63,8 @@ export function catalogKey(path: string): string {
 export function parseCatalog(text: string): ParsedCatalog {
   const entries = new Map<string, CatalogEntry>();
   const problems: string[] = [];
-  if (!text.trim()) return { entries, problems: ['The file is empty.'] };
+  // js-yaml throws on a file of only comments rather than returning null, so test for one first.
+  if (!text.replace(/^\s*#.*$/gm, '').trim()) return { entries, problems: ['The file is empty.'] };
   let data: unknown;
   try {
     data = load(text);

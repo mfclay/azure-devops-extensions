@@ -10,5 +10,11 @@ export default defineConfig({
     // `@vitest-environment` docblock.
     environment: 'node',
     include: ['test/**/*.test.ts', 'test/**/*.test.tsx'],
+    coverage: {
+      provider: 'v8',
+      include: ['src/**'],
+      // A few points under what the suite reaches, so a change that drops tests fails `npm run coverage`.
+      thresholds: { lines: 97, statements: 97, branches: 95, functions: 95 },
+    },
   },
 });

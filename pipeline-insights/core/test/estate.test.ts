@@ -3,15 +3,21 @@ import {
   BUILD_VALIDATION_POLICY_TYPE,
   FixtureSource,
   loadEstate,
+  loadMetadata,
   loadRunStages,
   MemoryCache,
+  RecordingSource,
   trimBuildPolicy,
   trimDefinition,
   trimRun,
   trimTimeline,
+  type Fixture,
   type PipelineSource,
 } from '../src/index.js';
 import { def, fixture, run, timeline } from './synthetic.js';
+
+// The synthetic estate, for the capture round trip.
+import contosoJson from '../fixtures/contoso.json';
 
 describe('trim', () => {
   it('keeps only what core reads from a definition', () => {
@@ -73,6 +79,8 @@ describe('trim', () => {
       isEnabled: true,
       settings: { buildDefinitionId: 7, displayName: 'CI', scope: [{ repositoryId: 'r', refName: 'refs/heads/main', matchKind: 'Exact' }] },
     });
+    // A policy with no settings still trims, to one that names no pipeline.
+    expect(trimBuildPolicy({ id: 3, type: { id: BUILD_VALIDATION_POLICY_TYPE } })).toEqual({ id: 3, settings: {} });
   });
 });
 
@@ -156,5 +164,35 @@ describe('loadEstate', () => {
     await loadRunStages(wrapped, cache, 10, true);
     expect(calls).toEqual([10]);
     expect(await loadRunStages(wrapped, cache, 99, true)).toBeNull();
+  });
+});
+
+describe('RecordingSource', () => {
+  const contoso = contosoJson as unknown as Fixture;
+  const meta = { capturedAt: contoso.capturedAt, org: contoso.org, project: contoso.project };
+
+  it('saves what a capture read as a fixture that replays the same estate and descriptions', async () => {
+    const recorder = new RecordingSource(new FixtureSource(contoso));
+    const estate = await loadEstate(recorder, new MemoryCache());
+    const metadata = await loadMetadata(recorder, new MemoryCache(), estate);
+    const recorded = recorder.fixture(meta);
+
+    expect(recorded).toMatchObject({ format: 1, ...meta });
+    // Timelines are saved in run order, so a capture diffs cleanly against the last one.
+    const ids = Object.keys(recorded.timelines).map(Number);
+    expect(ids).toEqual([...ids].sort((a, b) => a - b));
+
+    const replay = new FixtureSource(recorded);
+    const replayed = await loadEstate(replay, new MemoryCache());
+    expect(replayed).toEqual(estate);
+    expect(await loadMetadata(replay, new MemoryCache(), replayed)).toEqual(metadata);
+  });
+
+  it('leaves out the files section when nothing was listed', async () => {
+    const recorder = new RecordingSource(new FixtureSource(contoso));
+    await loadEstate(recorder, new MemoryCache());
+    const recorded = recorder.fixture(meta);
+    expect(recorded.files).toBeUndefined();
+    expect(recorded.buildValidationPolicies).toBeNull();
   });
 });

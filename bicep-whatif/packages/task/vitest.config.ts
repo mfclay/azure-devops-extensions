@@ -13,5 +13,12 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['test/**/*.test.ts'],
+    coverage: {
+      provider: 'v8',
+      include: ['src/**'],
+      reporter: ['text-summary', 'text'],
+      // A few points under what the suite reaches, so a real drop fails and noise does not.
+      thresholds: { lines: 92, statements: 92, branches: 84, functions: 94 },
+    },
   },
 });

@@ -217,6 +217,45 @@ describe('loadMetadata', () => {
     expect(plain.searched).toBe(false);
   });
 
+  it('says when a repo could not be searched, or its metadata file could not be read', async () => {
+    const source = new FixtureSource(fx);
+    const unsearchable: PipelineSource = { ...bind(source), listAll: () => Promise.reject(new Error('too large')) };
+    const searched = await loadMetadata(unsearchable, new MemoryCache(), [], { searchRepos: true });
+    expect(searched.catalogs.find((c) => c.repo === 'Other')).toMatchObject({
+      path: null,
+      problems: ['The repo could not be searched for its metadata file.'],
+    });
+
+    const unreadable: PipelineSource = { ...bind(source), readFile: (r, id) => (id === 'm1' ? Promise.reject(new Error('denied')) : source.readFile(r, id)) };
+    const { catalogs, facts } = await loadMetadata(unreadable, new MemoryCache());
+    expect(catalogs.find((c) => c.repo === 'Repo')).toMatchObject({ path: 'pipelines/pipelines.meta.yaml', problems: ['The file could not be read.'] });
+    expect(facts[1]).toMatchObject({ purposeSource: 'none', metadataFile: 'pipelines/pipelines.meta.yaml' });
+    expect(facts[1]?.described).toBeUndefined();
+  });
+
+  it("carries an entry's category, component, details and problems into the pipeline's facts", async () => {
+    const full = [
+      'pipelines:',
+      '  pipelines/built.yaml:',
+      '    purpose: Builds the image.',
+      '    category: Build',
+      '    component: web',
+      '    details: Pushes to the shared registry.',
+      '    colour: blue',
+      '',
+    ].join('\n');
+    const withFields = { ...fx, files: { ...fx.files!, blobs: { ...fx.files!.blobs, m1: full } } };
+    const { facts } = await loadMetadata(new FixtureSource(withFields), new MemoryCache());
+    expect(facts[1]).toMatchObject({
+      purpose: 'Builds the image.',
+      category: 'Build',
+      component: 'web',
+      details: 'Pushes to the shared registry.',
+      metadataProblems: ["Unknown key 'colour'."],
+    });
+    expect(facts[2]?.metadataProblems).toBeUndefined();
+  });
+
   it('lists each folder once and reads each file once per object id', async () => {
     const cache = new MemoryCache();
     const first = counting(new FixtureSource(fx));

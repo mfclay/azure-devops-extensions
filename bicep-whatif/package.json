@@ -14,10 +14,12 @@
   "scripts": {
     "build": "npm run build --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
+    "coverage": "npm run coverage --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "check:identifiers": "node tools/check-identifiers.mjs"
   },
   "devDependencies": {
+    "@vitest/coverage-v8": "3.2.7",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4"
   }

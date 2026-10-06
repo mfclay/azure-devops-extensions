@@ -20,5 +20,9 @@ describe('wording helpers', () => {
     expect(scheduleDays('saturday, sunday')).toBe('weekends');
     expect(scheduleDays(5)).toBe('Monday, Wednesday');
     expect(scheduleDays(undefined)).toBe('');
+    expect(scheduleDays(0)).toBe('no days');
+    expect(scheduleDays('none')).toBe('no days');
+    // A value it does not recognise is shown as the API gave it, not as "no days".
+    expect(scheduleDays(' fortnightly ')).toBe('fortnightly');
   });
 });

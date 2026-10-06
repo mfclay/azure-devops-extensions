@@ -124,6 +124,9 @@ describe('InsightsPage on the contoso estate', () => {
       'webapp-storefront-build details',
       'webapp-storefront-deploy details',
     ]);
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Filter pipelines' }), { target: { value: 'no-such-pipeline' } });
+    expect(rows()).toEqual([]);
+    expect(screen.getByText('No pipelines match the filter.')).toBeTruthy();
   });
 
   it('shows a line as one row, open when a member needs attention, and toggles it by hand', () => {
@@ -208,6 +211,48 @@ describe('InsightsPage on the contoso estate', () => {
     const add = panel.getByRole('link', { name: 'Add a description' });
     expect(add.getAttribute('href')).toBe('https://dev.azure.com/contoso/Platform/_git/Orders.Tools?path=/pipelines');
     expect(add.getAttribute('title')).toBe('Create pipelines.meta.yaml here');
+  });
+
+  it("links a pipeline that never ran to the pipeline, having no run to open", () => {
+    const neverRan: Pipeline = {
+      ...estate[0]!,
+      id: 9001,
+      name: 'orphaned-deploy',
+      disabled: false,
+      runs: [],
+      facts: {
+        owner: 'Platform Team',
+        yaml: { state: 'missing', branch: 'main' },
+        runsAfter: 'orders-build',
+        otherRepos: ['Shop/Orders.Deployment'],
+      },
+    };
+    render(<InsightsPage estate={[...estate, neverRan]} now={Date.parse(fixture.capturedAt)} project={fixture.project} links={adoLinks(fixture.org, fixture.project)} />);
+    fireEvent.click(attention().getByRole('button', { name: /Show all/ }));
+    const item = attention()
+      .getAllByRole('listitem')
+      .find((li) => li.textContent?.includes('orphaned-deploy'))!;
+    expect(within(item).getByRole('link', { name: 'Open pipeline' }).getAttribute('href')).toBe(
+      'https://dev.azure.com/contoso/Platform/_build?definitionId=9001',
+    );
+    expect(within(item).queryByRole('link', { name: 'Open run' })).toBeNull();
+    // Its own row says it has no runs, and what else starts it.
+    const row = screen.getByRole('button', { name: 'orphaned-deploy details' });
+    expect(row.textContent).toContain('No runs on main');
+    expect(row.textContent).toContain('Runs after orders-build');
+    expect(row.textContent).toContain('Also runs on pushes to Orders.Deployment');
+  });
+
+  it("shows a run's or a stage's tooltip on hover, and hides it on leaving", () => {
+    const { container } = page();
+    const square = container.querySelector('[data-tip]')!;
+    fireEvent.mouseOver(square);
+    expect(container.querySelector('.pi-tip')?.textContent).toBe(square.getAttribute('data-tip'));
+    fireEvent.mouseOver(screen.getByRole('heading', { name: /^Needs attention/ }));
+    expect(container.querySelector('.pi-tip')).toBeNull();
+    fireEvent.mouseOver(square);
+    fireEvent.mouseLeave(container.querySelector('.pi-root')!);
+    expect(container.querySelector('.pi-tip')).toBeNull();
   });
 
   it('opens the side panel from an attention item', () => {
@@ -325,6 +370,53 @@ describe('InsightsPage scoped to a folder', () => {
     expect(picked).toEqual([]);
   });
 
+  it('moves through the folder menu with the arrow keys, wrapping at either end', () => {
+    render(<InsightsPage {...props()} />);
+    fireEvent.click(folderButton());
+    const menu = screen.getByRole('menu', { name: 'Folders' });
+    const items = within(menu).getAllByRole('menuitemradio');
+    const focused = () => items.indexOf(document.activeElement as HTMLElement);
+    items[0]!.focus();
+    fireEvent.keyDown(menu, { key: 'ArrowDown' });
+    expect(focused()).toBe(1);
+    fireEvent.keyDown(menu, { key: 'End' });
+    expect(focused()).toBe(items.length - 1);
+    fireEvent.keyDown(menu, { key: 'ArrowDown' });
+    expect(focused()).toBe(0);
+    fireEvent.keyDown(menu, { key: 'ArrowUp' });
+    expect(focused()).toBe(items.length - 1);
+    fireEvent.keyDown(menu, { key: 'Home' });
+    expect(focused()).toBe(0);
+    // Any other key is left to the browser.
+    expect(fireEvent.keyDown(menu, { key: 'a' })).toBe(true);
+    expect(fireEvent.keyDown(menu, { key: 'ArrowDown' })).toBe(false);
+  });
+
+  it('counts a folder with no subfolders, and a single pipeline, in plain words', () => {
+    render(<InsightsPage {...props()} initialView={{ folder: '\\archive' }} />);
+    expect(subtitle()).toMatch(/^Platform · 3 pipelines in archive · /);
+    cleanup();
+    render(<InsightsPage {...props()} />);
+    fireEvent.click(folderButton());
+    fireEvent.click(within(screen.getByRole('menu', { name: 'Folders' })).getByRole('menuitemradio', { name: /^testing, 1 pipeline$/ }));
+    expect(subtitle()).toMatch(/^Platform · 1 pipeline in .*testing · /);
+  });
+
+  it('filters by a declared category and component', () => {
+    const declared = estate.map((p, i) => ({ ...p, facts: { ...p.facts, category: i % 2 ? 'Build' : 'Deploy', component: i % 3 ? 'web' : 'data' } }));
+    render(<InsightsPage {...props()} estate={declared} />);
+    const shown = () => rows().length + lineHeads().length;
+    const all = shown();
+    fireEvent.change(screen.getByRole('combobox', { name: 'Category' }), { target: { value: 'Build' } });
+    const builds = shown();
+    expect(builds).toBeLessThan(all);
+    fireEvent.change(screen.getByRole('combobox', { name: 'Component' }), { target: { value: 'data' } });
+    expect(shown()).toBeLessThan(builds);
+    fireEvent.change(screen.getByRole('combobox', { name: 'Category' }), { target: { value: '' } });
+    fireEvent.change(screen.getByRole('combobox', { name: 'Component' }), { target: { value: '' } });
+    expect(shown()).toBe(all);
+  });
+
   it('filters by repo, and offers no category or component on this estate', () => {
     render(<InsightsPage {...props()} />);
     expect(screen.queryByRole('combobox', { name: 'Category' })).toBeNull();
@@ -397,6 +489,36 @@ describe('the setup panel', () => {
     cleanup();
     render(<Searchable />);
     expect(box().checked).toBe(true);
+  });
+
+  it('still opens, and still takes the search choice, when storage is blocked', () => {
+    const blocked = {
+      getItem: () => {
+        throw new Error('SecurityError');
+      },
+      setItem: () => {
+        throw new Error('SecurityError');
+      },
+    };
+    const original = window.localStorage;
+    Object.defineProperty(window, 'localStorage', { value: blocked, configurable: true });
+    try {
+      function Searchable() {
+        const repoSearch = useRepoSearch();
+        return (
+          <InsightsPage estate={estate} now={Date.parse(fixture.capturedAt)} project={fixture.project} links={adoLinks(fixture.org, fixture.project)} repoSearch={repoSearch} />
+        );
+      }
+      render(<Searchable />);
+      expect(bar().getAttribute('aria-expanded')).toBe('false');
+      fireEvent.click(bar());
+      expect(bar().getAttribute('aria-expanded')).toBe('true');
+      const box = panel().getByRole('checkbox', { name: /^Search the whole repository/ }) as HTMLInputElement;
+      fireEvent.click(box);
+      expect(box.checked).toBe(true);
+    } finally {
+      Object.defineProperty(window, 'localStorage', { value: original, configurable: true });
+    }
   });
 
   it('waits for the descriptions before counting anything', () => {

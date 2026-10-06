@@ -9,6 +9,7 @@ One npm workspace in this folder: `core`, `ui`, `dev`, `extension`, with the pro
 npm ci
 npm run typecheck        # every package
 npm test                 # every package
+npm run coverage         # every package's tests, failing under its floor in vitest.config.ts
 npm run check:denylist   # every file, against the private denylist
 npm run check:readme     # README.md is what tools/readme.mjs builds from the overview
 task pre-commit          # all four; run it before every commit

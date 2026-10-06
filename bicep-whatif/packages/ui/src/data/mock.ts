@@ -14,7 +14,8 @@
 import type { StageResult } from '../model/stage.js';
 import type { LoadResult, WhatIfSource } from './source.js';
 
-const FIXTURES = import.meta.glob('../../../core/fixtures/**/*.json');
+// The timeline capture feeds the join tests; it is not a what-if payload.
+const FIXTURES = import.meta.glob(['../../../core/fixtures/**/*.json', '!../../../core/fixtures/**/*-timeline-and-attachments.json']);
 
 function stackIdFromPath(path: string): string {
   const file = path.split('/').pop() ?? path;

@@ -151,5 +151,58 @@ resources:
 
   it('says to see the YAML when it does not parse', () => {
     expect(parseTriggers('trigger: [unclosed\n', definition(), []).lines).toEqual(['See YAML']);
+    // Valid YAML that is not a pipeline: a list, or a bare value.
+    expect(parseTriggers('- a\n- b\n', definition(), []).lines).toEqual(['See YAML']);
+    expect(parseTriggers('just text\n', definition(), []).lines).toEqual(['See YAML']);
+  });
+
+  it('says to see the settings, the YAML or the policy rather than guess', () => {
+    const settingsCi = definition({ triggers: [{ triggerType: 'continuousIntegration', settingsSourceType: 1, branchFilters: [] }] });
+    expect(parseTriggers('trigger: none\n', settingsCi, []).lines).toEqual(['CI (pipeline settings): see settings']);
+    // A policy with no branch scope applies to every branch.
+    expect(parseTriggers('trigger: none\n', definition(), [policy({}), policy({ scope: [{}] })]).lines).toEqual(['PR: any branch', 'PR: any branch']);
+    const expressions = ['trigger: none', 'schedules: ${{ parameters.schedules }}', 'resources: ${{ parameters.resources }}', ''].join('\n');
+    expect(parseTriggers(expressions, definition(), []).lines).toEqual(['Schedule: see YAML', 'Resource triggers: see YAML']);
+    expect(parseTriggers("trigger: none\nschedules:\n  cron: '0 1 * * *'\n", definition(), []).lines).toEqual(['Schedule: see YAML']);
+  });
+
+  it('names a schedule, and fills in what a settings schedule leaves out', () => {
+    const yaml = "trigger: none\nschedules:\n- cron: '0 3 * * 1'\n  displayName: Weekly rebuild\n";
+    expect(parseTriggers(yaml, definition(), []).lines).toEqual(['Schedule: `0 3 * * 1` UTC Weekly rebuild']);
+    const d = definition({ triggers: [{ triggerType: 'schedule', schedules: [{ timeZoneId: 'UTC', daysToBuild: 31 }] }, { triggerType: 'buildCompletion' }] });
+    expect(parseTriggers(null, d, []).lines).toEqual([
+      'Schedule (pipeline settings): 00:00 UTC, weekdays',
+      'After `another pipeline` (pipeline settings): any branch',
+    ]);
+    const noZone = definition({ triggers: [{ triggerType: 'schedule', schedules: [{ startHours: 6, daysToBuild: 'all' }] }] });
+    expect(parseTriggers(null, noZone, []).lines).toEqual(['Schedule (pipeline settings): 06:00, every day']);
+  });
+
+  it('skips resources whose trigger is off, and names an upstream pipeline without its folder', () => {
+    const yaml = [
+      'trigger: none',
+      'resources:',
+      '  pipelines:',
+      '  - pipeline: quiet',
+      '    source: quiet-build',
+      '    trigger: none',
+      '  - pipeline: up',
+      '    source: \\services\\production\\web-build',
+      '    trigger: true',
+      '  - pipeline: aliased',
+      '    trigger:',
+      '      branches: [release/*]',
+      '  repositories:',
+      '  - repository: off',
+      '    name: Platform/off',
+      '    trigger: none',
+      '  - repository: tools',
+      '    trigger: [main]',
+      '',
+    ].join('\n');
+    const t = parseTriggers(yaml, definition(), []);
+    expect(t.lines).toEqual(['After `web-build`: any branch', 'After `aliased`: `release/*`', 'CI on `tools`: `main`']);
+    expect(t.runsAfter).toEqual(['web-build', 'aliased']);
+    expect(t.otherRepos).toEqual(['tools']);
   });
 });

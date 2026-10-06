@@ -174,7 +174,8 @@ function scheduleLines(triggers: readonly Node[]): string[] {
   return schedules.map((s) => {
     const hh = String(s.startHours ?? 0).padStart(2, '0');
     const mm = String(s.startMinutes ?? 0).padStart(2, '0');
-    return `Schedule (pipeline settings): ${hh}:${mm} ${String(s.timeZoneId ?? '')}, ${scheduleDays(s.daysToBuild)}`;
+    const zone = s.timeZoneId ? ` ${String(s.timeZoneId)}` : '';
+    return `Schedule (pipeline settings): ${hh}:${mm}${zone}, ${scheduleDays(s.daysToBuild)}`;
   });
 }
 

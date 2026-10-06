@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { attention, explainItem, isRetired, phraseText, summarizeEstate, type AttentionItem } from '../src/index.js';
+import { attention, explainItem, isRetired, phraseText, runOutcome, summarizeEstate, type AttentionItem, type FailingItem, type PipelineRun } from '../src/index.js';
 import { ago, check, def, DEFAULT_VIEW, fixture, NOW, run, timeline } from './synthetic.js';
 
 const options = { windowDays: 14 as const, mainOnly: true, now: Date.parse(NOW) };
@@ -250,5 +250,53 @@ describe('archived and disabled pipelines', () => {
     const summary = summarizeEstate(estate, options);
     expect(summary.pipelines).toHaveLength(4);
     expect(summary.retired).toEqual({ archived: 2, disabled: 1 });
+  });
+});
+
+describe('explaining a failure', () => {
+  const failing = (over: Partial<FailingItem>): FailingItem => ({
+    kind: 'failing',
+    priority: 0,
+    title: 'Last run on main failed',
+    pipelineId: 1,
+    pipelineName: 'web-build',
+    runId: 11,
+    since: NOW,
+    failedStage: null,
+    failuresInWindow: 1,
+    previousResult: null,
+    newerOffMain: null,
+    ...over,
+  });
+  const explain = (item: FailingItem, mainOnly = true) => phraseText(explainItem(item, { ...options, mainOnly }));
+
+  it('says when the failed run is the only one, in the terms of the branches in view', () => {
+    expect(explain(failing({}))).toBe('It is the only run on main.');
+    expect(explain(failing({}), false)).toBe('It is the only finished run.');
+  });
+
+  it('says nothing of the run before when that one failed too', () => {
+    expect(explain(failing({ previousResult: 'failed' }))).toBe('');
+    expect(explain(failing({ previousResult: 'succeeded', failedStage: 'Deploy' }))).toBe('Failed at Deploy. The run before it passed.');
+  });
+
+  it('counts a single newer run from another branch in the singular', () => {
+    expect(explain(failing({ previousResult: 'failed', newerOffMain: { count: 1, latestOutcome: 'inProgress' } }))).toBe(
+      'A newer run from another branch is still running.',
+    );
+    expect(explain(failing({ previousResult: 'failed', newerOffMain: { count: 3, latestOutcome: 'timedOut' } }))).toBe(
+      '3 newer runs from other branches; the latest timed out.',
+    );
+  });
+});
+
+describe('runOutcome', () => {
+  const unfinished = (stages: PipelineRun['stages']) => ({ status: 'inProgress', stages }) as PipelineRun;
+
+  it('tells a run paused at an approval from one still running', () => {
+    expect(runOutcome(unfinished([{ name: 'Prod', state: 'pending', result: null, waitingForApproval: true }] as PipelineRun['stages']))).toBe('waiting');
+    expect(runOutcome(unfinished([{ name: 'Build', state: 'inProgress', result: null }] as PipelineRun['stages']))).toBe('running');
+    // Stages not read yet: nothing says it is waiting.
+    expect(runOutcome(unfinished(null))).toBe('running');
   });
 });

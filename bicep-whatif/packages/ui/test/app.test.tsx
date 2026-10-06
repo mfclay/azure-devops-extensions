@@ -1,12 +1,14 @@
 /**
  * @vitest-environment jsdom
  *
- * One render test, aimed squarely at the correctness rule: a pipeline stage that
- * produced no attachment has to reach the screen, loudly, in the default view.
- * The model tests prove the row exists; this proves nothing between the model and
- * the DOM swallows it.
+ * The whole tab, rendered. Aimed first at the correctness rule: a pipeline stage
+ * that produced no attachment has to reach the screen, loudly, in the default
+ * view. The model tests prove the row exists; this proves nothing between the
+ * model and the DOM swallows it. After that, the wiring the components cannot
+ * test alone: selection into the detail panel, the way back from an empty
+ * filter, and a source that fails.
  */
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { App } from '../src/App.js';
 import type { LoadResult, WhatIfSource } from '../src/data/source.js';
@@ -104,5 +106,59 @@ describe('the default view', () => {
     expect(noChange.textContent).toMatch(/2/);
     const modified = screen.getByRole('button', { name: /modified/i });
     expect(modified.textContent).toMatch(/5/);
+  });
+});
+
+describe('selecting a row', () => {
+  it('opens its details, and closes them again', async () => {
+    renderApp([REAL_STAGE]);
+    const row = (await screen.findByText('app-cus-vnet')).closest('[role="button"]') as HTMLElement;
+    fireEvent.click(row);
+    expect(screen.getByRole('complementary', { name: 'Details for app-cus-vnet' })).toBeTruthy();
+    expect(row.getAttribute('aria-pressed')).toBe('true');
+    // The selection is deep-linkable, so it lands in the hash.
+    expect(window.location.hash).toMatch(/sel=/);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close details' }));
+    expect(screen.queryByRole('complementary')).toBeNull();
+  });
+
+  it('opens from the keyboard and toggles off on a second press', async () => {
+    renderApp([REAL_STAGE]);
+    const row = (await screen.findByText('app-cus-vnet')).closest('[role="button"]') as HTMLElement;
+    fireEvent.keyDown(row, { key: 'Enter' });
+    expect(screen.getByRole('complementary')).toBeTruthy();
+    fireEvent.keyDown(row, { key: ' ' });
+    expect(screen.queryByRole('complementary')).toBeNull();
+  });
+
+  it('shows a not-evaluated stage as a stage, with no resource facts', async () => {
+    renderApp([REAL_STAGE, MISSING_STAGE]);
+    fireEvent.click((await screen.findByText('Stack 3 — Shared Platform (prod)')).closest('[role="button"]') as HTMLElement);
+    const panel = screen.getByRole('complementary');
+    expect(within(panel).getByRole('heading', { name: 'Stage' })).toBeTruthy();
+    expect(within(panel).queryByRole('heading', { name: 'Resource' })).toBeNull();
+  });
+});
+
+describe('filtering to nothing', () => {
+  it('offers a way back, and Reset restores the default view', async () => {
+    renderApp([REAL_STAGE]);
+    const search = await screen.findByPlaceholderText(/search resources/i);
+    fireEvent.change(search, { target: { value: 'no-such-resource' } });
+    expect(screen.getByText('Nothing matches these filters.')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Show everything' }));
+    expect(screen.queryByText('Nothing matches these filters.')).toBeNull();
+    expect((screen.getByPlaceholderText(/search resources/i) as HTMLInputElement).value).toBe('');
+  });
+});
+
+describe('a source that fails', () => {
+  it('says the results could not be read, and how to work offline', async () => {
+    const failing: WhatIfSource = { kind: 'ado', load: () => Promise.reject(new Error('Build 21 is gone.')) };
+    render(<App source={failing} navigation={createWindowNavigation()} />);
+    expect(await screen.findByText(/could not read the build.s what-if results/i)).toBeTruthy();
+    expect(screen.getByText(/Build 21 is gone\./)).toBeTruthy();
+    expect(screen.getByText('?mock=1')).toBeTruthy();
   });
 });
