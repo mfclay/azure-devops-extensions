@@ -22,6 +22,12 @@ Releases are published from a terminal. Each is tagged `<extension>-v<MAJOR.MINO
 (`pi-v1.0.1`) once it is live; tags start no workflow. The publish workflows in
 `.github/workflows/` publish dev builds only, started by hand from the Actions tab.
 
+## Questions, bugs and ideas
+
+[Open an issue](https://github.com/mfclay/azure-devops-extensions/issues/new/choose) and pick
+the extension. Report a security problem privately instead, as [SECURITY.md](SECURITY.md)
+describes.
+
 ## License
 
 [MIT](LICENSE).

@@ -36,7 +36,14 @@
     },
     "issues": {
       "uri": "https://github.com/mfclay/azure-devops-extensions/issues"
+    },
+    "support": {
+      "uri": "https://github.com/mfclay/azure-devops-extensions/issues/new?template=pipeline-insights.yml"
     }
+  },
+  "CustomerQnASupport": {
+    "enablemarketplaceqna": true,
+    "url": "https://github.com/mfclay/azure-devops-extensions/issues/new?template=pipeline-insights.yml"
   },
   "repository": {
     "type": "git",

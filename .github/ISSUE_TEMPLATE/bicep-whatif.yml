@@ -1,0 +1,44 @@
+name: Bicep What-If for Deployment Stacks
+description: A bug, idea or question about the Bicep What-If task or results tab.
+labels: [whatif]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This repository is public, so everything here can be read by anyone. Leave out your
+        organisation, project, subscription and resource names, and replace subscription IDs
+        and other GUIDs with placeholders. For a security problem, use the private report link
+        on the previous page.
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What is this?
+      options:
+        - Bug
+        - Idea
+        - Question
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: Details
+      description: What happened and what you expected, or what you would like and why.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: For a bug. The task's inputs from your YAML help most.
+  - type: textarea
+    id: log
+    attributes:
+      label: Task log
+      description: The relevant part of the task's log, with names and IDs replaced.
+      render: text
+  - type: input
+    id: version
+    attributes:
+      label: Extension version
+      description: Organization settings → Extensions shows it.

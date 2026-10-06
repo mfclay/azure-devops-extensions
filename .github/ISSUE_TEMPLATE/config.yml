@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security problem privately
+    url: https://github.com/mfclay/azure-devops-extensions/security/advisories/new
+    about: For anything that should not be public. SECURITY.md has the details.

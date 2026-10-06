@@ -21,8 +21,10 @@
   },
   "links": {
     "repository": { "uri": "https://github.com/mfclay/azure-devops-extensions/tree/main/bicep-whatif" },
-    "issues": { "uri": "https://github.com/mfclay/azure-devops-extensions/issues" }
+    "issues": { "uri": "https://github.com/mfclay/azure-devops-extensions/issues" },
+    "support": { "uri": "https://github.com/mfclay/azure-devops-extensions/issues/new?template=bicep-whatif.yml" }
   },
+  "CustomerQnASupport": { "enablemarketplaceqna": true, "url": "https://github.com/mfclay/azure-devops-extensions/issues/new?template=bicep-whatif.yml" },
   "repository": {
     "type": "git",
     "uri": "https://github.com/mfclay/azure-devops-extensions/tree/main/bicep-whatif"
