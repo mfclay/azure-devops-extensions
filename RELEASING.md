@@ -145,9 +145,10 @@ Environments, create `marketplace-release`:
    overview's images are there. It needs no approval, and costs no version.
 4. **Release.** Run it again in the `release` mode with the same `bump`. The job waits for
    approval in `marketplace-release`; approve it from the run's page. It then publishes, always
-   waits for validation, and tags the commit `<extension>-v<version>`. If the tag cannot be
-   pushed, the run fails with the release live and names the commit to tag by hand (step 7
-   below).
+   waits for validation, tags the commit `<extension>-v<version>`, and creates a GitHub release
+   for the tag: the Marketplace link, the commits since the previous tag that touched the
+   extension's folder, and the VSIX. If the tag or the GitHub release cannot be made, the run
+   fails with the release live and says which to finish by hand (step 7 below).
 5. **Check the live listing.** Images and links resolve, and the icon is the one you shipped.
 
 A release is refused from any branch but `main`. A dry run is not, which is how a change to a
@@ -205,6 +206,9 @@ Pipeline Insights, from `pipeline-insights/extension/`:
    ```bash
    git tag pi-v1.0.1 <commit> && git push origin pi-v1.0.1
    ```
+
+   Then make it a GitHub release in the browser (Releases → Draft a new release, choose the
+   tag), titled "Pipeline Insights 1.0.1", with the Marketplace link and the VSIX attached.
 
    Tags are `<extension>-v<version>` (`pi-v…`, `whatif-v…`), never a bare `v1.0.1`, because the
    repo holds more than one extension. No workflow subscribes to them. They used to start the

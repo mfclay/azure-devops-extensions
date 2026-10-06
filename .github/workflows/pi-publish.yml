@@ -279,17 +279,23 @@ jobs:
             --token "$TFX_TOKEN" --no-color
           echo "Note: sharing is not installing. A first-time organisation still needs the extension installed."
 
-  # Its own job so that only it can write to the repo. Runs once the release is valid.
+  # Its own job so that only it can write to the repo. Runs once the release is valid, and
+  # also makes the GitHub release: the Marketplace link, the commits since the previous tag that
+  # touched this folder, and the VSIX.
   tag:
     needs: publish
     if: inputs.mode == 'release'
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      actions: read
     timeout-minutes: 5
 
     steps:
+      # The whole history and its tags, for the release notes' list of changes.
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - name: Tag the release commit
         env:
@@ -302,5 +308,38 @@ jobs:
           git tag "$TAG" "$GITHUB_SHA"
           git push origin "refs/tags/$TAG" || {
             echo "::error::Could not push $TAG. The release is live; tag $GITHUB_SHA by hand (RELEASING.md, step 7)."
+            exit 1
+          }
+
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          NAME: Pipeline Insights
+          PUBLISHER: ${{ vars.EXTENSION_PUBLISHER }}
+          VERSION: ${{ needs.publish.outputs.version }}
+          ARTIFACT: ${{ env.EXTENSION_ID }}-${{ needs.publish.outputs.version }}
+          PREFIX: pi-v
+        run: |
+          tag="$PREFIX$VERSION"
+          assets=()
+          if gh run download "$GITHUB_RUN_ID" --name "$ARTIFACT" --dir "$RUNNER_TEMP/vsix"; then
+            assets=("$RUNNER_TEMP"/vsix/*.vsix)
+          else
+            echo "::warning::Could not fetch the VSIX artifact; the release goes up without it."
+          fi
+          prev="$(git tag --list "$PREFIX*" --merged "$GITHUB_SHA" --sort=-v:refname | grep -vx "$tag" | head -1 || true)"
+          {
+            echo "**[$NAME $VERSION on the Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=$PUBLISHER.$EXTENSION_ID)**"
+            if [ -n "$prev" ]; then
+              printf '\n## Changes since %s\n\n' "$prev"
+              git log --no-merges --format='- %s (%h)' "$prev..$GITHUB_SHA" -- .
+              printf '\n**Full Changelog**: %s/%s/compare/%s...%s\n' "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$prev" "$tag"
+            fi
+          } > "$RUNNER_TEMP/notes.md"
+          cat "$RUNNER_TEMP/notes.md"
+          gh release create "$tag" "${assets[@]}" --verify-tag --title "$NAME $VERSION" \
+            --notes-file "$RUNNER_TEMP/notes.md" || {
+            echo "::error::Could not create the GitHub release for $tag. The release is live and tagged; create it by hand (RELEASING.md, step 7)."
             exit 1
           }
