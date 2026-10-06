@@ -135,6 +135,7 @@ function harness(options: {
     raw: { ...(options.raw ?? RAW), outputPath },
     endpoint: ENDPOINT,
     env: { BUILD_BUILDID: '7700017' },
+    jobAccessToken: undefined,
     fetch: fetchImpl as unknown as typeof globalThis.fetch,
     sleep: async () => {},
     log: (m) => logs.push(m),

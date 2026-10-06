@@ -15,6 +15,12 @@
 export interface AuthDeps {
   fetch: typeof globalThis.fetch;
   env: Readonly<Record<string, string | undefined>>;
+  /**
+   * The job's own access token, the value `$(System.AccessToken)` expands to.
+   * Only workload identity federation uses it. `index.ts` reads it from the
+   * agent, which gives it to every task without the pipeline doing anything.
+   */
+  jobAccessToken?: string | undefined;
 }
 
 /** What the task reads off the service connection before any network call. */
@@ -110,14 +116,14 @@ async function readToken(response: Response, what: string): Promise<string> {
  * Workload identity federation, in two hops.
  *
  * Azure DevOps mints a short-lived OIDC token that asserts *this pipeline job*;
- * Entra then trades that assertion for an ARM token. The first hop needs
- * `System.AccessToken`, which a job only has when the YAML grants it — so the
- * failure here is a pipeline configuration problem, and the message says so
- * rather than reporting an opaque 401.
+ * Entra then trades that assertion for an ARM token. The first hop is
+ * authorised with the job's access token. The agent supplies that to every task,
+ * so the step needs no `env:` mapping; both values are missing only outside a
+ * pipeline job, and the messages say so rather than reporting an opaque 401.
  */
 async function federatedAssertion(deps: AuthDeps, endpoint: EndpointDetails): Promise<string> {
   const uri = deps.env['SYSTEM_OIDCREQUESTURI'];
-  const accessToken = deps.env['SYSTEM_ACCESSTOKEN'];
+  const accessToken = deps.jobAccessToken;
   if (uri === undefined || uri.length === 0) {
     throw new AuthError(
       `Service connection "${endpoint.id}" uses workload identity federation, but ` +
@@ -128,8 +134,8 @@ async function federatedAssertion(deps: AuthDeps, endpoint: EndpointDetails): Pr
   if (accessToken === undefined || accessToken.length === 0) {
     throw new AuthError(
       `Service connection "${endpoint.id}" uses workload identity federation, which needs ` +
-        'System.AccessToken. Add `env: { SYSTEM_ACCESSTOKEN: $(System.AccessToken) }` to the ' +
-        'step, or set the job to expose it.',
+        "the job's access token, but the agent did not supply one (SYSTEMVSSCONNECTION). The " +
+        'agent gives it to every task in an Azure Pipelines job, so this task is not running in one.',
     );
   }
 

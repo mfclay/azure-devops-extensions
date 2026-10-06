@@ -1,0 +1,53 @@
+# One real run of the dev task against Azure, to prove the service connection
+# path. The harness cannot: its task step never runs.
+#
+# What-if only, against an empty template, so nothing is deployed. The task
+# creates a what-if result at subscription scope and deletes it afterwards.
+#
+# The connection is a queue-time parameter, not a committed name: this repo is
+# public, and the name of a real connection does not belong in it. The pipeline
+# must be allowed to use the connection, either by granting it on first run or
+# by sharing the connection into this pipeline's project.
+#
+# No `env:` on the task step, deliberately. Workload identity federation used to
+# need SYSTEM_ACCESSTOKEN mapped in; a pass here with none is the proof that it
+# no longer does.
+trigger: none
+pr: none
+
+parameters:
+- name: serviceConnection
+  displayName: 'Azure Resource Manager service connection'
+  type: string
+- name: location
+  displayName: 'Location for the stack'
+  type: string
+  default: centralus
+
+pool:
+  vmImage: ubuntu-latest
+
+stages:
+- stage: WhatIf_Smoke
+  displayName: 'Smoke — empty template'
+  jobs:
+  - job: WhatIf
+    steps:
+    - checkout: none
+
+    - script: |
+        printf '%s\n' '{"$schema":"https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#","contentVersion":"1.0.0.0","resources":[]}' \
+          > "$(Agent.TempDirectory)/empty.json"
+      displayName: 'Write an empty subscription template'
+
+    - task: StackWhatIfDev@0
+      displayName: 'StackWhatIfDev — what-if, empty template'
+      inputs:
+        mode: whatif
+        azureSubscription: ${{ parameters.serviceConnection }}
+        stackId: smoke
+        stackName: bicep-whatif-smoke
+        templateFile: '$(Agent.TempDirectory)/empty.json'
+        location: ${{ parameters.location }}
+        actionOnUnmanage: detachAll
+        denySettingsMode: none

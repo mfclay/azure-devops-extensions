@@ -99,12 +99,11 @@ describe('acquireArmToken — workload identity federation', () => {
   const WIF: EndpointDetails = { ...SPN, scheme: 'WorkloadIdentityFederation', clientSecret: undefined };
   const env = {
     SYSTEM_OIDCREQUESTURI: 'https://vstoken.dev.azure.com/org/_apis/distributedtask/hubs/build/plans/p/jobs/j/oidctoken',
-    SYSTEM_ACCESSTOKEN: 'ado-token',
   };
 
   it('trades the pipeline OIDC token for an ARM token', async () => {
     const net = fakeFetch([{ body: { oidcToken: 'oidc-1' } }, { body: TOKEN }]);
-    const token = await acquireArmToken({ fetch: net.fetch, env }, WIF);
+    const token = await acquireArmToken({ fetch: net.fetch, env, jobAccessToken: 'ado-token' }, WIF);
     expect(token).toBe('arm-token');
 
     const oidcCall = net.calls[0];
@@ -121,11 +120,12 @@ describe('acquireArmToken — workload identity federation', () => {
     expect(body.get('client_secret')).toBeNull();
   });
 
-  it('names the missing pipeline permission rather than reporting a 401', async () => {
+  it('ignores a SYSTEM_ACCESSTOKEN env var, and names the missing job token instead of a 401', async () => {
     const net = fakeFetch([{ body: TOKEN }]);
     await expect(
-      acquireArmToken({ fetch: net.fetch, env: { ...env, SYSTEM_ACCESSTOKEN: '' } }, WIF),
-    ).rejects.toThrow(/System\.AccessToken/);
+      acquireArmToken({ fetch: net.fetch, env: { ...env, SYSTEM_ACCESSTOKEN: 'ado-token' } }, WIF),
+    ).rejects.toThrow(/job's access token.*SYSTEMVSSCONNECTION/s);
+    expect(net.calls).toHaveLength(0);
   });
 
   it('says the connection cannot be used outside a pipeline', async () => {

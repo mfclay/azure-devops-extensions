@@ -57,6 +57,8 @@ export interface RunDeps extends AttachDeps {
   raw: RawInputs;
   endpoint: EndpointDetails;
   env: Readonly<Record<string, string | undefined>>;
+  /** The job's access token, for workload identity federation. See `arm/auth.ts`. */
+  jobAccessToken: string | undefined;
   fetch: typeof globalThis.fetch;
   sleep: (ms: number) => Promise<void>;
   warn: (message: string) => void;
@@ -233,14 +235,15 @@ export async function run(deps: RunDeps): Promise<RunResult> {
 
     // ── Authenticate ──────────────────────────────────────────────────────────
     subscriptionId = requireSubscription(deps.endpoint);
-    const token = await acquireArmToken({ fetch: deps.fetch, env: deps.env }, deps.endpoint);
+    const authDeps = { fetch: deps.fetch, env: deps.env, jobAccessToken: deps.jobAccessToken };
+    const token = await acquireArmToken(authDeps, deps.endpoint);
     client = new ArmClient(
       {
         fetch: deps.fetch,
         sleep: deps.sleep,
         log: deps.log,
         reauthenticate: () =>
-          acquireArmToken({ fetch: deps.fetch, env: deps.env }, deps.endpoint),
+          acquireArmToken(authDeps, deps.endpoint),
       },
       armBaseUrl(deps.endpoint),
       token,

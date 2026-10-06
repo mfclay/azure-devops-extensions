@@ -131,21 +131,11 @@ template file name (`05-workload-stack.bicep`) supplies it.
 
 ### Service connections
 
-Service principal with a secret, workload identity federation, and managed
-identity all work. **Certificate-based service principals are refused by name**
-rather than attempted — signing a client assertion is not hard, but it is not
-something this task can verify without a certificate-backed connection to test
-against, and an auth path that looks supported and is quietly wrong is worse than
-one that says what it is.
-
-Workload identity federation additionally needs `System.AccessToken`, because the
-first hop asks Azure DevOps to mint the OIDC assertion:
-
-```yaml
-    - task: StackWhatIf@0
-      env:
-        SYSTEM_ACCESSTOKEN: $(System.AccessToken)
-```
+Workload identity federation, service principal with a secret, and managed
+identity all work, with nothing to add to the step. Workload identity federation
+asks Azure DevOps to mint an OIDC assertion using the job's own access token, which
+the agent gives every task as the `SYSTEMVSSCONNECTION` endpoint, so there is no
+`SYSTEM_ACCESSTOKEN` to map into `env:`.
 
 ## Traps
 
@@ -193,6 +183,14 @@ consumer has to edit their YAML to pick up. `0.x` says the input schema is not
 frozen. Treat `1.0.0` as freezing the input *names* the moment anyone outside
 this repo installs it.
 
+## Certificate service connections
+
+A service principal that authenticates with a certificate is refused by name
+rather than attempted. Signing a client assertion is not hard, but this task
+cannot verify it without a certificate-backed connection to test against, and an
+auth path that looks supported and is quietly wrong is worse than one that says
+what it is. If it is ever needed, `@azure/msal-node` signs the assertion directly.
+
 ## Layout
 
 | Path | What it does |
@@ -209,6 +207,7 @@ this repo installs it.
 | `src/bicep/` | Which binary, fetching it, running it. |
 | `src/attach.ts` | Write, then `##vso[task.addattachment]`. |
 | `scripts/bundle.mjs` | Produces the shipped task folder. |
+| `smoke/azure-pipelines.yml` | One real what-if against Azure, to prove a service connection. |
 
 Everything except `index.ts`, `arm/client.ts`'s socket use, and `bicep/tool.ts`
 is pure. That is not ceremony: a pipeline task can only be exercised end to end

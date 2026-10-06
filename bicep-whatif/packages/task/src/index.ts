@@ -76,6 +76,18 @@ function readEndpoint(connectedService: string): EndpointDetails {
   };
 }
 
+/**
+ * The job's access token, the value `$(System.AccessToken)` expands to.
+ *
+ * The agent hands it to every task as the `SYSTEMVSSCONNECTION` endpoint, so a
+ * pipeline does not have to map it into the step's environment. Microsoft's own
+ * Azure tasks read it the same way.
+ */
+function readJobAccessToken(): string | undefined {
+  const auth = tl.getEndpointAuthorization('SYSTEMVSSCONNECTION', true);
+  return auth?.scheme === 'OAuth' ? auth.parameters['AccessToken'] : undefined;
+}
+
 async function main(): Promise<void> {
   // Resource strings for any message task-lib localizes on this task's behalf.
   // `__dirname` rather than `import.meta`: the shipped artefact is a CommonJS
@@ -92,6 +104,7 @@ async function main(): Promise<void> {
     raw: readInputs(),
     endpoint: readEndpoint(connectedService),
     env: process.env,
+    jobAccessToken: readJobAccessToken(),
     fetch: globalThis.fetch,
     sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
     log: (message) => console.log(message),

@@ -14,6 +14,7 @@ const h = vi.hoisted(() => ({
   auth: {} as Record<string, string | undefined>,
   data: {} as Record<string, string | undefined>,
   scheme: undefined as string | undefined,
+  vss: undefined as { scheme: string; parameters: Record<string, string> } | undefined,
   results: [] as { result: number; message: string }[],
   runImpl: undefined as undefined | ((deps: Record<string, unknown>) => Promise<unknown>),
   runDeps: undefined as Record<string, unknown> | undefined,
@@ -26,6 +27,7 @@ vi.mock('azure-pipelines-task-lib/task.js', () => {
     getEndpointAuthorizationParameter: vi.fn((_id: string, name: string) => h.auth[name]),
     getEndpointDataParameter: vi.fn((_id: string, name: string) => h.data[name]),
     getEndpointAuthorizationScheme: vi.fn(() => h.scheme),
+    getEndpointAuthorization: vi.fn((id: string) => (id === 'SYSTEMVSSCONNECTION' ? h.vss : undefined)),
     getEndpointUrl: vi.fn(() => 'https://management.azure.com/'),
     setResourcePath: vi.fn(),
     setResult: vi.fn((result: number, message: string) => {
@@ -51,6 +53,7 @@ beforeEach(() => {
   h.auth = { serviceprincipalid: 'client-1', serviceprincipalkey: 'key-1', tenantid: 'tenant-1' };
   h.data = { subscriptionid: 'sub-1', environmentAuthorityUrl: 'https://login.microsoftonline.com/' };
   h.scheme = 'WorkloadIdentityFederation';
+  h.vss = { scheme: 'OAuth', parameters: { AccessToken: 'job-token' } };
   h.results = [];
   h.runImpl = async () => ({ status: 'succeeded', message: 'All good.' });
   h.runDeps = undefined;
@@ -101,6 +104,24 @@ describe('the task entry point', () => {
       resourceId: undefined,
       managementUrl: 'https://management.azure.com/',
     });
+  });
+
+  it("reads the job's access token from SYSTEMVSSCONNECTION, not the environment", async () => {
+    await start();
+    expect(h.runDeps?.['jobAccessToken']).toBe('job-token');
+    expect(h.tl.getEndpointAuthorization).toHaveBeenCalledWith('SYSTEMVSSCONNECTION', true);
+  });
+
+  it('passes no job token when the agent supplies none, or not as OAuth', async () => {
+    h.vss = undefined;
+    await start();
+    expect(h.runDeps?.['jobAccessToken']).toBeUndefined();
+
+    vi.resetModules();
+    h.results = [];
+    h.vss = { scheme: 'Token', parameters: { AccessToken: 'job-token' } };
+    await start();
+    expect(h.runDeps?.['jobAccessToken']).toBeUndefined();
   });
 
   it('accepts the alternative spellings some connections use', async () => {
