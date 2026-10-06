@@ -1,19 +1,17 @@
 # The whole chain, in one job, on the Node line the task actually ships to.
 #
-# This repo is **private**, so Actions minutes are billable against the account
-# quota — they were free while it was public. Two consequences are designed in
-# here rather than left to be noticed later:
+# Two choices are deliberate:
 #
-#   * **One job, never a matrix.** Billing rounds each job up to the whole
-#     minute independently, so a two-version matrix of a ~2-minute chain costs
-#     four to six minutes, not two. Adding a second Node version is a real
-#     recurring cost, not a free extra signal.
-#   * **Superseded runs are cancelled** (see `concurrency`), so pushing three
-#     times in a minute bills for one run rather than three.
+#   * **One job, never a matrix.** The task ships to one Node line, and CI runs
+#     that line. A second version would test a runtime the task never meets,
+#     and add a run to read without adding a signal.
+#   * **Superseded runs are cancelled** (see `concurrency`): only the newest
+#     push's result means anything, so pushing three times in a minute leaves
+#     one run, not three.
 name: Bicep What-If CI
 
 # Path-filtered: this repo holds more than one extension, and a run for a
-# change that cannot affect this one is billable minutes for nothing.
+# change that cannot affect this one is noise.
 on:
   push:
     branches: [main]
@@ -93,9 +91,8 @@ jobs:
       # The genuinely useful output: every commit gets an installable build to
       # try in a real organisation, without publishing anything to anyone.
       #
-      # 14 days, not the 90-day default, because artifact storage also counts
-      # against a private repo's quota — at 4.08 MB a VSIX, 90-day retention
-      # fills the Free tier's 500 MB in about 120 builds.
+      # 14 days, not the 90-day default: a CI build is for trying a commit soon
+      # after it lands, and an older one is better rebuilt from its commit.
       #
       # `@v7`, where checkout and setup-node are on `@v5`, because this action
       # versions on its own schedule: v5 carried only "preliminary" Node 24

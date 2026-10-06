@@ -20,7 +20,7 @@ on:
         description: 'Extension version, e.g. 0.1.1 (no leading v)'
         required: true
       wait_for_validation:
-        description: 'Wait for Marketplace validation (~8 min of billable time). Off for dev iteration.'
+        description: 'Wait for Marketplace validation (~8 min). Off for dev iteration.'
         type: boolean
         default: false
 
@@ -50,9 +50,9 @@ jobs:
     # Gates `secrets.MARKETPLACE_PAT` to this job alone. `whatif-ci.yml` declares no
     # environment and therefore structurally cannot read the token.
     environment: marketplace
-    # Without this the job inherits GitHub's 6-hour default. This repo is
-    # private, so a wedged run bills 360 minutes against the quota. The chain
-    # takes ~1m15s plus validation; 20 minutes is generous.
+    # Without this the job inherits GitHub's 6-hour default, so a wedged run
+    # would hang for six hours before failing. The chain takes ~1m15s plus
+    # validation; 20 minutes is generous.
     timeout-minutes: 20
 
     steps:
@@ -205,11 +205,10 @@ jobs:
       # version until it passes, so the ~8 minutes is wall-clock nobody can
       # avoid — the only question is *where* it is spent.
       #
-      # Spending it here is expensive: this repo is private, so a publish that
-      # sits in a poll loop bills for the idling. A measured run was 10m15s, of
-      # which roughly 8 minutes was waiting, against ~3 minutes of actual work.
-      # During dev iteration that is the dominant cost of the whole cycle, and
-      # it buys a signal that can be had for free from a terminal afterwards
+      # Spending it here keeps the job open for it: a measured run was 10m15s,
+      # of which roughly 8 minutes was waiting, against ~3 minutes of actual
+      # work. During dev iteration that wait is most of the cycle, and the
+      # signal it buys can be had from a terminal afterwards
       # (`tools/tfx-run extension isvalid`).
       - name: Wait for Marketplace validation
         if: inputs.wait_for_validation

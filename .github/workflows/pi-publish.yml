@@ -18,7 +18,7 @@ on:
         description: 'Extension version, e.g. 0.1.4 (no leading v)'
         required: true
       wait_for_validation:
-        description: 'Wait for Marketplace validation (~8 min of billable time). Off for dev iteration.'
+        description: 'Wait for Marketplace validation (~8 min). Off for dev iteration.'
         type: boolean
         default: false
 

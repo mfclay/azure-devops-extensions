@@ -1,7 +1,7 @@
 # Pipeline Insights: the whole chain in one job, on Node 20 (the floor the project claims).
 #
-# Same cost rules as whatif-ci.yml: this repo is private, so minutes are billable. One job,
-# never a matrix; superseded runs are cancelled; path-filtered to this extension.
+# Same rules as whatif-ci.yml: one job, never a matrix; superseded runs are cancelled;
+# path-filtered to this extension.
 #
 # It never publishes. Dev builds go out from a terminal with tools/publish-dev.
 name: Pipeline Insights CI
