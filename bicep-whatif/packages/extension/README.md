@@ -78,8 +78,9 @@ Staged into `build/` first, so the VSIX contains exactly what was staged — no
 | `ui/` | `packages/ui/dist` | yes — served to the tab's iframe |
 | `images/`, `overview.md`, `LICENSE` | here | yes |
 
-`images/icon-128.png` is the Marketplace icon. Its source is `art/icon.svg`, which
-is not packaged; re-render the PNG from it with any SVG renderer. `art/task-icon.svg`
+`images/icon-256.png` is the Marketplace icon. The listing shows it at 128 CSS px, so 256 px
+keeps it sharp on high-DPI screens. Its source is `art/icon.svg`, which is not packaged;
+re-render the PNG from it with any SVG renderer. `art/task-icon.svg`
 is the same mark with the glyph enlarged for 32px, rendered to the task's
 `packages/task/icon.png`.
 
