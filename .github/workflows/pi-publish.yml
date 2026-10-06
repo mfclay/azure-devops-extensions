@@ -18,8 +18,8 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Extension version, e.g. 0.1.4 (no leading v)'
-        required: true
+        description: 'Extension version, e.g. 1.0.2 (no leading v). Blank for a dev build: the next patch. A release needs one.'
+        required: false
       release:
         description: 'Publish the release, not the dev build. Waits for approval.'
         type: boolean
@@ -83,17 +83,43 @@ jobs:
           cache: npm
           cache-dependency-path: pipeline-insights/package-lock.json
 
+      - name: Install
+        run: npm ci
+
+      # Blank for a dev build: the next patch after the newest the Marketplace lists, as
+      # tools/publish-dev picks it. A release names its version.
       - name: Resolve version
         id: v
+        env:
+          TFX_TOKEN: ${{ secrets.MARKETPLACE_PAT }}
+          PUBLISHER: ${{ vars.EXTENSION_PUBLISHER }}
+          INPUT_VERSION: ${{ inputs.version }}
+          RELEASE: ${{ inputs.release }}
         run: |
-          version='${{ inputs.version }}'
+          version="$INPUT_VERSION"
+          if [ -z "$version" ]; then
+            if [ "$RELEASE" = true ]; then
+              echo "::error::A release needs an explicit version." && exit 1
+            fi
+            json="$(node_modules/.bin/tfx extension show \
+              --publisher "$PUBLISHER" --extension-id "$EXTENSION_ID" \
+              --service-url "$SERVICE_URL" --token "$TFX_TOKEN" --json --no-color)" \
+              || { echo "::error::Could not ask the Marketplace for the newest version."; exit 1; }
+            version="$(printf '%s' "$json" | node -e '
+              const d = JSON.parse(require("fs").readFileSync(0, "utf8"));
+              if (d === null) { console.log("0.1.0"); process.exit(0); }
+              const vs = (d.versions ?? []).map((v) => v.version.split(".").map(Number));
+              if (vs.length === 0) throw new Error("the extension lists no versions");
+              vs.sort((a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2]);
+              const [major, minor, patch] = vs.at(-1);
+              console.log(`${major}.${minor}.${patch + 1}`);
+            ')" || { echo "::error::Could not read the newest version from the Marketplace."; exit 1; }
+            echo "No version given: the next patch is $version."
+          fi
           if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
             echo "::error::Version '$version' is not MAJOR.MINOR.PATCH." && exit 1
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
-
-      - name: Install
-        run: npm ci
 
       - name: Refuse an already-published version
         env:

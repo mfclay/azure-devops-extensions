@@ -2,7 +2,7 @@
 #
 # Drive this repo's GitHub Actions from the terminal.
 #
-#   tools/gh-run publish 0.1.2      # dispatch the Publish workflow
+#   tools/gh-run publish [0.1.2]    # dispatch a dev publish; no version: the next patch
 #   tools/gh-run runs [workflow]    # recent runs (default: whatif-publish.yml)
 #   tools/gh-run watch [workflow]   # poll until the newest run finishes
 #
@@ -71,8 +71,8 @@ api() {
 
 do_publish() {
   local version="${1:-}"
-  [ -n "$version" ] || die "usage: gh-run publish <version>"
-  printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' \
+  # Blank asks the workflow for the next patch after the newest published.
+  [ -z "$version" ] || printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' \
     || die "version '$version' is not MAJOR.MINOR.PATCH."
   resolve_token
   local out code
@@ -81,7 +81,7 @@ do_publish() {
   code="$(printf '%s' "$out" | tail -1)"
   # 204 No Content is success here; the API returns no body to confirm with.
   [ "$code" = "204" ] || { printf '%s\n' "$out" >&2; die "dispatch failed (HTTP $code)"; }
-  echo "Dispatched Publish for $version on $REF."
+  echo "Dispatched Publish for ${version:-the next patch} on $REF."
 }
 
 do_runs() {
@@ -147,7 +147,7 @@ case "${1:-}" in
   *) cat >&2 <<USAGE
 usage: tools/gh-run <command>
 
-  publish <version>   dispatch the Publish workflow (e.g. 0.1.2)
+  publish [version]   dispatch a dev publish (default: the next patch)
   runs [workflow]     recent runs, newest first (default whatif-publish.yml)
   watch [workflow]    poll until the newest run completes
   jobs <run-id>       each job's steps; the tail of a failed job's log

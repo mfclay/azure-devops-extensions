@@ -95,9 +95,11 @@ zsh -lc 'tools/tfx-run extension isvalid --publisher MichaelC --extension-id bic
 ```
 
 **From GitHub Actions**, either extension: Actions → *Pipeline Insights Publish* or *Bicep What-If
-Publish* → Run workflow, with a version and `release` left unticked. These workflows re-run the
-whole chain first so nothing untested reaches the Marketplace, and are started by hand only.
-`bicep-whatif/tools/gh-run publish <version>` dispatches a dev build of Bicep What-If.
+Publish* → Run workflow, with `release` left unticked. Leave the version blank to get the next
+patch after the newest published, as `publish-dev` does. These workflows re-run the whole chain
+first so nothing untested reaches the Marketplace, and are started by hand only.
+`bicep-whatif/tools/gh-run publish` dispatches a dev build of Bicep What-If, with an optional
+version.
 
 Two things that look like failures and are not:
 
