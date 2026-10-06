@@ -1,7 +1,8 @@
 #!/bin/zsh
 #
-# Run `az devops` against the personal moneymikec organisation, with the PAT
-# redacted from every byte of output.
+# Run `az devops` against your personal test organisation, with the PAT
+# redacted from every byte of output. The organisation is named by ADO_TEST_ORG
+# (exported from ~/.zshenv beside the PAT), or given in full as ADO_RUN_ORG.
 #
 #   tools/ado-run devops extension list --output table
 #   tools/ado-run pipelines build list --output table
@@ -40,7 +41,12 @@ if [[ -z "${ado_mmc_org_pat:-}" ]]; then
   exit 64
 fi
 
-ORG="${ADO_RUN_ORG:-https://dev.azure.com/moneymikec}"
+ORG="${ADO_RUN_ORG:-${ADO_TEST_ORG:+https://dev.azure.com/$ADO_TEST_ORG}}"
+if [[ -z "$ORG" ]]; then
+  print -u2 "ado-run: set ADO_TEST_ORG to your test organisation's name (in ~/.zshenv),"
+  print -u2 "         or ADO_RUN_ORG to its full https://dev.azure.com/<org> URL."
+  exit 64
+fi
 
 AZURE_DEVOPS_EXT_PAT="$ado_mmc_org_pat" \
   az "$@" --organization "$ORG" 2>&1 \

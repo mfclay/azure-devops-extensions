@@ -42,6 +42,9 @@ work on the page locally, run `npm run dev -w @pipeline-insights/dev`.
 
 ## Publishing
 
+[RELEASING.md](../RELEASING.md) at the repo root has the whole process: dev builds, the release
+steps, credentials and the listing. In short:
+
 An extension's identity is `{publisher}.{id}`. Changing the publisher creates a different
 extension, with no upgrade path from the old one, so the publisher is never stored in the
 manifest.

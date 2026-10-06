@@ -2,16 +2,16 @@
 # publisher taken from `vars.EXTENSION_PUBLISHER` and this run's version.
 #
 # Same shape as whatif-publish.yml, which explains each step at length: a separate workflow
-# because the trigger differs, the whole chain re-run because nothing reaches the Marketplace
+# started only by hand, the whole chain re-run because nothing reaches the Marketplace
 # untested, a pre-flight refusal of a taken version, `--no-wait-validation` with its own wait
 # loop, and sharing as a separate step once the version is valid.
 #
-# The local equivalent is pipeline-insights/tools/publish-dev.
+# Tags like `pi-v1.0.0` mark releases after they are published and do not start this
+# workflow, which publishes the dev id. The local equivalent is
+# pipeline-insights/tools/publish-dev; the release publish is in RELEASING.md.
 name: Pipeline Insights Publish
 
 on:
-  push:
-    tags: ['pi-v*']
   workflow_dispatch:
     inputs:
       version:
@@ -57,11 +57,7 @@ jobs:
       - name: Resolve version
         id: v
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            version='${{ inputs.version }}'
-          else
-            version="${GITHUB_REF_NAME#pi-v}"
-          fi
+          version='${{ inputs.version }}'
           if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
             echo "::error::Version '$version' is not MAJOR.MINOR.PATCH." && exit 1
           fi
@@ -135,7 +131,7 @@ jobs:
             --token "$TFX_TOKEN" --no-wait-validation --no-color
 
       - name: Wait for Marketplace validation
-        if: github.event_name != 'workflow_dispatch' || inputs.wait_for_validation
+        if: inputs.wait_for_validation
         env:
           TFX_TOKEN: ${{ secrets.MARKETPLACE_PAT }}
           PUBLISHER: ${{ vars.EXTENSION_PUBLISHER }}
@@ -160,7 +156,7 @@ jobs:
           done
 
       - name: Share with the organisation
-        if: vars.EXTENSION_SHARE_WITH != '' && (github.event_name != 'workflow_dispatch' || inputs.wait_for_validation)
+        if: vars.EXTENSION_SHARE_WITH != '' && inputs.wait_for_validation
         env:
           TFX_TOKEN: ${{ secrets.MARKETPLACE_PAT }}
           PUBLISHER: ${{ vars.EXTENSION_PUBLISHER }}

@@ -14,11 +14,13 @@ task pre-commit   # every extension's checks, plus the repo-wide identifier scan
 
 ## Releases
 
-Each extension publishes from its own tag, `<extension>-v<MAJOR.MINOR.PATCH>`, for example
-`whatif-v0.2.0`. Its workflow in `.github/workflows/` checks the version is free, runs the
-whole chain again, and publishes. Tags are `whatif-v*` and `pi-v*`. Either workflow can also be
-started by hand from the Actions tab with a version. Pipeline Insights can still publish from a
-terminal with `pipeline-insights/tools/publish-dev`.
+[RELEASING.md](RELEASING.md) covers how both extensions reach the Marketplace: identity, dev
+builds, the release steps, credentials, and the listing's images. It is written to be useful
+for anyone building an Azure DevOps extension.
+
+Releases are published from a terminal. Each is tagged `<extension>-v<MAJOR.MINOR.PATCH>`
+(`pi-v1.0.1`) once it is live; tags start no workflow. The publish workflows in
+`.github/workflows/` publish dev builds only, started by hand from the Actions tab.
 
 ## License
 

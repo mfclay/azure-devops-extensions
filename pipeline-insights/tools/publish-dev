@@ -15,7 +15,7 @@ set -euo pipefail
 repo="${0:A:h:h}"
 PUBLISHER=MichaelC
 EXT_ID=pipeline-insights-dev
-ORG=moneymikec
+ORG="${ADO_TEST_ORG:-}"   # the test organization's name, exported from ~/.zshenv
 
 die() { print -u2 "publish-dev: $*"; exit 1; }
 
@@ -28,6 +28,7 @@ while (( $# )); do
   esac
 done
 [[ -n "${tfx_pat:-}" ]] || die "tfx_pat is not set; run under zsh -lc."
+[[ -n "$ORG" ]] || die "ADO_TEST_ORG is not set; export your test organization's name from ~/.zshenv."
 tfx=("$repo/tools/tfx-run")
 
 show_json() { "$tfx[@]" extension show --publisher $PUBLISHER --extension-id $EXT_ID --json 2>/dev/null || true; }

@@ -44,8 +44,8 @@ describe('vss-extension.json — identity', () => {
     const dev = read('overrides/dev.json');
     // Deliberately not pinned to a literal. Which personal publisher this is
     // depends on whose Marketplace account is in play, and pinning the string
-    // only encoded an earlier guess at it — `MoneyMikeC`, which turned out not
-    // to be a publisher that exists. A test that fails when the value is
+    // only encoded an earlier guess at it, which turned out not to be a
+    // publisher that exists. A test that fails when the value is
     // corrected is testing the wrong thing. What has to hold is that packaging
     // has a real publisher to work with and that it is not the release template.
     expect(typeof dev['publisher']).toBe('string');

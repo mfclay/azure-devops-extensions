@@ -85,43 +85,22 @@ is the same mark with the glyph enlarged for 32px, rendered to the task's
 
 ## Publishing
 
-Two publishes exist here, and only one of them is unblocked.
+[RELEASING.md](../../../RELEASING.md) at the repo root has the whole process: identity, dev
+builds, the release steps, credentials and the listing. What is specific to this extension:
 
-### The dev publish — `MichaelC`, private
-
-Unblocked, and how the extension gets into an organisation you own personally so
-the [harness](harness/README.md) can run. It publishes privately under the dev
-publisher and shares to one organisation:
-
-```bash
-node_modules/.bin/tfx extension publish \
-  --vsix packages/extension/dist/MichaelC.bicep-whatif-dev-0.1.0.vsix \
-  --share-with <your-org> \
-  --token "$tfx_pat"
-```
-
-Run it from the repo root. `<your-org>` is the organisation **name**, not a URL.
-
-**Sharing is not installing.** `--share-with` only makes the extension available
-to the organisation; installing it is a separate click in Organisation settings →
-Extensions → Shared. The harness pipeline will not validate until it is installed.
-
-The PAT needs *Marketplace (publish)*, belongs to the publisher account rather
-than to a project, and is not the read PAT this repo's sibling tooling uses.
-Keep it out of the shell history and out of any transcript — export it and pass
-it by variable, as above.
-
-**Republishing the same version fails.** Bump first with
-`node scripts/package.mjs --rev-version`, which mutates `task.json` and
-`package.json` and therefore wants committing.
+- **The dev build gives the task its own identity.** `overrides/dev.json` sets the task's
+  GUID and name as well as the extension id, so dev and release can be installed in one
+  organisation. `scripts/package.mjs` applies them to the staged copy only.
+- **There is no dev publish wrapper yet.** Package with a copy of `overrides/dev.json` that
+  sets `"version"`, then publish with `tools/tfx-run`, or run the *Bicep What-If Publish*
+  workflow by hand. Never `--rev-version`; RELEASING.md says why.
 
 ### The release publish — not yet done
 
-The release identity is not settled yet. Until it is, the task's markdown
-summary (`publishSummary`, on by default) is what a pipeline without the
-extension installed still gets.
-
-It would use `--overrides overrides/release.json`, which is gitignored for the
-reason in "The publisher is never committed" above. **Never `--share-with` an
+The release will be `MichaelC.bicep-whatif`, published by the steps in RELEASING.md
+with `--overrides overrides/release.json`, which is gitignored for the reason in
+"The publisher is never committed" above. Until then, the task's markdown summary
+(`publishSummary`, on by default) is what a pipeline without the extension
+installed still gets. **Never `--share-with` an
 organisation people rely on from the dev publisher** — identity is `{publisher}.{id}`, so
 even once creates an install people must later be migrated off.

@@ -40,7 +40,7 @@
 set -euo pipefail
 
 IMAGE="${HARNESS_AGENT_IMAGE:-whatif-harness-agent}"
-ORG_URL="${AZP_URL:-https://dev.azure.com/moneymikec}"
+ORG_URL="${AZP_URL:-${ADO_TEST_ORG:+https://dev.azure.com/$ADO_TEST_ORG}}"
 POOL="${AZP_POOL:-Default}"
 AGENT_NAME="${AZP_AGENT_NAME:-$(hostname -s)-docker}"
 
@@ -88,6 +88,7 @@ do_up() {
       *)         die "unknown option: $a" ;;
     esac
   done
+  [ -n "$ORG_URL" ] || die "set ADO_TEST_ORG to your test organisation's name, or AZP_URL to its URL."
 
   # --dry-run deliberately skips the docker checks: its whole purpose is to show
   # what would happen, including on a machine where the daemon is not up.
@@ -136,7 +137,7 @@ usage: tools/harness-agent <command>
   up [--once]        register and run the agent (builds first if needed)
   up --dry-run       print what would run, without a container
 
-Environment: AZP_URL (default $ORG_URL), AZP_POOL (default Default),
+Environment: AZP_URL (default https://dev.azure.com/\$ADO_TEST_ORG), AZP_POOL (default Default),
 AZP_AGENT_NAME, HARNESS_AGENT_IMAGE.
 USAGE
          exit 2 ;;

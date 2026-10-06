@@ -14,8 +14,9 @@ Run npm commands from inside the extension's folder.
 
 ## Releases and identity
 
-- Publish tags are `<short>-v<version>` (`whatif-v0.2.0`), never a bare `v*`. A bare tag
-  cannot say which extension it releases.
+- Release tags are `<short>-v<version>` (`pi-v1.0.1`), never a bare `v*`: a bare tag cannot
+  say which extension it releases. They are pushed after the release is live and start no
+  workflow. The whole process is in `RELEASING.md`.
 - Marketplace identity is `{publisher}.{id}`. Changing either one creates a different
   extension with no upgrade path. Each extension's own `AGENTS.md` says where its publisher
   comes from.

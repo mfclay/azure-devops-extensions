@@ -2,24 +2,18 @@
 #
 # Deliberately a separate workflow rather than a job bolted onto `whatif-ci.yml`:
 #
-#   * **Different trigger.** `whatif-ci.yml` never fires on tags, so a publish job
-#     living there could only be reached by `if:`-guarding a ref its own `on:`
-#     block does not subscribe to.
+#   * **Different trigger.** It is started by hand from the Actions tab and
+#     never by a push or a tag. Tags like `whatif-v1.0.0` mark releases after
+#     they are published (RELEASING.md); this workflow publishes the dev id, so
+#     a release tag must not fire it.
 #   * **A publish must never be built from an unverified tree**, so the whole
 #     chain runs again here rather than trusting an artifact from an earlier
-#     run. It costs a couple of billable minutes per *tag*, which is rare, and
-#     it means there is no path to the Marketplace that skipped a test.
+#     run. There is no path to the Marketplace that skipped a test.
 #
-# The **release** publish is not automated here yet. See
-# `packages/extension/README.md`, "Publishing".
+# The **release** publish is not automated here. See RELEASING.md at the repo root.
 name: Bicep What-If Publish
 
-# Tags carry the extension's name because this repo holds more than one
-# extension, and a bare `v0.2.0` would not say which one it releases.
-
 on:
-  push:
-    tags: ['whatif-v*']
   workflow_dispatch:
     inputs:
       version:
@@ -79,8 +73,8 @@ jobs:
       # ── The version, which is the only thing that can collide ──────────────
       #
       # Republishing an existing version is rejected and a version can never be
-      # reclaimed, so it has to come from something unique by construction. A
-      # git tag is; a commit is not.
+      # reclaimed, so it is an input to the run, and the next step refuses one
+      # the Marketplace already has.
       #
       # `--rev-version` is NOT an option and must not be reintroduced: it is
       # handed to `tfx` after `package.mjs` has staged the manifest into
@@ -90,11 +84,7 @@ jobs:
       - name: Resolve version
         id: v
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            version='${{ inputs.version }}'
-          else
-            version="${GITHUB_REF_NAME#whatif-v}"
-          fi
+          version='${{ inputs.version }}'
           if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
             echo "::error::Version '$version' is not MAJOR.MINOR.PATCH." && exit 1
           fi
@@ -221,12 +211,8 @@ jobs:
       # During dev iteration that is the dominant cost of the whole cycle, and
       # it buys a signal that can be had for free from a terminal afterwards
       # (`tools/tfx-run extension isvalid`).
-      #
-      # A tag push still waits unconditionally: that is the deliberate,
-      # infrequent path, and there the job's colour should mean the version is
-      # actually live.
       - name: Wait for Marketplace validation
-        if: github.event_name != 'workflow_dispatch' || inputs.wait_for_validation
+        if: inputs.wait_for_validation
         env:
           TFX_TOKEN: ${{ secrets.MARKETPLACE_PAT }}
           PUBLISHER: ${{ vars.EXTENSION_PUBLISHER }}
@@ -268,7 +254,7 @@ jobs:
       # below says so out loud when it is skipped, rather than leaving someone
       # to discover an unshared extension.
       - name: Share with the organisation
-        if: vars.EXTENSION_SHARE_WITH != '' && (github.event_name != 'workflow_dispatch' || inputs.wait_for_validation)
+        if: vars.EXTENSION_SHARE_WITH != '' && inputs.wait_for_validation
         env:
           TFX_TOKEN: ${{ secrets.MARKETPLACE_PAT }}
           PUBLISHER: ${{ vars.EXTENSION_PUBLISHER }}
@@ -281,7 +267,7 @@ jobs:
           echo "Note: sharing is not installing. A first-time organisation still needs the extension installed."
 
       - name: Note that sharing was skipped
-        if: vars.EXTENSION_SHARE_WITH != '' && github.event_name == 'workflow_dispatch' && !inputs.wait_for_validation
+        if: vars.EXTENSION_SHARE_WITH != '' && !inputs.wait_for_validation
         run: |
           echo "::notice::Sharing skipped: it needs a validated version and this run did not wait. Harmless for an organisation already shared with; re-run with wait_for_validation for a new one."
 
