@@ -67,7 +67,8 @@ from a failed or abandoned upload. So:
   environment, so a single environment would make every dev build wait too. Only the publish
   workflows declare either environment, so the CI workflows cannot read the token at all; for
   the same reason it is never a repository secret. The publisher and the organization to share
-  with are the `EXTENSION_PUBLISHER` and `EXTENSION_SHARE_WITH` variables.
+  with are the `EXTENSION_PUBLISHER` and `EXTENSION_SHARE_WITH` variables. They are repository
+  variables, not environment ones, so both environments see the same values; neither is secret.
 
 ## Dev builds
 
