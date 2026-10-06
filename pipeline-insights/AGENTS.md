@@ -34,9 +34,11 @@ the code.
   check, tests, package, publish, wait for validation, share and install in the test
   organization once). Publishing changes a real Marketplace account and a version can never be
   reused, so **ask before running it**. `tfx-run extension isvalid` and `show` are read-only.
-- **Release** copies `extension/overrides/release.example.json` to `release.json` (gitignored)
-  and fills in the release publisher, `MichaelC`, the same as dev. The release keeps the manifest's
+- **Release** is the publish workflow with `release` ticked, or from a terminal a copy of
+  `extension/overrides/release.example.json` as `release.json` (gitignored) with the version set.
+  The publisher is `MichaelC`, the same as dev. The release keeps the manifest's
   `pipeline-insights` id, so it is a different extension from the dev one, not an upgrade.
+  `RELEASING.md` has the steps; a release is the user's to start.
 - `tools/tfx-run` wraps every Marketplace call: it supplies `--service-url` and redacts the PAT
   from output. `tfx` exits 255 on uploads the Marketplace accepted, so read success from
   `tfx extension isvalid`, never the exit code. Never read, print or ask for the PAT itself.

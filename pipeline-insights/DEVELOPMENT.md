@@ -53,9 +53,10 @@ manifest.
   `--overrides <path>`, and there is no default path.
 - **Dev publish:** `zsh -lc 'tools/publish-dev'` packages with the committed
   `extension/overrides/dev.json` and publishes the next free patch version.
-- **Release** copies `extension/overrides/release.example.json` to `release.json` (gitignored)
-  and fills in the release publisher. That publish creates a new extension, not an upgrade of a
-  dev build.
+- **Release:** the publish workflow with `release` ticked, or from a terminal a copy of
+  `extension/overrides/release.example.json` as `release.json` (gitignored) with the version set
+  (`RELEASING.md`, "A release"). The release is a different extension from the dev build, not an
+  upgrade of it.
 - `tools/tfx-run` wraps every Marketplace call: it supplies `--service-url` and redacts the PAT
   from output.
 

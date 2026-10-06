@@ -21,8 +21,9 @@ carries over. So identity is decided once and protected from accidents.
   `overrides/dev.json` that sets an id ending in `-dev` (`pipeline-insights-dev`), a "(dev)"
   name, `public: false` and the Preview flag. The release keeps the manifest's clean id. Both
   live under one verified publisher, `MichaelC`, so there is one account to manage.
-- **The release overrides are not committed.** `overrides/release.json` is gitignored and is
-  copied from `overrides/release.example.json` by hand. Releasing should be a deliberate act,
+- **The release overrides are not committed.** The publish workflows stage them from the run's
+  inputs, and from a terminal `overrides/release.json` is copied from
+  `overrides/release.example.json` by hand and gitignored. Releasing should be a deliberate act,
   not a default someone inherits.
 - **A pipeline task needs its own identity too.** Bicep What-If ships a task. An organization
   cannot install two extensions whose tasks share a GUID, and two tasks with one name make
@@ -60,10 +61,13 @@ from a failed or abandoned upload. So:
   tools read it from there; no organization name is written in the repo.
 - **To check whether a secret is set, use `${var:+set}`**, never `${var:-default}`: the
   second prints the value whenever the variable is set.
-- **In GitHub Actions**, the token is the `MARKETPLACE_PAT` secret of the `marketplace`
-  environment. Only the publish workflows declare that environment, so the CI workflows cannot
-  read the token at all. The publisher and the organization to share with are the
-  `EXTENSION_PUBLISHER` and `EXTENSION_SHARE_WITH` variables.
+- **In GitHub Actions**, the token is the `MARKETPLACE_PAT` secret of two environments:
+  `marketplace` for dev builds and dry runs, and `marketplace-release` for releases, which
+  names a required reviewer so that a release waits for approval. Approval is set per
+  environment, so a single environment would make every dev build wait too. Only the publish
+  workflows declare either environment, so the CI workflows cannot read the token at all; for
+  the same reason it is never a repository secret. The publisher and the organization to share
+  with are the `EXTENSION_PUBLISHER` and `EXTENSION_SHARE_WITH` variables.
 
 ## Dev builds
 
@@ -91,8 +95,9 @@ zsh -lc 'tools/tfx-run extension isvalid --publisher MichaelC --extension-id bic
 ```
 
 **From GitHub Actions**, either extension: Actions → *Pipeline Insights Publish* or *Bicep What-If
-Publish* → Run workflow, with a version. These workflows publish the dev id only, re-run the
+Publish* → Run workflow, with a version and `release` left unticked. These workflows re-run the
 whole chain first so nothing untested reaches the Marketplace, and are started by hand only.
+`bicep-whatif/tools/gh-run publish <version>` dispatches a dev build of Bicep What-If.
 
 Two things that look like failures and are not:
 
@@ -106,8 +111,47 @@ Two things that look like failures and are not:
 
 ## A release
 
-Releases are published from a terminal by a person, not by CI. Pipeline Insights, from
-`pipeline-insights/extension/`:
+A release is one run of the extension's publish workflow, with `release` ticked and approved by
+a reviewer. The terminal steps after it are the fallback, and do by hand what the workflow does.
+
+**Once, before the first release from GitHub Actions**, in the repository's Settings →
+Environments, create `marketplace-release`:
+
+- add yourself as a required reviewer, and leave *Prevent self-review* unticked, since the
+  person who starts the run is the one who approves it;
+- limit its deployment branches to `main`;
+- give it its own `MARKETPLACE_PAT` secret, the same kind of token as the `marketplace` one.
+
+### From GitHub Actions
+
+1. **Start from a green `main`.** `task pre-commit` passes on the commit you will release, and
+   CI is green. `task pre-commit` ends with the denylist scan, and that is the only denylist scan
+   a release from GitHub Actions gets: the list is kept off GitHub, so the runner has none.
+2. **Pick the version.** Ask the Marketplace what exists (above). The workflow refuses a taken
+   version before it builds anything.
+3. **Dry run.** Actions → *Pipeline Insights Publish* or *Bicep What-If Publish* → Run workflow
+   on `main`, with the version, `release` and `dry_run` ticked, and `public` and
+   `gallery_flags` as the release should have them. `public` lists it publicly; `Preview`
+   keeps the Preview badge on a version you do not yet call stable.
+
+   The dry run does everything up to the upload: the whole chain, the version check, packaging
+   (Pipeline Insights runs its identifier check over the staged files), and a check that the
+   VSIX manifest's publisher, id, version, display name (no "(dev)") and flags match the
+   inputs. It keeps the VSIX as the run's artifact; look inside it (`unzip -l`) to see that the
+   overview's images are there. It needs no approval, and costs no version.
+4. **Release.** Run it again with the same inputs and `dry_run` unticked. The job waits for
+   approval in `marketplace-release`; approve it from the run's page. It then publishes, always
+   waits for validation, and tags the commit `<extension>-v<version>`. If the tag cannot be
+   pushed, the run fails with the release live and names the commit to tag by hand (step 7
+   below).
+5. **Check the live listing.** Images and links resolve, and the icon is the one you shipped.
+
+A release is refused from any branch but `main`. A dry run is not, which is how a change to a
+publish workflow can be tried out before it lands.
+
+### From a terminal
+
+Pipeline Insights, from `pipeline-insights/extension/`:
 
 1. **Start from a green `main`.** `task pre-commit` passes, and CI is green.
 2. **Write the release overrides.** Copy `overrides/release.example.json` to
@@ -165,8 +209,11 @@ Releases are published from a terminal by a person, not by CI. Pipeline Insights
 
 The first public release can go into an extension id that already exists privately: publishing
 with `public: true` makes it public and replaces its name with the manifest's. Bicep What-If
-has not had a release yet. It will follow the same steps with its own `release.example.json`,
-which has no `task` block, so the release ships the task under its permanent GUID and name.
+has not had a release yet. Its release overrides have no `task` block, so the release ships the
+task under its permanent GUID and name. It has no identifier check over the staged files: its
+check scans every tracked file before the build, which is everything the repo puts in the VSIX,
+and the rest is bundled third-party code, where a GUID or address scan finds only the
+libraries' own constants.
 
 ## Before the repo or the listing goes public
 

@@ -17,8 +17,9 @@ coverage/
 # {publisher}.{id}, so committing one makes the dev-to-release swap a silent change of
 # identity rather than a deliberate act. The .example alongside it is the template.
 extension/overrides/release.json
-# publish-dev's per-run copy of dev.json with the version filled in.
+# The per-run overrides publish-dev and the publish workflow stage, with the version filled in.
 extension/overrides/.staged-dev.json
+extension/overrides/.staged-release.json
 test-results.xml
 
 # Recordings of real projects, from `npm run capture-fixture`. Never committed.

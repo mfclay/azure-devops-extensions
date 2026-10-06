@@ -1,11 +1,12 @@
 {
   "_comment": [
-    "Copy to release.json and fill in the release publisher before packaging a release.",
-    "Not committed with a real value on purpose: extension identity is {publisher}.{id}, so the",
-    "dev-to-release swap creates a DIFFERENT extension with no upgrade path and no install",
-    "continuity. That has to be a deliberate act, not a default someone inherits."
+    "For a release from a terminal (RELEASING.md, \"A release\"): copy to release.json, set the",
+    "version, and choose public and galleryFlags. release.json is gitignored because a release has",
+    "to be a deliberate act, not a default someone inherits. There is no id or name here, so the",
+    "manifest supplies both. The publish workflow stages the same fields from its inputs instead."
   ],
-  "publisher": "REPLACE-WITH-THE-RELEASE-PUBLISHER",
-  "public": false,
-  "galleryFlags": ["Preview"]
+  "publisher": "MichaelC",
+  "version": "REPLACE-WITH-THE-VERSION",
+  "public": true,
+  "galleryFlags": []
 }

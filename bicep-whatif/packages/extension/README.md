@@ -49,7 +49,8 @@ node scripts/package.mjs --rev-version                    # bump the patch first
 
 `overrides/dev.json` is committed and names `MichaelC`, marked `public: false`.
 `overrides/release.example.json` is a template that refuses to be used as-is —
-copy it, fill in the publisher, and keep the copy out of git.
+copy it, set the version, and keep the copy out of git. The publish workflow
+stages the same fields itself (RELEASING.md, "A release").
 
 **Sharing the dev extension into an organisation people rely on, even once,
 creates an identity they must later be migrated off.** That is the whole reason the two

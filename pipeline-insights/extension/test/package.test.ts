@@ -38,7 +38,7 @@ describe('package.mjs', () => {
   it('refuses the unfilled release example', () => {
     const { status, stderr } = pack('--overrides', 'overrides/release.example.json');
     expect(status).not.toBe(0);
-    expect(stderr).toContain('does not name a publisher');
+    expect(stderr).toContain('which is not MAJOR.MINOR.PATCH');
   });
 
   it('gets past the publisher check, then refuses an unbuilt hub', () => {

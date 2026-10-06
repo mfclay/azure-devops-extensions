@@ -69,8 +69,18 @@ describe('vss-extension.json — identity', () => {
   });
 
   it('ships a release template that refuses to be used as-is', () => {
+    // package.mjs refuses a version that is not MAJOR.MINOR.PATCH, so a copy
+    // nobody edited stops before tfx runs.
     const release = read('overrides/release.example.json');
-    expect(String(release['publisher'])).toMatch(/^REPLACE/);
+    expect(String(release['version'])).toMatch(/^REPLACE/);
+  });
+
+  it('releases under the dev publisher, with the manifest identity', () => {
+    // Dev and release differ by id only. A release that named an id, a name or
+    // a task would no longer be the extension people installed.
+    const release = read('overrides/release.example.json');
+    expect(release['publisher']).toBe(read('overrides/dev.json')['publisher']);
+    for (const key of ['id', 'name', 'task']) expect(release).not.toHaveProperty(key);
   });
 });
 

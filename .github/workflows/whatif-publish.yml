@@ -1,16 +1,32 @@
-# Publishes the **dev** extension — publisher `MichaelC`, `public: false`.
+# Publishes Bicep What-If to the Marketplace: the **dev** extension by default, the
+# **release** when `release` is ticked. Publisher `MichaelC` either way.
 #
 # Deliberately a separate workflow rather than a job bolted onto `whatif-ci.yml`:
 #
 #   * **Different trigger.** It is started by hand from the Actions tab and
-#     never by a push or a tag. Tags like `whatif-v1.0.0` mark releases after
-#     they are published (RELEASING.md); this workflow publishes the dev id, so
-#     a release tag must not fire it.
+#     never by a push or a tag. Tags like `whatif-v1.0.0` mark releases once
+#     they are valid, and this workflow pushes them itself; a tag starting it
+#     would publish again.
 #   * **A publish must never be built from an unverified tree**, so the whole
 #     chain runs again here rather than trusting an artifact from an earlier
 #     run. There is no path to the Marketplace that skipped a test.
 #
-# The **release** publish is not automated here. See RELEASING.md at the repo root.
+# **The two modes differ in identity and in what guards them**, and in nothing
+# else, so a dev publish exercises every step a release depends on:
+#
+#   * **dev**: the `bicep-whatif-dev` id from the committed overrides/dev.json,
+#     the `marketplace` environment, waits for validation only if asked, and is
+#     shared with the test organisation.
+#   * **release**: the manifest's own id, with overrides staged from this run's
+#     inputs (`release.json` is gitignored, so it is never on a runner). It runs
+#     in `marketplace-release`, which waits for a reviewer's approval; it always
+#     waits for validation, is never shared (a public extension needs none), and
+#     tags `whatif-v<version>` once the version is valid.
+#
+# `dry_run` stops either mode before the upload: it builds, packages, checks the
+# VSIX and keeps it as an artifact, and costs no version. RELEASING.md, "A
+# release", has the order to run them in, and keeps the terminal steps as the
+# fallback.
 name: Bicep What-If Publish
 
 on:
@@ -19,8 +35,27 @@ on:
       version:
         description: 'Extension version, e.g. 0.1.1 (no leading v)'
         required: true
+      release:
+        description: 'Publish the release, not the dev build. Waits for approval.'
+        type: boolean
+        default: false
+      dry_run:
+        description: 'Stop before the upload: build, package, check the VSIX and keep it as an artifact.'
+        type: boolean
+        default: false
+      public:
+        description: 'Release only: list it publicly.'
+        type: boolean
+        default: true
+      gallery_flags:
+        description: 'Release only: Preview keeps the Preview badge.'
+        type: choice
+        options:
+          - none
+          - Preview
+        default: none
       wait_for_validation:
-        description: 'Wait for Marketplace validation (~8 min). Off for dev iteration.'
+        description: 'Wait for Marketplace validation (~8 min). Off for dev iteration; a release always waits.'
         type: boolean
         default: false
 
@@ -41,7 +76,10 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  EXTENSION_ID: bicep-whatif-dev
+  # The id every step below checks, publishes and polls. A release takes the
+  # manifest's own id, and `Stage the overrides` asserts the two agree, so a
+  # renamed manifest fails before anything is packaged.
+  EXTENSION_ID: ${{ inputs.release && 'bicep-whatif' || 'bicep-whatif-dev' }}
   SERVICE_URL: https://marketplace.visualstudio.com/
 
 jobs:
@@ -49,14 +87,29 @@ jobs:
     runs-on: ubuntu-latest
     # Gates `secrets.MARKETPLACE_PAT` to this job alone. `whatif-ci.yml` declares no
     # environment and therefore structurally cannot read the token.
-    environment: marketplace
+    #
+    # **A release runs in an environment of its own** so that it can wait for
+    # approval without every dev publish waiting too: required reviewers are set
+    # per environment, not per input. `marketplace-release` holds its own copy of
+    # the token. A dry run uploads nothing, so it stays in `marketplace` and needs
+    # no approval. Never move the token to a repository secret instead: every
+    # workflow, CI included, could then read it.
+    environment: ${{ inputs.release && !inputs.dry_run && 'marketplace-release' || 'marketplace' }}
     # Without this the job inherits GitHub's 6-hour default, so a wedged run
     # would hang for six hours before failing. The chain takes ~1m15s plus
-    # validation; 20 minutes is generous.
+    # validation, which the wait below bounds at 15 minutes; 20 is enough.
     timeout-minutes: 20
 
     steps:
       - uses: actions/checkout@v5
+
+      # A release is built from `main` and nothing else: its tag marks a commit
+      # on main, and RELEASING.md starts from a green one. A dry run may come
+      # from any branch, which is how a change to this file is tried out.
+      - name: Refuse a release from a branch other than main
+        if: inputs.release && !inputs.dry_run && github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::A release is dispatched from main, not $GITHUB_REF." && exit 1
 
       - name: Check for unscrubbed identifiers
         run: npm run check:identifiers
@@ -104,6 +157,10 @@ jobs:
       #   exit 0  and a line reading exactly `Valid`   -> published already
       #   exit != 0 with "Could not find extension version" -> free to use
       #   anything else -> exists in some other state; refuse and let a human look
+      #
+      # It runs on a dry run too, so a dry run says whether the real one can go.
+      # A missing or wrong token lands in "anything else", so an environment that
+      # lacks the secret stops here, before anything is uploaded.
       - name: Refuse an already-published version
         env:
           TFX_TOKEN: ${{ secrets.MARKETPLACE_PAT }}
@@ -134,37 +191,115 @@ jobs:
       - name: Build
         run: npm run build
 
-      # ── The dev identity, staged from overrides/dev.json ───────────────────
+      # ── The identity, staged into a gitignored overrides file ──────────────
       #
       # Decision F1: extension identity is `{publisher}.{id}`, so the manifest
-      # names neither the publisher nor the dev id. dev.json supplies the
-      # `-dev` id, name, visibility and gallery flags; the publisher comes from
-      # the repo variable and the version from this run, so
-      # `vss-extension.json` stays untouched. The staged copy is gitignored.
+      # names neither the publisher nor the dev id, and `vss-extension.json`
+      # stays untouched. The publisher comes from the repo variable and the
+      # version from this run, in both modes.
+      #
+      #   * dev: dev.json supplies the `-dev` id, name, visibility, gallery flags
+      #     and the dev task's own GUID and name.
+      #   * release: the staged file carries no `id`, `name` or `task`, so the
+      #     manifest supplies all three, and the task ships under its permanent
+      #     GUID. Visibility and gallery flags are this run's inputs.
       #
       # `EXTENSION_PUBLISHER` is a **variable, not a secret**, on purpose. It is
       # public on the Marketplace, and as a secret GitHub would mask the string
       # in every log line it appears in — including tfx's own output, which is
       # what you read when a publish goes wrong.
       - name: Stage the overrides
+        id: stage
         env:
           PUBLISHER: ${{ vars.EXTENSION_PUBLISHER }}
           VERSION: ${{ steps.v.outputs.version }}
+          RELEASE: ${{ inputs.release }}
+          PUBLIC: ${{ inputs.public }}
+          GALLERY_FLAGS: ${{ inputs.gallery_flags }}
         run: |
           node -e '
             const fs = require("fs");
-            const d = JSON.parse(fs.readFileSync("packages/extension/overrides/dev.json", "utf8"));
-            if (d.id !== process.env.EXTENSION_ID) throw new Error(`dev.json id ${d.id} != EXTENSION_ID ${process.env.EXTENSION_ID}`);
-            d.publisher = process.env.PUBLISHER;
-            d.version = process.env.VERSION;
-            fs.writeFileSync("packages/extension/overrides/.staged-dev.json", JSON.stringify(d, null, 2));
+            const dir = "packages/extension";
+            const e = process.env;
+            let o, file;
+            if (e.RELEASE === "true") {
+              const m = JSON.parse(fs.readFileSync(`${dir}/vss-extension.json`, "utf8"));
+              if (m.id !== e.EXTENSION_ID) throw new Error(`manifest id ${m.id} != EXTENSION_ID ${e.EXTENSION_ID}`);
+              o = { public: e.PUBLIC === "true", galleryFlags: e.GALLERY_FLAGS === "none" ? [] : [e.GALLERY_FLAGS] };
+              file = "overrides/.staged-release.json";
+            } else {
+              o = JSON.parse(fs.readFileSync(`${dir}/overrides/dev.json`, "utf8"));
+              if (o.id !== e.EXTENSION_ID) throw new Error(`dev.json id ${o.id} != EXTENSION_ID ${e.EXTENSION_ID}`);
+              file = "overrides/.staged-dev.json";
+            }
+            o.publisher = e.PUBLISHER;
+            o.version = e.VERSION;
+            fs.writeFileSync(`${dir}/${file}`, JSON.stringify(o, null, 2));
+            fs.appendFileSync(e.GITHUB_OUTPUT, `file=${file}\n`);
           '
 
       # Through `npm run`, never `node scripts/package.mjs`: `package.mjs` shells
       # out to a bare `tfx`, which resolves only because npm puts
       # `node_modules/.bin` on PATH.
+      #
+      # There is no identifier check over the staged build here, unlike Pipeline
+      # Insights. The check above scans every tracked file, which is everything
+      # the repo puts in the VSIX; the rest is bundled third-party code, where a
+      # GUID or address scan finds only the libraries' own constants.
       - name: Package
-        run: npm run package -w @bicep-whatif/extension -- --overrides overrides/.staged-dev.json
+        run: npm run package -w @bicep-whatif/extension -- --overrides ${{ steps.stage.outputs.file }}
+
+      # ── Read back what is about to be published ────────────────────────────
+      #
+      # The manifest inside the VSIX is what the Marketplace reads, so that is
+      # what gets checked, not the overrides that produced it: the publisher, id
+      # and version this run asked for, and a display name and flags that match
+      # the mode. A dev build that came out public, or a release still named
+      # "(dev)", stops here. RELEASING.md step 4 is the same check by hand.
+      - name: Check the VSIX manifest
+        id: vsix
+        env:
+          PUBLISHER: ${{ vars.EXTENSION_PUBLISHER }}
+          VERSION: ${{ steps.v.outputs.version }}
+          RELEASE: ${{ inputs.release }}
+          PUBLIC: ${{ inputs.public }}
+          GALLERY_FLAGS: ${{ inputs.gallery_flags }}
+        run: |
+          vsix="packages/extension/dist/${PUBLISHER}.${EXTENSION_ID}-${VERSION}.vsix"
+          [ -f "$vsix" ] || { echo "::error::No VSIX at $vsix"; exit 1; }
+          unzip -p "$vsix" extension.vsixmanifest | node -e '
+            const xml = require("fs").readFileSync(0, "utf8");
+            const e = process.env;
+            const release = e.RELEASE === "true";
+            const identity = xml.match(/<Identity\b[^>]*>/)?.[0] ?? "";
+            const attr = (n) => identity.match(new RegExp(`\\b${n}="([^"]*)"`))?.[1];
+            const name = xml.match(/<DisplayName>([^<]*)</)?.[1] ?? "";
+            const flags = (xml.match(/<GalleryFlags>([^<]*)</)?.[1] ?? "").split(/\s+/).filter(Boolean);
+            console.log(`${attr("Publisher")}.${attr("Id")} ${attr("Version")}, "${name}", flags: ${flags.join(" ") || "none"}`);
+            const bad = [];
+            for (const [k, want] of [["Publisher", e.PUBLISHER], ["Id", e.EXTENSION_ID], ["Version", e.VERSION]]) {
+              if (attr(k) !== want) bad.push(`${k} is ${attr(k)}, expected ${want}`);
+            }
+            if (name.includes("(dev)") === release) bad.push(`display name "${name}" ${release ? "says" : "lacks"} (dev)`);
+            const wantPublic = release && e.PUBLIC === "true";
+            if (flags.includes("Public") !== wantPublic) bad.push(`gallery flags ${wantPublic ? "lack" : "include"} Public`);
+            if (release && flags.includes("Preview") !== (e.GALLERY_FLAGS === "Preview")) {
+              bad.push(`gallery flags ${e.GALLERY_FLAGS === "Preview" ? "lack" : "include"} Preview`);
+            }
+            for (const b of bad) console.log(`::error::${b}`);
+            process.exit(bad.length ? 1 : 0);
+          '
+          echo "path=$vsix" >> "$GITHUB_OUTPUT"
+
+      # Before the publish, so a dry run keeps the VSIX and a failed publish
+      # still leaves the exact archive it tried to upload.
+      - name: Upload VSIX
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.EXTENSION_ID }}-${{ steps.v.outputs.version }}
+          path: bicep-whatif/${{ steps.vsix.outputs.path }}
+          if-no-files-found: error
+          retention-days: 14
 
       # ── Upload, then wait for validation ourselves ─────────────────────────
       #
@@ -183,15 +318,13 @@ jobs:
       # in `ps` output on the runner. GitHub masks the secret in logs itself, so
       # unlike the local `tools/tfx-run` this needs no redaction filter.
       - name: Publish
+        if: ${{ !inputs.dry_run }}
         env:
           TFX_TOKEN: ${{ secrets.MARKETPLACE_PAT }}
-          PUBLISHER: ${{ vars.EXTENSION_PUBLISHER }}
-          VERSION: ${{ steps.v.outputs.version }}
+          VSIX: ${{ steps.vsix.outputs.path }}
         run: |
-          vsix="packages/extension/dist/${PUBLISHER}.${EXTENSION_ID}-${VERSION}.vsix"
-          [ -f "$vsix" ] || { echo "::error::No VSIX at $vsix"; exit 1; }
           node_modules/.bin/tfx extension publish \
-            --vsix "$vsix" --service-url "$SERVICE_URL" \
+            --vsix "$VSIX" --service-url "$SERVICE_URL" \
             --token "$TFX_TOKEN" --no-wait-validation --no-color
 
       # Polls the same three shapes as the pre-flight check. The match anchors
@@ -210,8 +343,12 @@ jobs:
       # work. During dev iteration that wait is most of the cycle, and the
       # signal it buys can be had from a terminal afterwards
       # (`tools/tfx-run extension isvalid`).
+      #
+      # **A release always waits.** The tag job runs only once this one has
+      # succeeded, so the tag marks a version that passed validation, and nobody
+      # has to come back later to find out whether the release went live.
       - name: Wait for Marketplace validation
-        if: inputs.wait_for_validation
+        if: ${{ !inputs.dry_run && (inputs.release || inputs.wait_for_validation) }}
         env:
           TFX_TOKEN: ${{ secrets.MARKETPLACE_PAT }}
           PUBLISHER: ${{ vars.EXTENSION_PUBLISHER }}
@@ -244,7 +381,9 @@ jobs:
       # shared with nobody.
       #
       # Sharing persists across republishes, so this is a no-op after the first
-      # time. Unset `EXTENSION_SHARE_WITH` to skip it entirely.
+      # time. Unset `EXTENSION_SHARE_WITH` to skip it entirely. A release skips
+      # it too: sharing is for private extensions, and the test organisation
+      # should not depend on the public one.
       # Gated on having waited, because **sharing requires a valid version** —
       # that is the whole reason this is a separate step. Publishing without
       # waiting therefore cannot share, which matters only on a first publish to
@@ -253,7 +392,7 @@ jobs:
       # below says so out loud when it is skipped, rather than leaving someone
       # to discover an unshared extension.
       - name: Share with the organisation
-        if: vars.EXTENSION_SHARE_WITH != '' && inputs.wait_for_validation
+        if: ${{ !inputs.release && !inputs.dry_run && vars.EXTENSION_SHARE_WITH != '' && inputs.wait_for_validation }}
         env:
           TFX_TOKEN: ${{ secrets.MARKETPLACE_PAT }}
           PUBLISHER: ${{ vars.EXTENSION_PUBLISHER }}
@@ -266,14 +405,42 @@ jobs:
           echo "Note: sharing is not installing. A first-time organisation still needs the extension installed."
 
       - name: Note that sharing was skipped
-        if: vars.EXTENSION_SHARE_WITH != '' && !inputs.wait_for_validation
+        if: ${{ !inputs.release && !inputs.dry_run && vars.EXTENSION_SHARE_WITH != '' && !inputs.wait_for_validation }}
         run: |
           echo "::notice::Sharing skipped: it needs a validated version and this run did not wait. Harmless for an organisation already shared with; re-run with wait_for_validation for a new one."
 
-      - name: Upload VSIX
-        uses: actions/upload-artifact@v7
-        with:
-          name: vsix-${{ steps.v.outputs.version }}
-          path: bicep-whatif/packages/extension/dist/*.vsix
-          if-no-files-found: error
-          retention-days: 14
+  # ── The release tag, once the version is valid ─────────────────────────────
+  #
+  # A job of its own so that only it holds `contents: write`: `permissions`
+  # cannot follow an input, and the publish job, which runs the whole build,
+  # stays read-only. It runs only after `publish` succeeded, which in release
+  # mode includes the wait for validation, so the tag marks a live version.
+  # Pushed with `GITHUB_TOKEN`, the tag starts no workflow, and none subscribes
+  # to tags anyway.
+  #
+  # If the push is refused, by a ruleset that protects tags say, the release is
+  # still live and the error says so: tag the commit by hand (RELEASING.md).
+  tag:
+    needs: publish
+    if: inputs.release && !inputs.dry_run
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Tag the release commit
+        env:
+          TAG: whatif-v${{ inputs.version }}
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null; then
+            echo "::error::$TAG already exists. The release is live; check which commit the tag marks."
+            exit 1
+          fi
+          git tag "$TAG" "$GITHUB_SHA"
+          git push origin "refs/tags/$TAG" || {
+            echo "::error::Could not push $TAG. The release is live; tag $GITHUB_SHA by hand (RELEASING.md, step 7)."
+            exit 1
+          }

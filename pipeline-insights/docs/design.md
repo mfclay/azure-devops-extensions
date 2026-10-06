@@ -321,7 +321,7 @@ Iterate under a dev publisher, installed only in a test organization. Once the e
 
 - **Publisher.** An extension's identity is `{publisher}.{id}`, so the release version is a new extension, not an upgrade of the dev one: installing the dev build anywhere people rely on it would leave them to be migrated off it later. Nothing carries over between the two, and nothing needs to, because the extension stores no data of its own.
 - **Install.** Installing it in an organization may need an org admin, and a review of what it can read. Its read-only build and code scopes help that case.
-- **Repo.** The manifest names no publisher. A committed `release.example.json` holds a placeholder for the release publisher; the filled-in `release.json` is gitignored. Fixtures stay out of the package.
+- **Repo.** The manifest names no publisher. A committed `release.example.json` is the release template, with a placeholder version; the filled-in `release.json` is gitignored. Fixtures stay out of the package.
 - **Tooling.** Build, package and publish use an override-file split between dev and release publishers. The test organization can only show its own pipelines, so it proves the ADO side (placement, token, scopes, full screen). Design iteration happens in a local dev page fed with the synthetic estate.
 
 **Phases**

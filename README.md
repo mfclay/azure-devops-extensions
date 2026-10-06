@@ -18,9 +18,9 @@ task pre-commit   # every extension's checks, plus the repo-wide identifier scan
 builds, the release steps, credentials, and the listing's images. It is written to be useful
 for anyone building an Azure DevOps extension.
 
-Releases are published from a terminal. Each is tagged `<extension>-v<MAJOR.MINOR.PATCH>`
-(`pi-v1.0.1`) once it is live; tags start no workflow. The publish workflows in
-`.github/workflows/` publish dev builds only, started by hand from the Actions tab.
+The publish workflows in `.github/workflows/` publish dev builds and releases, started by hand
+from the Actions tab; a release waits for approval. Each release is tagged
+`<extension>-v<MAJOR.MINOR.PATCH>` (`pi-v1.0.1`) once it is live; tags start no workflow.
 
 ## Questions, bugs and ideas
 

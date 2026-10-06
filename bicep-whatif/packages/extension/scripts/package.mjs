@@ -73,6 +73,11 @@ if (
 ) {
   throw new Error(`${overridesPath} does not name a publisher.`);
 }
+// A version, when the file sets one, is the one thing the Marketplace never gives back, so a
+// placeholder or a typo stops here rather than at the upload.
+if (overrides.version !== undefined && !/^\d+\.\d+\.\d+$/.test(String(overrides.version))) {
+  throw new Error(`${overridesPath} sets version "${overrides.version}", which is not MAJOR.MINOR.PATCH.`);
+}
 
 // ── Stage ────────────────────────────────────────────────────────────────────
 

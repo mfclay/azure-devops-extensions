@@ -1,14 +1,17 @@
-# Publishes the Pipeline Insights **dev** extension: the committed overrides/dev.json, with the
-# publisher taken from `vars.EXTENSION_PUBLISHER` and this run's version.
+# Publishes Pipeline Insights: the **dev** extension by default (the committed overrides/dev.json),
+# the **release** when `release` is ticked (the manifest's own id). The publisher comes from
+# `vars.EXTENSION_PUBLISHER` and the version from this run.
 #
 # Same shape as whatif-publish.yml, which explains each step at length: a separate workflow
 # started only by hand, the whole chain re-run because nothing reaches the Marketplace
-# untested, a pre-flight refusal of a taken version, `--no-wait-validation` with its own wait
-# loop, and sharing as a separate step once the version is valid.
+# untested, a pre-flight refusal of a taken version, a check of the VSIX manifest,
+# `--no-wait-validation` with its own wait loop, and sharing as a separate step once the
+# version is valid. A release runs in the `marketplace-release` environment, which waits for
+# approval, always waits for validation, is never shared, and is tagged `pi-v<version>` once
+# valid. `dry_run` stops either mode before the upload.
 #
-# Tags like `pi-v1.0.0` mark releases after they are published and do not start this
-# workflow, which publishes the dev id. The local equivalent is
-# pipeline-insights/tools/publish-dev; the release publish is in RELEASING.md.
+# The local equivalent of a dev publish is pipeline-insights/tools/publish-dev; the order of a
+# release, and the terminal steps that remain its fallback, are in RELEASING.md.
 name: Pipeline Insights Publish
 
 on:
@@ -17,8 +20,27 @@ on:
       version:
         description: 'Extension version, e.g. 0.1.4 (no leading v)'
         required: true
+      release:
+        description: 'Publish the release, not the dev build. Waits for approval.'
+        type: boolean
+        default: false
+      dry_run:
+        description: 'Stop before the upload: build, package, check the VSIX and keep it as an artifact.'
+        type: boolean
+        default: false
+      public:
+        description: 'Release only: list it publicly.'
+        type: boolean
+        default: true
+      gallery_flags:
+        description: 'Release only: Preview keeps the Preview badge.'
+        type: choice
+        options:
+          - none
+          - Preview
+        default: none
       wait_for_validation:
-        description: 'Wait for Marketplace validation (~8 min). Off for dev iteration.'
+        description: 'Wait for Marketplace validation (~8 min). Off for dev iteration; a release always waits.'
         type: boolean
         default: false
 
@@ -36,17 +58,24 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  EXTENSION_ID: pipeline-insights-dev
+  # `Stage the overrides` asserts this matches dev.json or, for a release, the manifest.
+  EXTENSION_ID: ${{ inputs.release && 'pipeline-insights' || 'pipeline-insights-dev' }}
   SERVICE_URL: https://marketplace.visualstudio.com/
 
 jobs:
   publish:
     runs-on: ubuntu-latest
-    environment: marketplace
+    # Approval is set per environment, so a release gets its own; a dry run uploads nothing.
+    environment: ${{ inputs.release && !inputs.dry_run && 'marketplace-release' || 'marketplace' }}
     timeout-minutes: 20
 
     steps:
       - uses: actions/checkout@v5
+
+      - name: Refuse a release from a branch other than main
+        if: inputs.release && !inputs.dry_run && github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::A release is dispatched from main, not $GITHUB_REF." && exit 1
 
       - uses: actions/setup-node@v5
         with:
@@ -96,42 +125,104 @@ jobs:
       - name: Build
         run: npm run build
 
-      # dev.json supplies the name, visibility and gallery flags; the publisher comes from the
-      # repo variable so both extensions publish under the one value, and the version from
-      # this run. The staged copy is gitignored.
+      # dev.json supplies the dev id, name, visibility and gallery flags. A release stages no id
+      # or name, so the manifest supplies both, and takes visibility and flags from this run.
+      # The staged copy is gitignored.
       - name: Stage the overrides
+        id: stage
         env:
           PUBLISHER: ${{ vars.EXTENSION_PUBLISHER }}
           VERSION: ${{ steps.v.outputs.version }}
+          RELEASE: ${{ inputs.release }}
+          PUBLIC: ${{ inputs.public }}
+          GALLERY_FLAGS: ${{ inputs.gallery_flags }}
         run: |
           node -e '
             const fs = require("fs");
-            const d = JSON.parse(fs.readFileSync("extension/overrides/dev.json", "utf8"));
-            if (d.id !== process.env.EXTENSION_ID) throw new Error(`dev.json id ${d.id} != EXTENSION_ID ${process.env.EXTENSION_ID}`);
-            d.publisher = process.env.PUBLISHER;
-            d.version = process.env.VERSION;
-            fs.writeFileSync("extension/overrides/.staged-dev.json", JSON.stringify(d, null, 2));
+            const dir = "extension";
+            const e = process.env;
+            let o, file;
+            if (e.RELEASE === "true") {
+              const m = JSON.parse(fs.readFileSync(`${dir}/vss-extension.json`, "utf8"));
+              if (m.id !== e.EXTENSION_ID) throw new Error(`manifest id ${m.id} != EXTENSION_ID ${e.EXTENSION_ID}`);
+              o = { public: e.PUBLIC === "true", galleryFlags: e.GALLERY_FLAGS === "none" ? [] : [e.GALLERY_FLAGS] };
+              file = "overrides/.staged-release.json";
+            } else {
+              o = JSON.parse(fs.readFileSync(`${dir}/overrides/dev.json`, "utf8"));
+              if (o.id !== e.EXTENSION_ID) throw new Error(`dev.json id ${o.id} != EXTENSION_ID ${e.EXTENSION_ID}`);
+              file = "overrides/.staged-dev.json";
+            }
+            o.publisher = e.PUBLISHER;
+            o.version = e.VERSION;
+            fs.writeFileSync(`${dir}/${file}`, JSON.stringify(o, null, 2));
+            fs.appendFileSync(e.GITHUB_OUTPUT, `file=${file}\n`);
           '
 
-      # Through `npm run`: package.mjs shells out to a bare `tfx`.
+      # Through `npm run`: package.mjs shells out to a bare `tfx`. It also runs the identifier
+      # check over the staged build. On a runner that check has fixture names but no denylist,
+      # which is why RELEASING.md runs `task denylist` before a release is dispatched.
       - name: Package
         working-directory: pipeline-insights/extension
-        run: npm run package -- --overrides overrides/.staged-dev.json
+        run: npm run package -- --overrides ${{ steps.stage.outputs.file }}
 
-      - name: Publish
+      # The manifest inside the VSIX, against what this run asked for.
+      - name: Check the VSIX manifest
+        id: vsix
         env:
-          TFX_TOKEN: ${{ secrets.MARKETPLACE_PAT }}
           PUBLISHER: ${{ vars.EXTENSION_PUBLISHER }}
           VERSION: ${{ steps.v.outputs.version }}
+          RELEASE: ${{ inputs.release }}
+          PUBLIC: ${{ inputs.public }}
+          GALLERY_FLAGS: ${{ inputs.gallery_flags }}
         run: |
           vsix="extension/dist/${PUBLISHER}.${EXTENSION_ID}-${VERSION}.vsix"
           [ -f "$vsix" ] || { echo "::error::No VSIX at $vsix"; exit 1; }
+          unzip -p "$vsix" extension.vsixmanifest | node -e '
+            const xml = require("fs").readFileSync(0, "utf8");
+            const e = process.env;
+            const release = e.RELEASE === "true";
+            const identity = xml.match(/<Identity\b[^>]*>/)?.[0] ?? "";
+            const attr = (n) => identity.match(new RegExp(`\\b${n}="([^"]*)"`))?.[1];
+            const name = xml.match(/<DisplayName>([^<]*)</)?.[1] ?? "";
+            const flags = (xml.match(/<GalleryFlags>([^<]*)</)?.[1] ?? "").split(/\s+/).filter(Boolean);
+            console.log(`${attr("Publisher")}.${attr("Id")} ${attr("Version")}, "${name}", flags: ${flags.join(" ") || "none"}`);
+            const bad = [];
+            for (const [k, want] of [["Publisher", e.PUBLISHER], ["Id", e.EXTENSION_ID], ["Version", e.VERSION]]) {
+              if (attr(k) !== want) bad.push(`${k} is ${attr(k)}, expected ${want}`);
+            }
+            if (name.includes("(dev)") === release) bad.push(`display name "${name}" ${release ? "says" : "lacks"} (dev)`);
+            const wantPublic = release && e.PUBLIC === "true";
+            if (flags.includes("Public") !== wantPublic) bad.push(`gallery flags ${wantPublic ? "lack" : "include"} Public`);
+            if (release && flags.includes("Preview") !== (e.GALLERY_FLAGS === "Preview")) {
+              bad.push(`gallery flags ${e.GALLERY_FLAGS === "Preview" ? "lack" : "include"} Preview`);
+            }
+            for (const b of bad) console.log(`::error::${b}`);
+            process.exit(bad.length ? 1 : 0);
+          '
+          echo "path=$vsix" >> "$GITHUB_OUTPUT"
+
+      # Before the publish, so a dry run keeps the VSIX and a failed publish leaves it to look at.
+      - name: Upload VSIX
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.EXTENSION_ID }}-${{ steps.v.outputs.version }}
+          path: pipeline-insights/${{ steps.vsix.outputs.path }}
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish
+        if: ${{ !inputs.dry_run }}
+        env:
+          TFX_TOKEN: ${{ secrets.MARKETPLACE_PAT }}
+          VSIX: ${{ steps.vsix.outputs.path }}
+        run: |
           node_modules/.bin/tfx extension publish \
-            --vsix "$vsix" --service-url "$SERVICE_URL" \
+            --vsix "$VSIX" --service-url "$SERVICE_URL" \
             --token "$TFX_TOKEN" --no-wait-validation --no-color
 
+      # A release always waits, so its tag marks a version that passed.
       - name: Wait for Marketplace validation
-        if: inputs.wait_for_validation
+        if: ${{ !inputs.dry_run && (inputs.release || inputs.wait_for_validation) }}
         env:
           TFX_TOKEN: ${{ secrets.MARKETPLACE_PAT }}
           PUBLISHER: ${{ vars.EXTENSION_PUBLISHER }}
@@ -156,7 +247,7 @@ jobs:
           done
 
       - name: Share with the organisation
-        if: vars.EXTENSION_SHARE_WITH != '' && inputs.wait_for_validation
+        if: ${{ !inputs.release && !inputs.dry_run && vars.EXTENSION_SHARE_WITH != '' && inputs.wait_for_validation }}
         env:
           TFX_TOKEN: ${{ secrets.MARKETPLACE_PAT }}
           PUBLISHER: ${{ vars.EXTENSION_PUBLISHER }}
@@ -168,10 +259,28 @@ jobs:
             --token "$TFX_TOKEN" --no-color
           echo "Note: sharing is not installing. A first-time organisation still needs the extension installed."
 
-      - name: Upload VSIX
-        uses: actions/upload-artifact@v7
-        with:
-          name: pi-vsix-${{ steps.v.outputs.version }}
-          path: pipeline-insights/extension/dist/*.vsix
-          if-no-files-found: error
-          retention-days: 14
+  # Its own job so that only it can write to the repo. Runs once the release is valid.
+  tag:
+    needs: publish
+    if: inputs.release && !inputs.dry_run
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Tag the release commit
+        env:
+          TAG: pi-v${{ inputs.version }}
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null; then
+            echo "::error::$TAG already exists. The release is live; check which commit the tag marks."
+            exit 1
+          fi
+          git tag "$TAG" "$GITHUB_SHA"
+          git push origin "refs/tags/$TAG" || {
+            echo "::error::Could not push $TAG. The release is live; tag $GITHUB_SHA by hand (RELEASING.md, step 7)."
+            exit 1
+          }
