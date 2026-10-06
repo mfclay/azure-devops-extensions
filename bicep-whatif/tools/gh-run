@@ -71,7 +71,7 @@ api() {
 
 do_publish() {
   local version="${1:-}"
-  # Blank asks the workflow for the next patch after the newest published.
+  # Blank asks the workflow for the newest published version plus a patch.
   [ -z "$version" ] || printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' \
     || die "version '$version' is not MAJOR.MINOR.PATCH."
   resolve_token

@@ -96,7 +96,7 @@ zsh -lc 'tools/tfx-run extension isvalid --publisher MichaelC --extension-id bic
 
 **From GitHub Actions**, either extension: Actions → *Pipeline Insights Publish* or *Bicep What-If
 Publish* → Run workflow, with `release` left unticked. Leave the version blank to get the next
-patch after the newest published, as `publish-dev` does. These workflows re-run the whole chain
+patch after the newest published, as `publish-dev` does; the same works for a release. These workflows re-run the whole chain
 first so nothing untested reaches the Marketplace, and are started by hand only.
 `bicep-whatif/tools/gh-run publish` dispatches a dev build of Bicep What-If, with an optional
 version.
@@ -129,12 +129,13 @@ Environments, create `marketplace-release`:
 1. **Start from a green `main`.** `task pre-commit` passes on the commit you will release, and
    CI is green. `task pre-commit` ends with the denylist scan, and that is the only denylist scan
    a release from GitHub Actions gets: the list is kept off GitHub, so the runner has none.
-2. **Pick the version.** Ask the Marketplace what exists (above). The workflow refuses a taken
-   version before it builds anything.
+2. **Choose the bump.** Leave the version blank and the run takes the newest published release
+   and raises it by `bump`: `patch` (the default), `minor` or `major`. A typed version
+   overrides that. The first release of an extension has nothing to raise, so type it once.
 3. **Dry run.** Actions → *Pipeline Insights Publish* or *Bicep What-If Publish* → Run workflow
-   on `main`, with the version, `release` and `dry_run` ticked, and `public` and
-   `gallery_flags` as the release should have them. `public` lists it publicly; `Preview`
-   keeps the Preview badge on a version you do not yet call stable.
+   on `main`, with `release` and `dry_run` ticked, and `bump`, `public` and `gallery_flags` as
+   the release should have them. `public` lists it publicly; `Preview` keeps the Preview badge
+   on a version you do not yet call stable. The run's summary shows the version it chose.
 
    The dry run does everything up to the upload: the whole chain, the version check, packaging
    (Pipeline Insights runs its identifier check over the staged files), and a check that the

@@ -33,8 +33,16 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Extension version, e.g. 1.0.2 (no leading v). Blank for a dev build: the next patch. A release needs one.'
+        description: 'Extension version, e.g. 1.0.2 (no leading v). Blank: the newest published, bumped as below.'
         required: false
+      bump:
+        description: 'With no version: which part of the newest published version goes up.'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        default: patch
       release:
         description: 'Publish the release, not the dev build. Waits for approval.'
         type: boolean
@@ -138,48 +146,54 @@ jobs:
       # always re-derives from the committed version. Two runs would both
       # produce the same number and the second would collide. Verified.
       #
-      # **A dev build may leave it blank**, and gets the next patch after the
-      # newest version the Marketplace lists, as `tools/publish-dev` does: typing
-      # the number for every dev build invites the collision this guards
-      # against. A release must name its version, because that number is public
-      # and permanent, and choosing it is part of the deliberate act.
+      # **Normally it is left blank**, and the run takes the newest version the
+      # Marketplace lists for this id and bumps it (`bump`, patch by default),
+      # as `tools/publish-dev` does: a typed number is the easiest way to
+      # collide. The dry run and the release that follows it work out the same
+      # number, and the run's summary shows it. A typed version overrides this.
       #
       # So this runs after `npm ci`, which is where `tfx` comes from. `tfx
       # extension show --json` prints `null` for an extension that does not
-      # exist yet (so 0.1.0); a bad token or anything unparseable stops the run
-      # instead of guessing a number.
+      # exist yet: a dev build then starts at 0.1.0, and a release refuses,
+      # because a first release's version is a choice nothing can derive. A bad
+      # token or anything unparseable stops the run instead of guessing.
       - name: Resolve version
         id: v
         env:
           TFX_TOKEN: ${{ secrets.MARKETPLACE_PAT }}
           PUBLISHER: ${{ vars.EXTENSION_PUBLISHER }}
           INPUT_VERSION: ${{ inputs.version }}
+          BUMP: ${{ inputs.bump }}
           RELEASE: ${{ inputs.release }}
         run: |
           version="$INPUT_VERSION"
           if [ -z "$version" ]; then
-            if [ "$RELEASE" = true ]; then
-              echo "::error::A release needs an explicit version." && exit 1
-            fi
             json="$(node_modules/.bin/tfx extension show \
               --publisher "$PUBLISHER" --extension-id "$EXTENSION_ID" \
               --service-url "$SERVICE_URL" --token "$TFX_TOKEN" --json --no-color)" \
               || { echo "::error::Could not ask the Marketplace for the newest version."; exit 1; }
             version="$(printf '%s' "$json" | node -e '
               const d = JSON.parse(require("fs").readFileSync(0, "utf8"));
-              if (d === null) { console.log("0.1.0"); process.exit(0); }
-              const vs = (d.versions ?? []).map((v) => v.version.split(".").map(Number));
-              if (vs.length === 0) throw new Error("the extension lists no versions");
+              const vs = (d?.versions ?? []).map((v) => v.version.split(".").map(Number));
+              if (vs.length === 0) {
+                if (process.env.RELEASE === "true") throw new Error("never published: name the first release version");
+                console.log("0.1.0");
+                process.exit(0);
+              }
               vs.sort((a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2]);
               const [major, minor, patch] = vs.at(-1);
-              console.log(`${major}.${minor}.${patch + 1}`);
-            ')" || { echo "::error::Could not read the newest version from the Marketplace."; exit 1; }
-            echo "No version given: the next patch is $version."
+              const next = { major: [major + 1, 0, 0], minor: [major, minor + 1, 0], patch: [major, minor, patch + 1] }[process.env.BUMP];
+              if (!next) throw new Error(`unknown bump ${process.env.BUMP}`);
+              console.error(`Newest published: ${major}.${minor}.${patch}; ${process.env.BUMP} bump.`);
+              console.log(next.join("."));
+            ')" || { echo "::error::Could not work out the next version from the Marketplace."; exit 1; }
           fi
           if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
             echo "::error::Version '$version' is not MAJOR.MINOR.PATCH." && exit 1
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "**$EXTENSION_ID $version**" >> "$GITHUB_STEP_SUMMARY"
+          echo "Version: $version"
 
       # ── Refuse a collision before spending four minutes on it ──────────────
       #
