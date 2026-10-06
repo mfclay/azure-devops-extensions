@@ -3,14 +3,15 @@
 ## Layout and commands
 
 One npm workspace in this folder: `core`, `ui`, `dev`, `extension`, with the project's tools in
-`tools/`. The README has the tree. From here:
+`tools/`. DEVELOPMENT.md has the tree. From here:
 
 ```bash
 npm ci
 npm run typecheck        # every package
 npm test                 # every package
 npm run check:denylist   # every file, against the private denylist
-task pre-commit          # all three; run it before every commit
+npm run check:readme     # README.md is what tools/readme.mjs builds from the overview
+task pre-commit          # all four; run it before every commit
 ```
 
 Every package has `typecheck` and `test` scripts. A package that depends on another builds it

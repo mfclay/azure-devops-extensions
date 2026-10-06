@@ -2,8 +2,9 @@ version: '3'
 
 tasks:
   pre-commit:
-    desc: Typecheck and test every package, and check every file against the private denylist
+    desc: Typecheck and test every package, check every file against the private denylist, and check README.md matches the overview
     cmds:
       - npm run typecheck
       - npm test
       - npm run check:denylist
+      - npm run check:readme

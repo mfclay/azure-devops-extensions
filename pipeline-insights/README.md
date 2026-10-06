@@ -1,68 +1,70 @@
-# Pipeline Insights
+<!-- Built from extension/overview.md by `npm run readme`. Edit that file, not this one. -->
 
-An Azure DevOps extension: a page in the Pipelines menu that shows every pipeline in a project
-at once. It leads with what needs attention, then groups the rest by folder and by release line
-(CI, build, deploy). The design is in [docs/design.md](docs/design.md), the build plan in
-[docs/build-out-plan.md](docs/build-out-plan.md).
+![Pipeline Insights. Every pipeline in a project at a glance: what's failing or waiting, how healthy each one is, and how they're organised.](extension/images/hero-banner.png)
 
-## Layout
+One page in the Pipelines menu that shows a project's pipelines at a glance.
 
-```text
-package.json              npm workspaces
-tsconfig.base.json
-Taskfile.yml              task pre-commit
-docs/                     design and build plan
-tools/                    tfx wrapper, identifier check, denylist check
-core/                     rules and parsing; no network calls, no Azure DevOps SDK
-  fixtures/               the synthetic contoso estate, its generator, and the goldens
-ui/                       React components, themed by the host page
-extension/                manifest, hub entry point, Azure DevOps data source, packaging
-dev/                      local dev page: ui and core on the fixture estate
+![The Insights page: pipelines that need attention, most urgent first, beside the health of every pipeline in the project](extension/images/screenshot-at-a-glance.png)
+
+- **Needs attention:** failing pipelines, runs waiting at an approval, and pipelines that have
+  gone quiet, most urgent first.
+- **Pipeline health:** every pipeline by state, with run counts and success rates for the last 7,
+  14 or 30 days.
+- **Folders:** one block per pipeline folder, with each pipeline's recent runs, and a side panel
+  with its stages and history. Pick a folder from the heading to see only that folder and its
+  subfolders.
+- **Get more from Insights:** a panel at the bottom of the page that says what your pipelines'
+  descriptions are still missing and what each would unlock.
+
+![The page narrowed to one folder: what needs attention there, its pipeline health, and each subfolder's pipelines with their last 15 runs, latest run's stages and success rate](extension/images/screenshot-failing-or-waiting.png)
+
+![The side panel for one pipeline: its purpose, triggers and YAML file, and its recent runs on main with each run's stages](extension/images/screenshot-side-panel.png)
+
+The page follows your Azure DevOps theme, light or dark, and switches with it without a reload.
+
+![The page in the dark theme, with the Get more from Insights panel open beside a folder's pipelines](extension/images/screenshot-dark-theme.png)
+
+The page reads Azure DevOps with your own sign-in, so you see only the pipelines you can already
+open. Nothing is stored outside Azure DevOps; your browser only remembers whether you left the
+setup panel open, and whether you asked it to search whole repos.
+
+## Describing a pipeline
+
+Insights reads each pipeline's purpose, owner, category and component from one file per repo,
+`pipelines.meta.yaml`, on the default branch. Each entry is keyed by the pipeline's YAML path
+from the repo root.
+
+```yaml
+pipelines:
+  pipelines/app-build.yaml:
+    owner: Platform Team
+    category: production
+    component: web-app
+    purpose: >-
+      Builds and pushes the web app image. Its completion triggers
+      app-deploy.
+    details: |
+      ## When it fails
+
+      Re-run it once; a second failure is real.
 ```
 
-`core` and `ui` know nothing about Azure DevOps's SDK: each host supplies its own data source.
+- Insights looks for the file in `pipelines/`, then `.azuredevops/`, then the repo root, and
+  uses the first it finds. The setup panel has a box to search a whole repo instead; it is off
+  by default, because it lists every file in the repo.
+- `purpose` and `owner` are expected. A purpose ending `(TODO: verify)` is shown as a draft.
+  Write the purpose as a folded block (`>-`), as above: a plain YAML value cannot contain `: `,
+  and the draft mark does.
+- `category` is a short slug. Once any pipeline declares one, a Category filter appears.
+- `component` names the thing a pipeline ships. Pipelines that declare the same component are
+  shown together as one line; set it where triggers and names cannot show the link.
+- `details` is Markdown, such as a runbook, shown in the side panel.
+- The setup panel lists repos with no file, problems in a file, and entries whose YAML path no
+  pipeline uses. Rename an entry in the same pull request as its YAML.
 
-## Build and test
+## Development
 
-Node 20 or later. From this folder:
-
-```bash
-npm ci
-npm run typecheck
-npm test
-npm run check:denylist
-```
-
-Every package has `typecheck` and `test` scripts. `task pre-commit` runs all three checks. To
-work on the page locally, run `npm run dev -w @pipeline-insights/dev`.
-
-## Publishing
-
-An extension's identity is `{publisher}.{id}`. Changing the publisher creates a different
-extension, with no upgrade path from the old one, so the publisher is never stored in the
-manifest.
-
-- **Packaging needs an overrides file.** `extension/scripts/package.mjs` refuses to run without
-  `--overrides <path>`, and there is no default path.
-- **Dev publish:** `zsh -lc 'tools/publish-dev'` packages with the committed
-  `extension/overrides/dev.json` and publishes the next free patch version.
-- **Release** copies `extension/overrides/release.example.json` to `release.json` (gitignored)
-  and fills in the release publisher. That publish creates a new extension, not an upgrade of a
-  dev build.
-- `tools/tfx-run` wraps every Marketplace call: it supplies `--service-url` and redacts the PAT
-  from output.
-
-## Fixtures
-
-Tests and the dev page run on the synthetic `contoso` estate in `core/fixtures/`, outside `src/`:
-33 made-up pipelines built by `core/fixtures/contoso.ts` (`npm run fixture -w
-@pipeline-insights/core` rewrites the JSON). Fixtures are imported only by tests and the dev
-page, never by shipped code, and a check over the staged package fails it if fixture names, a
-subscription id or a run URL get in.
-
-`npm run capture-fixture -w @pipeline-insights/core -- --org … --project …` records a real
-project with a read-only PAT in `AZURE_DEVOPS_EXT_PAT`. The recording is that project's data: it
-goes to the gitignored `core/fixtures/recorded/` and is never committed.
+Building, testing, fixtures and publishing are in [DEVELOPMENT.md](DEVELOPMENT.md).
 
 ## License
 

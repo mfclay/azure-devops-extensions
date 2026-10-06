@@ -47,6 +47,9 @@ jobs:
       - name: Test
         run: npm test
 
+      - name: README matches the overview
+        run: npm run check:readme
+
       - name: Build
         run: npm run build
 

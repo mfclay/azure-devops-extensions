@@ -20,13 +20,14 @@ tasks:
       - npm test
 
   pi:pre-commit:
-    desc: Pipeline Insights typecheck, tests and its own denylist scan.
+    desc: Pipeline Insights typecheck, tests, its own denylist scan and the README check.
     dir: pipeline-insights
     cmds:
       - task: pi:install-check
       - npm run typecheck
       - npm test
       - npm run check:denylist
+      - npm run check:readme
 
   pi:install-check:
     internal: true
