@@ -1,4 +1,4 @@
-# Bicep What-If for Deployment Stacks
+![Bicep What-If for Deployment Stacks. Renders Azure Deployment Stacks what-if output across every stack in a run: filterable, severity-ranked, and honest about what it could not evaluate.](images/hero-banner.png)
 
 Azure Deployment Stacks report more than a deployment what-if can: alongside
 Create and Modify they name the resources a deploy will **Detach** or **Delete**
