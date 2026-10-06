@@ -96,7 +96,7 @@ zsh -lc 'tools/tfx-run extension isvalid --publisher MichaelC --extension-id bic
 ```
 
 **From GitHub Actions**, either extension: Actions → *Pipeline Insights Publish* or *Bicep What-If
-Publish* → Run workflow, with `release` left unticked. Leave the version blank to get the next
+Publish* → Run workflow, in the `dev` mode. Leave the version blank to get the next
 patch after the newest published, as `publish-dev` does; the same works for a release. These workflows re-run the whole chain
 first so nothing untested reaches the Marketplace, and are started by hand only.
 `bicep-whatif/tools/gh-run publish` dispatches a dev build of Bicep What-If, with an optional
@@ -114,7 +114,7 @@ Two things that look like failures and are not:
 
 ## A release
 
-A release is one run of the extension's publish workflow, with `release` ticked and approved by
+A release is one run of the extension's publish workflow in the `release` mode, approved by
 a reviewer. The terminal steps after it are the fallback, and do by hand what the workflow does.
 
 **Once, before the first release from GitHub Actions**, in the repository's Settings →
@@ -134,16 +134,16 @@ Environments, create `marketplace-release`:
    and raises it by `bump`: `patch` (the default), `minor` or `major`. A typed version
    overrides that. The first release of an extension has nothing to raise, so type it once.
 3. **Dry run.** Actions → *Pipeline Insights Publish* or *Bicep What-If Publish* → Run workflow
-   on `main`, with `release` and `dry_run` ticked, and `bump`, `public` and `gallery_flags` as
-   the release should have them. `public` lists it publicly; `Preview` keeps the Preview badge
-   on a version you do not yet call stable. The run's summary shows the version it chose.
+   on `main`, in the `release dry run` mode, with the `bump` you chose. The run's summary shows
+   the version it picked. A release is always public; to keep the Preview badge on a version you
+   do not yet call stable, add `"galleryFlags": ["Preview"]` to the extension's manifest.
 
    The dry run does everything up to the upload: the whole chain, the version check, packaging
    (Pipeline Insights runs its identifier check over the staged files), and a check that the
-   VSIX manifest's publisher, id, version, display name (no "(dev)") and flags match the
-   inputs. It keeps the VSIX as the run's artifact; look inside it (`unzip -l`) to see that the
+   VSIX manifest's publisher, id, version, display name (no "(dev)") and Public flag match
+   the mode. It keeps the VSIX as the run's artifact; look inside it (`unzip -l`) to see that the
    overview's images are there. It needs no approval, and costs no version.
-4. **Release.** Run it again with the same inputs and `dry_run` unticked. The job waits for
+4. **Release.** Run it again in the `release` mode with the same `bump`. The job waits for
    approval in `marketplace-release`; approve it from the run's page. It then publishes, always
    waits for validation, and tags the commit `<extension>-v<version>`. If the tag cannot be
    pushed, the run fails with the release live and names the commit to tag by hand (step 7

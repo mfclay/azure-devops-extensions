@@ -53,7 +53,7 @@ manifest.
   `--overrides <path>`, and there is no default path.
 - **Dev publish:** `zsh -lc 'tools/publish-dev'` packages with the committed
   `extension/overrides/dev.json` and publishes the next free patch version.
-- **Release:** the publish workflow with `release` ticked, or from a terminal a copy of
+- **Release:** the publish workflow in the `release` mode, or from a terminal a copy of
   `extension/overrides/release.example.json` as `release.json` (gitignored) with the version set
   (`RELEASING.md`, "A release"). The release is a different extension from the dev build, not an
   upgrade of it.

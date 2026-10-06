@@ -34,7 +34,7 @@ the code.
   check, tests, package, publish, wait for validation, share and install in the test
   organization once). Publishing changes a real Marketplace account and a version can never be
   reused, so **ask before running it**. `tfx-run extension isvalid` and `show` are read-only.
-- **Release** is the publish workflow with `release` ticked, or from a terminal a copy of
+- **Release** is the publish workflow in the `release` mode, or from a terminal a copy of
   `extension/overrides/release.example.json` as `release.json` (gitignored) with the version set.
   The publisher is `MichaelC`, the same as dev. The release keeps the manifest's
   `pipeline-insights` id, so it is a different extension from the dev one, not an upgrade.

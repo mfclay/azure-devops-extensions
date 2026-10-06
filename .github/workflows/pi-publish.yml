@@ -1,5 +1,5 @@
 # Publishes Pipeline Insights: the **dev** extension by default (the committed overrides/dev.json),
-# the **release** when `release` is ticked (the manifest's own id). The publisher comes from
+# the **release** in the `release` mode (the manifest's own id). The publisher comes from
 # `vars.EXTENSION_PUBLISHER` and the version from this run.
 #
 # Same shape as whatif-publish.yml, which explains each step at length: a separate workflow
@@ -8,7 +8,7 @@
 # `--no-wait-validation` with its own wait loop, and sharing as a separate step once the
 # version is valid. A release runs in the `marketplace-release` environment, which waits for
 # approval, always waits for validation, is never shared, and is tagged `pi-v<version>` once
-# valid. `dry_run` stops either mode before the upload.
+# valid. `release dry run` stops a release before the upload.
 #
 # The local equivalent of a dev publish is pipeline-insights/tools/publish-dev; the order of a
 # release, and the terminal steps that remain its fallback, are in RELEASING.md.
@@ -17,40 +17,26 @@ name: Pipeline Insights Publish
 on:
   workflow_dispatch:
     inputs:
-      version:
-        description: 'Extension version, e.g. 1.0.2 (no leading v). Blank: the newest published, bumped as below.'
-        required: false
+      mode:
+        description: 'dev: the private dev build. release dry run: everything but the upload. release: public, after approval.'
+        type: choice
+        options:
+          - dev
+          - dev and wait for validation
+          - release dry run
+          - release
+        default: dev
       bump:
-        description: 'With no version: which part of the newest published version goes up.'
+        description: 'Which part of the newest published version goes up.'
         type: choice
         options:
           - patch
           - minor
           - major
         default: patch
-      release:
-        description: 'Publish the release, not the dev build. Waits for approval.'
-        type: boolean
-        default: false
-      dry_run:
-        description: 'Stop before the upload: build, package, check the VSIX and keep it as an artifact.'
-        type: boolean
-        default: false
-      public:
-        description: 'Release only: list it publicly.'
-        type: boolean
-        default: true
-      gallery_flags:
-        description: 'Release only: Preview keeps the Preview badge.'
-        type: choice
-        options:
-          - none
-          - Preview
-        default: none
-      wait_for_validation:
-        description: 'Wait for Marketplace validation (~8 min). Off for dev iteration; a release always waits.'
-        type: boolean
-        default: false
+      version:
+        description: 'Only to override the bump, e.g. 1.0.0 for a first release (no leading v).'
+        required: false
 
 permissions:
   contents: read
@@ -67,21 +53,24 @@ concurrency:
 
 env:
   # `Stage the overrides` asserts this matches dev.json or, for a release, the manifest.
-  EXTENSION_ID: ${{ inputs.release && 'pipeline-insights' || 'pipeline-insights-dev' }}
+  EXTENSION_ID: ${{ startsWith(inputs.mode, 'release') && 'pipeline-insights' || 'pipeline-insights-dev' }}
   SERVICE_URL: https://marketplace.visualstudio.com/
 
 jobs:
   publish:
     runs-on: ubuntu-latest
+    # The version this run chose, which the tag job names its tag after.
+    outputs:
+      version: ${{ steps.v.outputs.version }}
     # Approval is set per environment, so a release gets its own; a dry run uploads nothing.
-    environment: ${{ inputs.release && !inputs.dry_run && 'marketplace-release' || 'marketplace' }}
+    environment: ${{ inputs.mode == 'release' && 'marketplace-release' || 'marketplace' }}
     timeout-minutes: 20
 
     steps:
       - uses: actions/checkout@v5
 
       - name: Refuse a release from a branch other than main
-        if: inputs.release && !inputs.dry_run && github.ref != 'refs/heads/main'
+        if: inputs.mode == 'release' && github.ref != 'refs/heads/main'
         run: |
           echo "::error::A release is dispatched from main, not $GITHUB_REF." && exit 1
 
@@ -103,7 +92,7 @@ jobs:
           PUBLISHER: ${{ vars.EXTENSION_PUBLISHER }}
           INPUT_VERSION: ${{ inputs.version }}
           BUMP: ${{ inputs.bump }}
-          RELEASE: ${{ inputs.release }}
+          RELEASE: ${{ startsWith(inputs.mode, 'release') }}
         run: |
           version="$INPUT_VERSION"
           if [ -z "$version" ]; then
@@ -172,9 +161,7 @@ jobs:
         env:
           PUBLISHER: ${{ vars.EXTENSION_PUBLISHER }}
           VERSION: ${{ steps.v.outputs.version }}
-          RELEASE: ${{ inputs.release }}
-          PUBLIC: ${{ inputs.public }}
-          GALLERY_FLAGS: ${{ inputs.gallery_flags }}
+          RELEASE: ${{ startsWith(inputs.mode, 'release') }}
         run: |
           node -e '
             const fs = require("fs");
@@ -184,7 +171,7 @@ jobs:
             if (e.RELEASE === "true") {
               const m = JSON.parse(fs.readFileSync(`${dir}/vss-extension.json`, "utf8"));
               if (m.id !== e.EXTENSION_ID) throw new Error(`manifest id ${m.id} != EXTENSION_ID ${e.EXTENSION_ID}`);
-              o = { public: e.PUBLIC === "true", galleryFlags: e.GALLERY_FLAGS === "none" ? [] : [e.GALLERY_FLAGS] };
+              o = { public: true };
               file = "overrides/.staged-release.json";
             } else {
               o = JSON.parse(fs.readFileSync(`${dir}/overrides/dev.json`, "utf8"));
@@ -210,9 +197,7 @@ jobs:
         env:
           PUBLISHER: ${{ vars.EXTENSION_PUBLISHER }}
           VERSION: ${{ steps.v.outputs.version }}
-          RELEASE: ${{ inputs.release }}
-          PUBLIC: ${{ inputs.public }}
-          GALLERY_FLAGS: ${{ inputs.gallery_flags }}
+          RELEASE: ${{ startsWith(inputs.mode, 'release') }}
         run: |
           vsix="extension/dist/${PUBLISHER}.${EXTENSION_ID}-${VERSION}.vsix"
           [ -f "$vsix" ] || { echo "::error::No VSIX at $vsix"; exit 1; }
@@ -230,11 +215,7 @@ jobs:
               if (attr(k) !== want) bad.push(`${k} is ${attr(k)}, expected ${want}`);
             }
             if (name.includes("(dev)") === release) bad.push(`display name "${name}" ${release ? "says" : "lacks"} (dev)`);
-            const wantPublic = release && e.PUBLIC === "true";
-            if (flags.includes("Public") !== wantPublic) bad.push(`gallery flags ${wantPublic ? "lack" : "include"} Public`);
-            if (release && flags.includes("Preview") !== (e.GALLERY_FLAGS === "Preview")) {
-              bad.push(`gallery flags ${e.GALLERY_FLAGS === "Preview" ? "lack" : "include"} Preview`);
-            }
+            if (flags.includes("Public") !== release) bad.push(`gallery flags ${release ? "lack" : "include"} Public`);
             for (const b of bad) console.log(`::error::${b}`);
             process.exit(bad.length ? 1 : 0);
           '
@@ -250,7 +231,7 @@ jobs:
           retention-days: 14
 
       - name: Publish
-        if: ${{ !inputs.dry_run }}
+        if: inputs.mode != 'release dry run'
         env:
           TFX_TOKEN: ${{ secrets.MARKETPLACE_PAT }}
           VSIX: ${{ steps.vsix.outputs.path }}
@@ -261,7 +242,7 @@ jobs:
 
       # A release always waits, so its tag marks a version that passed.
       - name: Wait for Marketplace validation
-        if: ${{ !inputs.dry_run && (inputs.release || inputs.wait_for_validation) }}
+        if: inputs.mode == 'release' || inputs.mode == 'dev and wait for validation'
         env:
           TFX_TOKEN: ${{ secrets.MARKETPLACE_PAT }}
           PUBLISHER: ${{ vars.EXTENSION_PUBLISHER }}
@@ -286,7 +267,7 @@ jobs:
           done
 
       - name: Share with the organisation
-        if: ${{ !inputs.release && !inputs.dry_run && vars.EXTENSION_SHARE_WITH != '' && inputs.wait_for_validation }}
+        if: inputs.mode == 'dev and wait for validation' && vars.EXTENSION_SHARE_WITH != ''
         env:
           TFX_TOKEN: ${{ secrets.MARKETPLACE_PAT }}
           PUBLISHER: ${{ vars.EXTENSION_PUBLISHER }}
@@ -301,7 +282,7 @@ jobs:
   # Its own job so that only it can write to the repo. Runs once the release is valid.
   tag:
     needs: publish
-    if: inputs.release && !inputs.dry_run
+    if: inputs.mode == 'release'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -312,7 +293,7 @@ jobs:
 
       - name: Tag the release commit
         env:
-          TAG: pi-v${{ inputs.version }}
+          TAG: pi-v${{ needs.publish.outputs.version }}
         run: |
           if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null; then
             echo "::error::$TAG already exists. The release is live; check which commit the tag marks."

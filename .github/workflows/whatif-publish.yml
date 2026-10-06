@@ -1,5 +1,5 @@
 # Publishes Bicep What-If to the Marketplace: the **dev** extension by default, the
-# **release** when `release` is ticked. Publisher `MichaelC` either way.
+# **release** in the `release` mode. Publisher `MichaelC` either way.
 #
 # Deliberately a separate workflow rather than a job bolted onto `whatif-ci.yml`:
 #
@@ -15,57 +15,44 @@
 # else, so a dev publish exercises every step a release depends on:
 #
 #   * **dev**: the `bicep-whatif-dev` id from the committed overrides/dev.json,
-#     the `marketplace` environment, waits for validation only if asked, and is
-#     shared with the test organisation.
-#   * **release**: the manifest's own id, with overrides staged from this run's
-#     inputs (`release.json` is gitignored, so it is never on a runner). It runs
+#     the `marketplace` environment, and waits for validation and shares with
+#     the test organisation only in `dev and wait for validation`.
+#   * **release**: the manifest's own id, public, with the overrides staged by
+#     the run (`release.json` is gitignored, so it is never on a runner). It runs
 #     in `marketplace-release`, which waits for a reviewer's approval; it always
 #     waits for validation, is never shared (a public extension needs none), and
 #     tags `whatif-v<version>` once the version is valid.
 #
-# `dry_run` stops either mode before the upload: it builds, packages, checks the
-# VSIX and keeps it as an artifact, and costs no version. RELEASING.md, "A
-# release", has the order to run them in, and keeps the terminal steps as the
-# fallback.
+# `release dry run` is a release that stops before the upload: it builds,
+# packages, checks the VSIX and keeps it as an artifact, and costs no version.
+# The version is normally left to the run: the newest published, raised by
+# `bump`. RELEASING.md, "A release", has the order to run them in, and keeps
+# the terminal steps as the fallback.
 name: Bicep What-If Publish
 
 on:
   workflow_dispatch:
     inputs:
-      version:
-        description: 'Extension version, e.g. 1.0.2 (no leading v). Blank: the newest published, bumped as below.'
-        required: false
+      mode:
+        description: 'dev: the private dev build. release dry run: everything but the upload. release: public, after approval.'
+        type: choice
+        options:
+          - dev
+          - dev and wait for validation
+          - release dry run
+          - release
+        default: dev
       bump:
-        description: 'With no version: which part of the newest published version goes up.'
+        description: 'Which part of the newest published version goes up.'
         type: choice
         options:
           - patch
           - minor
           - major
         default: patch
-      release:
-        description: 'Publish the release, not the dev build. Waits for approval.'
-        type: boolean
-        default: false
-      dry_run:
-        description: 'Stop before the upload: build, package, check the VSIX and keep it as an artifact.'
-        type: boolean
-        default: false
-      public:
-        description: 'Release only: list it publicly.'
-        type: boolean
-        default: true
-      gallery_flags:
-        description: 'Release only: Preview keeps the Preview badge.'
-        type: choice
-        options:
-          - none
-          - Preview
-        default: none
-      wait_for_validation:
-        description: 'Wait for Marketplace validation (~8 min). Off for dev iteration; a release always waits.'
-        type: boolean
-        default: false
+      version:
+        description: 'Only to override the bump, e.g. 1.0.0 for a first release (no leading v).'
+        required: false
 
 permissions:
   contents: read
@@ -87,12 +74,15 @@ env:
   # The id every step below checks, publishes and polls. A release takes the
   # manifest's own id, and `Stage the overrides` asserts the two agree, so a
   # renamed manifest fails before anything is packaged.
-  EXTENSION_ID: ${{ inputs.release && 'bicep-whatif' || 'bicep-whatif-dev' }}
+  EXTENSION_ID: ${{ startsWith(inputs.mode, 'release') && 'bicep-whatif' || 'bicep-whatif-dev' }}
   SERVICE_URL: https://marketplace.visualstudio.com/
 
 jobs:
   publish:
     runs-on: ubuntu-latest
+    # The version this run chose, which the tag job names its tag after.
+    outputs:
+      version: ${{ steps.v.outputs.version }}
     # Gates `secrets.MARKETPLACE_PAT` to this job alone. `whatif-ci.yml` declares no
     # environment and therefore structurally cannot read the token.
     #
@@ -102,7 +92,7 @@ jobs:
     # the token. A dry run uploads nothing, so it stays in `marketplace` and needs
     # no approval. Never move the token to a repository secret instead: every
     # workflow, CI included, could then read it.
-    environment: ${{ inputs.release && !inputs.dry_run && 'marketplace-release' || 'marketplace' }}
+    environment: ${{ inputs.mode == 'release' && 'marketplace-release' || 'marketplace' }}
     # Without this the job inherits GitHub's 6-hour default, so a wedged run
     # would hang for six hours before failing. The chain takes ~1m15s plus
     # validation, which the wait below bounds at 15 minutes; 20 is enough.
@@ -115,7 +105,7 @@ jobs:
       # on main, and RELEASING.md starts from a green one. A dry run may come
       # from any branch, which is how a change to this file is tried out.
       - name: Refuse a release from a branch other than main
-        if: inputs.release && !inputs.dry_run && github.ref != 'refs/heads/main'
+        if: inputs.mode == 'release' && github.ref != 'refs/heads/main'
         run: |
           echo "::error::A release is dispatched from main, not $GITHUB_REF." && exit 1
 
@@ -164,7 +154,7 @@ jobs:
           PUBLISHER: ${{ vars.EXTENSION_PUBLISHER }}
           INPUT_VERSION: ${{ inputs.version }}
           BUMP: ${{ inputs.bump }}
-          RELEASE: ${{ inputs.release }}
+          RELEASE: ${{ startsWith(inputs.mode, 'release') }}
         run: |
           version="$INPUT_VERSION"
           if [ -z "$version" ]; then
@@ -252,7 +242,8 @@ jobs:
       #     and the dev task's own GUID and name.
       #   * release: the staged file carries no `id`, `name` or `task`, so the
       #     manifest supplies all three, and the task ships under its permanent
-      #     GUID. Visibility and gallery flags are this run's inputs.
+      #     GUID. It is always public; a gallery flag such as Preview comes from
+      #     the manifest.
       #
       # `EXTENSION_PUBLISHER` is a **variable, not a secret**, on purpose. It is
       # public on the Marketplace, and as a secret GitHub would mask the string
@@ -263,9 +254,7 @@ jobs:
         env:
           PUBLISHER: ${{ vars.EXTENSION_PUBLISHER }}
           VERSION: ${{ steps.v.outputs.version }}
-          RELEASE: ${{ inputs.release }}
-          PUBLIC: ${{ inputs.public }}
-          GALLERY_FLAGS: ${{ inputs.gallery_flags }}
+          RELEASE: ${{ startsWith(inputs.mode, 'release') }}
         run: |
           node -e '
             const fs = require("fs");
@@ -275,7 +264,7 @@ jobs:
             if (e.RELEASE === "true") {
               const m = JSON.parse(fs.readFileSync(`${dir}/vss-extension.json`, "utf8"));
               if (m.id !== e.EXTENSION_ID) throw new Error(`manifest id ${m.id} != EXTENSION_ID ${e.EXTENSION_ID}`);
-              o = { public: e.PUBLIC === "true", galleryFlags: e.GALLERY_FLAGS === "none" ? [] : [e.GALLERY_FLAGS] };
+              o = { public: true };
               file = "overrides/.staged-release.json";
             } else {
               o = JSON.parse(fs.readFileSync(`${dir}/overrides/dev.json`, "utf8"));
@@ -311,9 +300,7 @@ jobs:
         env:
           PUBLISHER: ${{ vars.EXTENSION_PUBLISHER }}
           VERSION: ${{ steps.v.outputs.version }}
-          RELEASE: ${{ inputs.release }}
-          PUBLIC: ${{ inputs.public }}
-          GALLERY_FLAGS: ${{ inputs.gallery_flags }}
+          RELEASE: ${{ startsWith(inputs.mode, 'release') }}
         run: |
           vsix="packages/extension/dist/${PUBLISHER}.${EXTENSION_ID}-${VERSION}.vsix"
           [ -f "$vsix" ] || { echo "::error::No VSIX at $vsix"; exit 1; }
@@ -331,11 +318,7 @@ jobs:
               if (attr(k) !== want) bad.push(`${k} is ${attr(k)}, expected ${want}`);
             }
             if (name.includes("(dev)") === release) bad.push(`display name "${name}" ${release ? "says" : "lacks"} (dev)`);
-            const wantPublic = release && e.PUBLIC === "true";
-            if (flags.includes("Public") !== wantPublic) bad.push(`gallery flags ${wantPublic ? "lack" : "include"} Public`);
-            if (release && flags.includes("Preview") !== (e.GALLERY_FLAGS === "Preview")) {
-              bad.push(`gallery flags ${e.GALLERY_FLAGS === "Preview" ? "lack" : "include"} Preview`);
-            }
+            if (flags.includes("Public") !== release) bad.push(`gallery flags ${release ? "lack" : "include"} Public`);
             for (const b of bad) console.log(`::error::${b}`);
             process.exit(bad.length ? 1 : 0);
           '
@@ -368,7 +351,7 @@ jobs:
       # in `ps` output on the runner. GitHub masks the secret in logs itself, so
       # unlike the local `tools/tfx-run` this needs no redaction filter.
       - name: Publish
-        if: ${{ !inputs.dry_run }}
+        if: inputs.mode != 'release dry run'
         env:
           TFX_TOKEN: ${{ secrets.MARKETPLACE_PAT }}
           VSIX: ${{ steps.vsix.outputs.path }}
@@ -398,7 +381,7 @@ jobs:
       # succeeded, so the tag marks a version that passed validation, and nobody
       # has to come back later to find out whether the release went live.
       - name: Wait for Marketplace validation
-        if: ${{ !inputs.dry_run && (inputs.release || inputs.wait_for_validation) }}
+        if: inputs.mode == 'release' || inputs.mode == 'dev and wait for validation'
         env:
           TFX_TOKEN: ${{ secrets.MARKETPLACE_PAT }}
           PUBLISHER: ${{ vars.EXTENSION_PUBLISHER }}
@@ -442,7 +425,7 @@ jobs:
       # below says so out loud when it is skipped, rather than leaving someone
       # to discover an unshared extension.
       - name: Share with the organisation
-        if: ${{ !inputs.release && !inputs.dry_run && vars.EXTENSION_SHARE_WITH != '' && inputs.wait_for_validation }}
+        if: inputs.mode == 'dev and wait for validation' && vars.EXTENSION_SHARE_WITH != ''
         env:
           TFX_TOKEN: ${{ secrets.MARKETPLACE_PAT }}
           PUBLISHER: ${{ vars.EXTENSION_PUBLISHER }}
@@ -455,9 +438,9 @@ jobs:
           echo "Note: sharing is not installing. A first-time organisation still needs the extension installed."
 
       - name: Note that sharing was skipped
-        if: ${{ !inputs.release && !inputs.dry_run && vars.EXTENSION_SHARE_WITH != '' && !inputs.wait_for_validation }}
+        if: inputs.mode == 'dev' && vars.EXTENSION_SHARE_WITH != ''
         run: |
-          echo "::notice::Sharing skipped: it needs a validated version and this run did not wait. Harmless for an organisation already shared with; re-run with wait_for_validation for a new one."
+          echo "::notice::Sharing skipped: it needs a validated version and this run did not wait. Harmless for an organisation already shared with; re-run in the 'dev and wait for validation' mode for a new one."
 
   # ── The release tag, once the version is valid ─────────────────────────────
   #
@@ -472,7 +455,7 @@ jobs:
   # still live and the error says so: tag the commit by hand (RELEASING.md).
   tag:
     needs: publish
-    if: inputs.release && !inputs.dry_run
+    if: inputs.mode == 'release'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -483,7 +466,7 @@ jobs:
 
       - name: Tag the release commit
         env:
-          TAG: whatif-v${{ inputs.version }}
+          TAG: whatif-v${{ needs.publish.outputs.version }}
         run: |
           if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null; then
             echo "::error::$TAG already exists. The release is live; check which commit the tag marks."
