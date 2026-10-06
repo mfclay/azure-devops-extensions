@@ -56,6 +56,33 @@
   font-size: 12px;
 }
 
+/*
+ * Notes about the whole build share the banner's shape but not its warning
+ * colour: they explain what the tab coped with, which is not a verdict on the run.
+ */
+.banner--info {
+  background: var(--w-surface-2);
+  border-left-color: var(--w-accent);
+}
+
+.banner--info .banner__glyph {
+  color: var(--w-accent-fg);
+}
+
+.banner__notes {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.banner__notes li + li {
+  margin-top: 4px;
+}
+
+.banner__notes li {
+  overflow-wrap: anywhere;
+}
+
 /* ---------- summary strip ---------- */
 .strip {
   padding: 12px 16px 10px;

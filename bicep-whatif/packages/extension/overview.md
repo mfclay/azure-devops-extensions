@@ -23,6 +23,46 @@ deploy it previews about `actionOnUnmanage` or deny settings — a difference th
 makes the preview a lie, most obviously about whether a dropped resource is
 reported as Detach or as Delete.
 
+## When Microsoft's Bicep Deploy task is enough
+
+Azure Pipelines has a built-in task,
+[Bicep Deploy (`BicepDeploy@0`)](https://learn.microsoft.com/azure/devops/pipelines/tasks/reference/bicep-deploy-v0),
+that deploys Bicep templates, deployment stacks included. It needs no extension
+and Microsoft maintains it. If it covers what you need, use it.
+
+*Compared with `BicepDeploy@0` as Microsoft documented it on 23 September 2026,
+and with its source on 6 October 2026. That task changes, so check its current
+page before relying on this section.*
+
+**Use `BicepDeploy@0` if you:**
+
+- deploy ordinary deployments rather than stacks. It can preview those with
+  what-if too.
+- deploy stacks and do not need to preview the change first.
+- deploy at resource group, management group or tenant scope. This extension's
+  task deploys at subscription scope only.
+- need template outputs as pipeline variables, inline parameter overrides, stack
+  tags or masked outputs. This extension's task has none of these.
+- run classic release pipelines. This extension's tab is a build results tab, so
+  a release has nowhere to show it.
+
+**What this extension adds:**
+
+- **A page to read the result on.** One tab for every stack in a run: filterable,
+  sortable, ranked by severity, with any stage that produced nothing shown as
+  not evaluated rather than as unchanged. `BicepDeploy@0` reports to the build
+  log only, and a built-in task cannot add a page to the build results.
+- **What-if for deployment stacks.** `BicepDeploy@0` can create, validate and
+  delete a stack, but not preview one. A stack what-if is what reports the
+  resources a deploy would Detach or Delete because they dropped out of the
+  template. Microsoft has this in progress: an open pull request to the library
+  `BicepDeploy@0` is built on,
+  [Azure/bicep-deploy#327](https://github.com/Azure/bicep-deploy/pull/327),
+  adds stack what-if as text in the build log. Expect this difference to close.
+- **Preview and deploy from one set of inputs.** This is an alternative to
+  deploying with `BicepDeploy@0`, not something to add on top of it: previewing
+  here and deploying there means keeping two tasks' inputs in step by hand.
+
 ## The thing it refuses to do
 
 **Absence of data never renders as absence of change.**

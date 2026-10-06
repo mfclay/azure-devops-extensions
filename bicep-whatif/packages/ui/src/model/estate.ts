@@ -131,6 +131,22 @@ function haystackFor(stackLabel: string, row: ResourceRow): string {
 }
 
 /**
+ * The sidecar's `error` as one line of text, or undefined when there is none.
+ *
+ * The task writes ARM's error object; a string is kept as is. An object with
+ * neither `code` nor `message` is shown raw rather than dropped, since it is the
+ * only account of why the stack was never evaluated.
+ */
+function errorText(error: unknown): string | undefined {
+  if (error === null || error === undefined || error === '') return undefined;
+  if (typeof error === 'string') return error;
+  if (typeof error !== 'object') return String(error);
+  const { code, message } = error as Record<string, unknown>;
+  const parts = [code, message].filter((p): p is string => typeof p === 'string' && p.length > 0);
+  return parts.length > 0 ? parts.join(': ') : JSON.stringify(error);
+}
+
+/**
  * The row that stands in for a stage which produced no attachment.
  *
  * It is deliberately loud: it ranks `unevaluated`, which sits above `noChange`,
@@ -138,7 +154,7 @@ function haystackFor(stackLabel: string, row: ResourceRow): string {
  */
 function placeholderRow(stage: StageResult, stackKey: string, label: string): GridRow {
   const failed = stage.sidecar?.status?.toLowerCase() === 'failed';
-  const err = stage.sidecar?.error;
+  const err = errorText(stage.sidecar?.error);
   const detail = failed
     ? `The what-if for this stack failed, so nothing was evaluated.${err ? ` ${err}` : ''}`
     : 'This stage produced no what-if attachment, so nothing about this stack was evaluated. ' +

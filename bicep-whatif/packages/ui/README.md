@@ -69,7 +69,7 @@ stack first buries a single `Delete` in stack seven under two hundred benign
 | `src/model/view.ts` | Filter state, the default view, and the sort. Pure. |
 | `src/model/urlState.ts` | View state ⇄ URL hash. Pure, round-trip tested. |
 | `src/nav/navigation.ts` | The host's hash, with a `window` fallback. |
-| `src/components/` | Strip, toolbar, stack menu, grid, detail panel, delta tree. |
+| `src/components/` | Banners (not-evaluated stacks, notes about the build), strip, toolbar, stack menu, grid, detail panel, delta tree. |
 
 Sorting and filtering are **pure functions, not table features** — they are
 product decisions and belong somewhere they can be tested without mounting a

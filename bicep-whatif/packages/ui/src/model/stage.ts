@@ -33,7 +33,12 @@ export interface Sidecar {
   azCliVersion?: string | undefined;
   /** `succeeded` | `failed`, lowercase. Written even when the what-if fails — that is the point. */
   status?: string | undefined;
-  error?: string | undefined;
+  /**
+   * ARM's error object, `{ code, message, details? }`, as the task writes it; a
+   * plain string from older producers; `null` on success. Typed `unknown` so
+   * nothing can interpolate it without deciding which of those it is.
+   */
+  error?: unknown;
 }
 
 export interface StageResult {

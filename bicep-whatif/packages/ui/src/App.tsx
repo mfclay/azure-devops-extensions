@@ -1,5 +1,6 @@
 import type { Severity } from '@bicep-whatif/core';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { BuildNotes } from './components/BuildNotes.js';
 import { DetailPanel } from './components/DetailPanel.js';
 import { NotEvaluatedBanner } from './components/NotEvaluatedBanner.js';
 import { ResultsGrid } from './components/ResultsGrid.js';
@@ -143,6 +144,7 @@ export function App(props: AppProps): React.ReactElement {
   return (
     <div className="app">
       <NotEvaluatedBanner stacks={load.estate.stacks} />
+      <BuildNotes notes={load.result.notes} />
 
       <SummaryStrip
         buildLabel={load.result.buildLabel}

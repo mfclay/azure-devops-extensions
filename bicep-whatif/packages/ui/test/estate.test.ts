@@ -92,6 +92,37 @@ describe('buildEstateView', () => {
     expect(view.rows[0]?.reasons[0]?.detail).toMatch(/Reference could not be resolved\./);
   });
 
+  // The task writes `error` as ARM's error object, not a string (issue #1).
+  describe('a sidecar error written as an ARM error object', () => {
+    function detailFor(error: unknown): string | undefined {
+      const view = buildEstateView([
+        stage({
+          stageId: 'WhatIf_PlatformProd',
+          stackId: 'platform-prod',
+          sidecar: { stackId: 'platform-prod', status: 'failed', error },
+        }),
+      ]);
+      return view.rows[0]?.reasons[0]?.detail;
+    }
+
+    it('reads its code and message rather than printing [object Object]', () => {
+      const detail = detailFor({ code: 'InvalidTemplate', message: 'Reference could not be resolved.' });
+      expect(detail).not.toMatch(/\[object Object\]/);
+      expect(detail).toMatch(/evaluated\. InvalidTemplate: Reference could not be resolved\.$/);
+    });
+
+    it('keeps whichever of code and message it has', () => {
+      expect(detailFor({ message: 'Reference could not be resolved.' })).toMatch(
+        /evaluated\. Reference could not be resolved\.$/,
+      );
+      expect(detailFor({ code: 'InvalidTemplate' })).toMatch(/evaluated\. InvalidTemplate$/);
+    });
+
+    it('says nothing extra when the error is null', () => {
+      expect(detailFor(null)).toBe('The what-if for this stack failed, so nothing was evaluated.');
+    });
+  });
+
   it('ranks the synthetic Detach and Delete cases above Create', () => {
     const view = buildEstateView([
       stage({

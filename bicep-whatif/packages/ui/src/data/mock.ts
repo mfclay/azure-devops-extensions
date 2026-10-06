@@ -72,7 +72,11 @@ export function createMockSource(): WhatIfSource {
           stackId: 'platform-prod',
           status: 'failed',
           azCliVersion: '2.89.1',
-          error: "The template reference 'app-shared-infra' could not be resolved.",
+          // ARM's error object, as the task writes it — not a string.
+          error: {
+            code: 'InvalidTemplate',
+            message: "The template reference 'app-shared-infra' could not be resolved.",
+          },
         },
         notes: [],
       });

@@ -6,20 +6,22 @@
  * view. The model tests prove the row exists; this proves nothing between the
  * model and the DOM swallows it. After that, the wiring the components cannot
  * test alone: selection into the detail panel, the way back from an empty
- * filter, and a source that fails.
+ * filter, a source that fails, and the notes a source returns about the whole
+ * build.
  */
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { App } from '../src/App.js';
+import { createMockSource } from '../src/data/mock.js';
 import type { LoadResult, WhatIfSource } from '../src/data/source.js';
 import type { StageResult } from '../src/model/stage.js';
 import { createWindowNavigation } from '../src/nav/navigation.js';
 import { fixture } from './fixtures.js';
 
-function sourceOf(stages: StageResult[]): WhatIfSource {
+function sourceOf(stages: StageResult[], notes: string[] = []): WhatIfSource {
   return {
     kind: 'mock',
-    load: (): Promise<LoadResult> => Promise.resolve({ stages, buildLabel: 'build 7700017', notes: [] }),
+    load: (): Promise<LoadResult> => Promise.resolve({ stages, buildLabel: 'build 7700017', notes }),
   };
 }
 
@@ -55,8 +57,8 @@ afterEach(() => {
   window.history.replaceState(null, '', '/');
 });
 
-function renderApp(stages: StageResult[]): void {
-  render(<App source={sourceOf(stages)} navigation={createWindowNavigation()} />);
+function renderApp(stages: StageResult[], notes: string[] = []): void {
+  render(<App source={sourceOf(stages, notes)} navigation={createWindowNavigation()} />);
 }
 
 describe('a stage that produced no what-if result', () => {
@@ -160,5 +162,45 @@ describe('a source that fails', () => {
     expect(await screen.findByText(/could not read the build.s what-if results/i)).toBeTruthy();
     expect(screen.getByText(/Build 21 is gone\./)).toBeTruthy();
     expect(screen.getByText('?mock=1')).toBeTruthy();
+  });
+});
+
+describe('notes about the whole build', () => {
+  // One of each kind `createAdoSource` can return. The source tests prove they
+  // are produced; these prove the page shows them.
+  it.each([
+    ['an attachment that could not be read', 'Attachment "network" (whatif.stack.json) could not be read: Error: 403'],
+    ['an attachment with no readable link', 'A sidecar attachment ("network") had no readable link and was skipped.'],
+  ])('shows %s above the grid', async (_kind, note) => {
+    renderApp([REAL_STAGE], [note]);
+    const notes = await screen.findByRole('note', { name: 'Notes about this build' });
+    expect(within(notes).getByText(note)).toBeTruthy();
+  });
+
+  it('explains a build with no what-if stages instead of showing an empty page', async () => {
+    const note =
+      'No WhatIf_* stages were found in this build timeline. This tab shows results ' +
+      'for builds that run the stack what-if stages.';
+    renderApp([], [note]);
+    const notes = await screen.findByRole('note', { name: 'Notes about this build' });
+    expect(within(notes).getByText(note)).toBeTruthy();
+  });
+
+  it('says so in mock mode', async () => {
+    render(<App source={createMockSource()} navigation={createWindowNavigation()} />);
+    const notes = await screen.findByRole('note', { name: 'Notes about this build' });
+    expect(within(notes).getByText(/^Mock mode:/)).toBeTruthy();
+  });
+
+  it('shows every note, not only the first', async () => {
+    renderApp([REAL_STAGE], ['First note.', 'Second note.']);
+    const notes = await screen.findByRole('note', { name: 'Notes about this build' });
+    expect(within(notes).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['First note.', 'Second note.']);
+  });
+
+  it('leaves no notes area when there are none', async () => {
+    renderApp([REAL_STAGE]);
+    await screen.findByRole('button', { name: /no change/i });
+    expect(screen.queryByRole('note')).toBeNull();
   });
 });
