@@ -10,12 +10,12 @@
 #
 # `template: bicep` checks out the repo and runs `smoke/bicep/main.bicep` with
 # its `.bicepparam`, so a compile, the compiler download, a parameters file and
-# redaction of a `@secure()` value all meet Azure. Redaction is only exercised
-# by a what-if after one `deploy` run: before that the group is a create, which
-# carries no values (main.bicep says why). Its stack is
-# `bicep-whatif-smoke-bicep`, and in `deploy` mode it manages one empty resource
-# group, `rg-bicep-whatif-smoke`, tagged with the stand-in secret. Delete both
-# with
+# redaction of a `@secure()` value all meet Azure. Its stack is
+# `bicep-whatif-smoke-bicep`, and in `deploy` mode it manages a resource group,
+# `rg-bicep-whatif-smoke`, holding one network security group whose tag carries
+# the stand-in secret. A what-if after one `deploy` run is the one that is sure
+# to put the secret in the payload, as a modify (main.bicep says why). Delete
+# all three with
 #   az stack sub delete --name bicep-whatif-smoke-bicep --action-on-unmanage deleteAll
 # A step after the task fails the run if the stand-in secret appears in anything
 # the task wrote.
