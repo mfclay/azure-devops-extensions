@@ -10,7 +10,9 @@
 #
 # `template: bicep` checks out the repo and runs `smoke/bicep/main.bicep` with
 # its `.bicepparam`, so a compile, the compiler download, a parameters file and
-# redaction of a `@secure()` value all meet Azure. Its stack is
+# redaction of a `@secure()` value all meet Azure. Redaction is only exercised
+# by a what-if after one `deploy` run: before that the group is a create, which
+# carries no values (main.bicep says why). Its stack is
 # `bicep-whatif-smoke-bicep`, and in `deploy` mode it manages one empty resource
 # group, `rg-bicep-whatif-smoke`, tagged with the stand-in secret. Delete both
 # with
@@ -99,8 +101,9 @@ stages:
 
     # The stand-in is the value in main.bicepparam. Absent from everything is the
     # pass. Present as the placeholder means it reached the payload and was
-    # caught; a what-if whose `after` omits the tag (no change to show) proves
-    # less, so that is a warning rather than a pass or a failure.
+    # caught. A run whose payload never carried it (a create, or deploy mode,
+    # whose payload is the stack itself) proves less, so that is a warning
+    # rather than a pass or a failure.
     - ${{ if eq(parameters.template, 'bicep') }}:
       - script: |
           set -eu
@@ -113,7 +116,7 @@ stages:
           if grep -rqF -- '***REDACTED***' "$(smokeOut)"; then
             echo "Redacted: the stand-in reached the payload and was replaced."
           else
-            echo "##vso[task.logissue type=warning]No redaction placeholder in the output, so this run did not exercise redaction."
+            echo "##vso[task.logissue type=warning]No redaction placeholder in the output, so this run did not exercise redaction. A what-if after one deploy run does."
           fi
         displayName: 'Check the stand-in secret was redacted'
         condition: always()
