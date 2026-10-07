@@ -15,6 +15,11 @@
 // The tag joins the secret to a stamp that changes every run, so once the
 // group exists every what-if is a modify whose delta holds the secret inside a
 // longer string, which is the case value-based redaction exists for.
+//
+// The stamp is passed in by main.bicepparam, not defaulted here. As a
+// `utcNow()` default it changed every run and the stack what-if still called
+// the tag a definite noChange (build 56), which suggests it compares the
+// parameter values handed to it rather than evaluating defaults.
 targetScope = 'subscription'
 
 @description('Where both resources go; the stack\'s own location by default.')
@@ -24,8 +29,8 @@ param location string = deployment().location
 @description('A stand-in secret, set in main.bicepparam. Never a real one: it is committed.')
 param smokeSecret string
 
-@description('Changes every run, so that the tag is always a modify.')
-param stamp string = utcNow()
+@description('Changes every run, so that the tag is always a modify. Set by main.bicepparam.')
+param stamp string
 
 resource smoke 'Microsoft.Resources/resourceGroups@2024-03-01' = {
   name: 'rg-bicep-whatif-smoke'
