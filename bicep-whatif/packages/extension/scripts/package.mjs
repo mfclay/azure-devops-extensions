@@ -120,6 +120,22 @@ if (overrides.task) {
   }
   const releaseId = taskJson.id;
   Object.assign(taskJson, { id, name }, friendlyName ? { friendlyName } : {});
+
+  // The dev task's version follows the extension's. Azure DevOps keeps serving
+  // the package it already holds for a task version, so a dev build that changes
+  // the task but not its version installs cleanly and then runs the old task.
+  // The major is the `@0` in every pipeline's YAML, so it never moves this way.
+  if (overrides.version !== undefined) {
+    const [Major, Minor, Patch] = String(overrides.version).split('.').map(Number);
+    if (Major !== taskJson.version.Major) {
+      throw new Error(
+        `${overridesPath}: version ${overrides.version} would move the task from ` +
+          `${name}@${taskJson.version.Major} to ${name}@${Major}; change task.json's major instead.`,
+      );
+    }
+    taskJson.version = { Major, Minor, Patch };
+    console.log(`Task version: ${Major}.${Minor}.${Patch} (from the extension version)`);
+  }
   await fs.writeFile(taskJsonPath, `${JSON.stringify(taskJson, null, 2)}\n`);
 
   const manifestPath = path.join(build, 'vss-extension.json');
