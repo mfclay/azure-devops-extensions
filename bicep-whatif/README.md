@@ -4,9 +4,9 @@ An Azure DevOps extension that renders [Azure Deployment Stacks][stacks] what-if
 output for a multi-stack estate — filterable, severity-ranked, and honest about
 what it could not evaluate.
 
-> **Status: built, not published.** All four packages are complete and the VSIX
-> packages at 4.08 MB. Publishing a release is gated on settling the release
-> publisher identity — see [Build order](#build-order).
+> **Status: not yet released.** All four packages are built, and dev builds run
+> the task against Azure in both modes. The first public release will be 1.0.0;
+> [RELEASING.md](../RELEASING.md) has the process.
 
 [stacks]: https://learn.microsoft.com/azure/azure-resource-manager/bicep/deployment-stacks
 
@@ -15,9 +15,9 @@ what it could not evaluate.
 Azure DevOps pipeline summaries forbid JavaScript. `Distributedtask.Core.Summary`
 attachments are static HTML — no `<script>`, no external resources. So a pipeline
 running what-if across nine deployment stacks produces nine static blobs with no
-filter box, no sort, and no cross-stack view. At nine stacks that is annoying. The
-estate this was built for is heading for `5 + 4N` — one workload stack per client ×
-registry type × environment tier — and at thirty it is unnavigable.
+filter box, no sort, and no cross-stack view. At nine stacks that is annoying. An
+estate with one workload stack per client and environment reaches thirty quickly,
+and at thirty it is unnavigable.
 
 An extension tab is the only way to get JavaScript onto that page.
 
@@ -77,22 +77,6 @@ onto it. A stage with no attachment renders as a loud *not evaluated*, ranked ab
 ranks `unevaluated`, above `noChange`, so a default filter cannot bury it.
 
 Everything else in this design is convenience. This is correctness.
-
-## Build order
-
-Steps 0–3 stand alone. If the extension is never approved, they have still
-materially improved what exists today.
-
-| | Step | Where | State |
-|---|---|---|---|
-| 0 | Dirty roll-up prototype — concatenate per-stack HTML into one summary | deployment repo | fallback if approval stalls |
-| 1 | Move the PowerShell to `az stack-whatif` | deployment repo | **done** — `Detach`, `Delete`, management and deny status are now in the pipeline output |
-| 2 | Custom-typed build attachment + sidecar, with redaction | deployment repo | **done** |
-| 3 | Harvest real multi-stack fixtures | — | partial — two stacks captured, see [fixtures](packages/core/fixtures/README.md) |
-| 4 | **`packages/core`** — normalizer and severity model | here | **done** |
-| 5 | **`packages/ui`** — the results tab, built offline against fixtures | here | **done** — six UX decisions answered, see [its README](packages/ui/README.md) |
-| 6 | **`packages/task`** + the extension shell | here | **done** — packages to a 4.08 MB VSIX |
-| 7 | Publish | — | blocked on settling the release publisher identity |
 
 ## Constraints that are already decided
 

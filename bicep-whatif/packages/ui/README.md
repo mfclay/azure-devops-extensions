@@ -125,9 +125,9 @@ that matters gets skipped with the rest.
 
 ## Not done here
 
-- **The extension manifest and the task** (`packages/task`) — build order steps 5
-  and 6. Do not hardcode a publisher when the manifest gets written; decision
-  **F1** drives it from `tfx --overrides-file`.
+- **The extension manifest and the task** live in `packages/extension` and
+  `packages/task`. The manifest names no publisher; decision **F1** drives it
+  from `tfx --overrides-file`.
 - **`src/data/ado.ts` has never seen a live response.** The pipeline side has not
   landed `whatif.stack.json` yet — that is the sibling attachment track. The
   attachment type strings and the sidecar shape here match what that track

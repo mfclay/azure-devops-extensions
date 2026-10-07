@@ -14,23 +14,12 @@ it: `task.json`, one bundled `index.js`, and the two Microsoft libraries that
 cannot be bundled. [`packages/extension`](../extension) packages that into the
 VSIX.
 
-## What it replaces
+## What it needs on the agent
 
-`Invoke-StackWhatIf.ps1` in the deployment repo, which works today and which this
-is a port of. The behaviour that matters is identical — same attachment types,
-same attachment names, same sidecar field names, same secret redaction, same
-`actionOnUnmanage` expansion. A payload written by this task and one written by
-the PowerShell are interchangeable to the tab, which is the point: the migration
-is not supposed to be a flag day.
-
-Four things are deliberately different:
-
-| | PowerShell | Here |
-|---|---|---|
-| Talks to Azure via | `az stack-whatif sub create` | ARM REST directly |
-| Compiles Bicep with | whatever `az bicep` resolved | a version-pinned binary |
-| Renders | eleven HTML templates | a markdown summary from `core` |
-| Runs on | any agent with the right CLI | any agent, no CLI at all |
+Nothing beyond Node. It talks to Azure Resource Manager's REST API directly rather
+than through the Azure CLI, and compiles Bicep with a version-pinned binary it
+downloads at run time and caches, so the result does not depend on whichever CLI
+or Bicep version an agent happens to have.
 
 ## The rule this task exists to uphold
 
@@ -100,7 +89,7 @@ stage per stack:
   jobs:
   - job: WhatIf
     steps:
-    - task: StackWhatIf@0
+    - task: StackWhatIf@1
       displayName: What-If
       continueOnError: true
       inputs:

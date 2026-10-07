@@ -50,9 +50,8 @@ Two departures from the raw response, both deliberate:
 - **The attachment lists and sidecars are verbatim**, because those are precisely
   the shapes that were unverified.
 
-Captured from Azure DevOps build **7700017** (`contoso/Platform`, pipeline
-`deployment-stacks-whatif`, branch `stack-whatif-cli-migration`, succeeded
-2026-08-26), from the published artifacts `whatif-network-1` and
+Captured from Azure DevOps build **7700017** (`contoso/Platform`, a what-if
+pipeline over two stacks, succeeded 2026-08-26), from the published artifacts `whatif-network-1` and
 `whatif-shared-infra-1`. They are the whole SDK resource as
 `az stack-whatif ... --no-pretty-print` returns it.
 

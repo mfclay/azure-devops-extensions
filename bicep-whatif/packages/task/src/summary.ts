@@ -8,9 +8,9 @@
  * `core`, and it is wrong in both places at once, which is the property worth
  * having.
  *
- * The markdown roll-up matters beyond convenience. Design risk 08.1 is that the
- * extension is never approved for the org; if that happens the tab never ships,
- * and this summary is the only thing that survives. It costs one attachment.
+ * The markdown roll-up matters beyond convenience. An organisation that installs
+ * the task but not the tab, or a reader without access to the tab, still gets
+ * the ranked run from this summary. It costs one attachment.
  */
 import {
   normalizeStackWhatIf,

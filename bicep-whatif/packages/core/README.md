@@ -33,9 +33,8 @@ than a sort on `changeType`.
 | `unevaluated` | `?` | `unsupported`, or a change type this build does not recognise |
 | `noChange` | `*` | `noChange` |
 
-Glyphs are taken from `Types.ps1` in the deployment repo, so the tab reads
-continuously with the pipeline log output people already know. Every glyph above is
-one that renderer already uses.
+The task's build log and summary print the same glyphs, from this same table, so
+the tab reads continuously with the log people already know.
 
 ### Why the axes have to collapse
 
