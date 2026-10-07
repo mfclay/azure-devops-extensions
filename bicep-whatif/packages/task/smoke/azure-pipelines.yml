@@ -1,8 +1,12 @@
 # One real run of the dev task against Azure, to prove the service connection
 # path. The harness cannot: its task step never runs.
 #
-# What-if only, against an empty template, so nothing is deployed. The task
-# creates a what-if result at subscription scope and deletes it afterwards.
+# Against an empty template. In `whatif` mode nothing is deployed: the task
+# creates a what-if result at subscription scope and deletes it afterwards. In
+# `deploy` mode it creates or updates a subscription-scope deployment stack,
+# `bicep-whatif-smoke`, that manages no resources. The stack stays until it is
+# deleted, e.g.
+#   az stack sub delete --name bicep-whatif-smoke --action-on-unmanage detachAll
 #
 # The connection is a queue-time parameter, not a committed name: this repo is
 # public, and the name of a real connection does not belong in it. The pipeline
@@ -16,6 +20,13 @@ trigger: none
 pr: none
 
 parameters:
+- name: mode
+  displayName: 'Mode'
+  type: string
+  default: whatif
+  values:
+  - whatif
+  - deploy
 - name: serviceConnection
   displayName: 'Azure Resource Manager service connection'
   type: string
@@ -31,7 +42,7 @@ parameters:
 
 stages:
 - stage: WhatIf_Smoke
-  displayName: 'Smoke — empty template'
+  displayName: 'Smoke — ${{ parameters.mode }}, empty template'
   jobs:
   - job: WhatIf
     pool: ${{ parameters.pool }}
@@ -44,9 +55,9 @@ stages:
       displayName: 'Write an empty subscription template'
 
     - task: StackWhatIfDev@0
-      displayName: 'StackWhatIfDev — what-if, empty template'
+      displayName: 'StackWhatIfDev — ${{ parameters.mode }}, empty template'
       inputs:
-        mode: whatif
+        mode: ${{ parameters.mode }}
         azureSubscription: ${{ parameters.serviceConnection }}
         stackId: smoke
         stackName: bicep-whatif-smoke
