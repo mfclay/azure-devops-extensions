@@ -1,12 +1,22 @@
 # One real run of the dev task against Azure, to prove the service connection
 # path. The harness cannot: its task step never runs.
 #
-# Against an empty template. In `whatif` mode nothing is deployed: the task
-# creates a what-if result at subscription scope and deletes it afterwards. In
-# `deploy` mode it creates or updates a subscription-scope deployment stack,
-# `bicep-whatif-smoke`, that manages no resources. The stack stays until it is
-# deleted, e.g.
+# `template: empty` (the default) is an inline empty ARM template. In `whatif`
+# mode nothing is deployed: the task creates a what-if result at subscription
+# scope and deletes it afterwards. In `deploy` mode it creates or updates a
+# subscription-scope deployment stack, `bicep-whatif-smoke`, that manages no
+# resources. The stack stays until it is deleted, e.g.
 #   az stack sub delete --name bicep-whatif-smoke --action-on-unmanage detachAll
+#
+# `template: bicep` checks out the repo and runs `smoke/bicep/main.bicep` with
+# its `.bicepparam`, so a compile, the compiler download, a parameters file and
+# redaction of a `@secure()` value all meet Azure. Its stack is
+# `bicep-whatif-smoke-bicep`, and in `deploy` mode it manages one empty resource
+# group, `rg-bicep-whatif-smoke`, tagged with the stand-in secret. Delete both
+# with
+#   az stack sub delete --name bicep-whatif-smoke-bicep --action-on-unmanage deleteAll
+# A step after the task fails the run if the stand-in secret appears in anything
+# the task wrote.
 #
 # The connection is a queue-time parameter, not a committed name: this repo is
 # public, and the name of a real connection does not belong in it. The pipeline
@@ -27,6 +37,13 @@ parameters:
   values:
   - whatif
   - deploy
+- name: template
+  displayName: 'Template'
+  type: string
+  default: empty
+  values:
+  - empty
+  - bicep
 - name: serviceConnection
   displayName: 'Azure Resource Manager service connection'
   type: string
@@ -42,26 +59,61 @@ parameters:
 
 stages:
 - stage: WhatIf_Smoke
-  displayName: 'Smoke — ${{ parameters.mode }}, empty template'
+  displayName: 'Smoke — ${{ parameters.mode }}, ${{ parameters.template }} template'
   jobs:
   - job: WhatIf
     pool: ${{ parameters.pool }}
+    variables:
+      smokeOut: '$(Agent.TempDirectory)/smoke-out'
     steps:
-    - checkout: none
+    - ${{ if eq(parameters.template, 'empty') }}:
+      - checkout: none
 
-    - script: |
-        printf '%s\n' '{"$schema":"https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#","contentVersion":"1.0.0.0","parameters":{},"resources":[]}' \
-          > "$(Agent.TempDirectory)/empty.json"
-      displayName: 'Write an empty subscription template'
+      - script: |
+          printf '%s\n' '{"$schema":"https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#","contentVersion":"1.0.0.0","parameters":{},"resources":[]}' \
+            > "$(Agent.TempDirectory)/empty.json"
+        displayName: 'Write an empty subscription template'
+
+    - ${{ else }}:
+      - checkout: self
+        fetchDepth: 1
 
     - task: StackWhatIfDev@1
-      displayName: 'StackWhatIfDev — ${{ parameters.mode }}, empty template'
+      displayName: 'StackWhatIfDev — ${{ parameters.mode }}, ${{ parameters.template }} template'
       inputs:
         mode: ${{ parameters.mode }}
         azureSubscription: ${{ parameters.serviceConnection }}
-        stackId: smoke
-        stackName: bicep-whatif-smoke
-        templateFile: '$(Agent.TempDirectory)/empty.json'
+        ${{ if eq(parameters.template, 'empty') }}:
+          stackId: smoke
+          stackName: bicep-whatif-smoke
+          templateFile: '$(Agent.TempDirectory)/empty.json'
+        ${{ else }}:
+          stackId: smoke-bicep
+          stackName: bicep-whatif-smoke-bicep
+          templateFile: '$(Build.SourcesDirectory)/bicep-whatif/packages/task/smoke/bicep/main.bicep'
+          parametersFile: '$(Build.SourcesDirectory)/bicep-whatif/packages/task/smoke/bicep/main.bicepparam'
         location: ${{ parameters.location }}
         actionOnUnmanage: detachAll
         denySettingsMode: none
+        outputPath: $(smokeOut)
+
+    # The stand-in is the value in main.bicepparam. Absent from everything is the
+    # pass. Present as the placeholder means it reached the payload and was
+    # caught; a what-if whose `after` omits the tag (no change to show) proves
+    # less, so that is a warning rather than a pass or a failure.
+    - ${{ if eq(parameters.template, 'bicep') }}:
+      - script: |
+          set -eu
+          secret='smoke-stand-in-5c1e9d'
+          ls -l "$(smokeOut)"
+          if grep -rlF -- "$secret" "$(smokeOut)"; then
+            echo "##vso[task.logissue type=error]The stand-in secret is in the files above, unredacted."
+            exit 1
+          fi
+          if grep -rqF -- '***REDACTED***' "$(smokeOut)"; then
+            echo "Redacted: the stand-in reached the payload and was replaced."
+          else
+            echo "##vso[task.logissue type=warning]No redaction placeholder in the output, so this run did not exercise redaction."
+          fi
+        displayName: 'Check the stand-in secret was redacted'
+        condition: always()
