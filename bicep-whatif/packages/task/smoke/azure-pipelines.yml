@@ -23,22 +23,18 @@ parameters:
   displayName: 'Location for the stack'
   type: string
   default: centralus
-- name: agentPool
-  displayName: 'Self-hosted agent pool — leave empty for the hosted image'
-  type: string
-  default: ' '
-
-pool:
-  ${{ if eq(trim(parameters.agentPool), '') }}:
+- name: pool
+  displayName: 'Agent pool — default is the hosted image; pass {"name":"<pool>"} for self-hosted'
+  type: object
+  default:
     vmImage: ubuntu-latest
-  ${{ else }}:
-    name: ${{ parameters.agentPool }}
 
 stages:
 - stage: WhatIf_Smoke
   displayName: 'Smoke — empty template'
   jobs:
   - job: WhatIf
+    pool: ${{ parameters.pool }}
     steps:
     - checkout: none
 
