@@ -49,7 +49,8 @@ parameters:
     vmImage: ubuntu-latest
 
 variables:
-  # Fixtures are addressed from the repo root, the way they appear in the repo.
+  # Fixtures are addressed from the extension's folder, which is where
+  # attach-fixture.mjs resolves them; the script itself from the repo root.
   REAL: packages/core/fixtures/real
   SYNTH: packages/core/fixtures/synthetic
 
@@ -96,7 +97,7 @@ stages:
         actionOnUnmanage: detachAll
         denySettingsMode: none
 
-    - script: node packages/extension/harness/attach-fixture.mjs --stack network --layer 1 --payload $(REAL)/build-7700017-app-network.json
+    - script: node bicep-whatif/packages/extension/harness/attach-fixture.mjs --stack network --layer 1 --payload $(REAL)/build-7700017-app-network.json
       displayName: 'Attach: a real capture, 7 resource changes'
 
 # ── Layer 2 ─────────────────────────────────────────────────────────────────
@@ -107,7 +108,7 @@ stages:
   - job: WhatIf
     pool: ${{ parameters.pool }}
     steps:
-    - script: node packages/extension/harness/attach-fixture.mjs --stack shared-infra --layer 2 --payload $(REAL)/build-7700017-app-shared-infra.json
+    - script: node bicep-whatif/packages/extension/harness/attach-fixture.mjs --stack shared-infra --layer 2 --payload $(REAL)/build-7700017-app-shared-infra.json
       displayName: 'Attach: a real capture, 4 resource changes'
 
 # ── The severe rungs, which no real capture in this repo contains ───────────
@@ -118,7 +119,7 @@ stages:
   - job: WhatIf
     pool: ${{ parameters.pool }}
     steps:
-    - script: node packages/extension/harness/attach-fixture.mjs --stack destructive --layer 3 --payload $(SYNTH)/synthetic-destructive-and-protection-loss.json
+    - script: node bicep-whatif/packages/extension/harness/attach-fixture.mjs --stack destructive --layer 3 --payload $(SYNTH)/synthetic-destructive-and-protection-loss.json
       displayName: 'Attach: delete, detach, and a weakened deny mode'
 
 - stage: WhatIf_SchemaDrift
@@ -128,7 +129,7 @@ stages:
   - job: WhatIf
     pool: ${{ parameters.pool }}
     steps:
-    - script: node packages/extension/harness/attach-fixture.mjs --stack schema-drift --layer 4 --payload $(SYNTH)/synthetic-schema-drift.json
+    - script: node bicep-whatif/packages/extension/harness/attach-fixture.mjs --stack schema-drift --layer 4 --payload $(SYNTH)/synthetic-schema-drift.json
       displayName: 'Attach: change types and a delta the parser has never seen'
 
 # ── The two ways a stack can produce no result ──────────────────────────────
@@ -145,7 +146,7 @@ stages:
     steps:
     # Quoted because the error text contains a colon, which would otherwise end
     # the YAML scalar and produce a parse error rather than a wrong value.
-    - script: "node packages/extension/harness/attach-fixture.mjs --stack failed-compile --layer 5 --status failed --error 'Bicep compilation failed: unexpected token at line 42'"
+    - script: "node bicep-whatif/packages/extension/harness/attach-fixture.mjs --stack failed-compile --layer 5 --status failed --error 'Bicep compilation failed: unexpected token at line 42'"
       displayName: 'Attach: sidecar only, no payload'
 
 # Never looked at: no attachments of any kind. The stage exists in the timeline

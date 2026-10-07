@@ -72,7 +72,7 @@ In an Azure DevOps organisation you control:
 
 4. **Point it at the file.** *Configure your pipeline* → **Existing Azure
    Pipelines YAML file** → branch `main`, path
-   `/packages/extension/harness/azure-pipelines.yml`.
+   `/bicep-whatif/packages/extension/harness/azure-pipelines.yml`.
 
 5. **Run it.** Six stages, all green in about a minute. Open the build's
    **What-If** tab.
@@ -219,7 +219,7 @@ timeline — and call the script:
   jobs:
   - job: WhatIf
     steps:
-    - script: node packages/extension/harness/attach-fixture.mjs --stack example --layer 3 --payload $(REAL)/some-fixture.json
+    - script: node bicep-whatif/packages/extension/harness/attach-fixture.mjs --stack example --layer 3 --payload $(REAL)/some-fixture.json
       displayName: 'Attach: whatever this demonstrates'
 ```
 
