@@ -40,9 +40,20 @@ const INPUT_NAMES = [
   'publishSummary',
 ] as const;
 
+/**
+ * The `filePath` inputs in task.json. The agent never leaves one of these
+ * empty: it fills a blank one with the sources directory. Read as given, an
+ * omitted parameters file becomes a directory to open, and an omitted output
+ * directory becomes the checkout. `filePathSupplied` is task-lib's test for
+ * that stand-in, so it is read back as unset.
+ */
+const PATH_INPUTS: ReadonlySet<string> = new Set(['templateFile', 'parametersFile', 'outputPath']);
+
 function readInputs(): RawInputs {
   const raw: Record<string, string | undefined> = {};
-  for (const name of INPUT_NAMES) raw[name] = tl.getInput(name, false);
+  for (const name of INPUT_NAMES) {
+    raw[name] = PATH_INPUTS.has(name) && !tl.filePathSupplied(name) ? undefined : tl.getInput(name, false);
+  }
   return raw;
 }
 

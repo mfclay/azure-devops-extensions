@@ -7,7 +7,11 @@
  * run, including a throw, ends in a `setResult`. A task that exits without one
  * leaves the step's outcome to the agent's guess.
  */
+import { readFileSync } from 'node:fs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+/** What the agent puts in a `filePath` input left blank. */
+const SOURCES = '/agent/_work/1/s';
 
 const h = vi.hoisted(() => ({
   inputs: {} as Record<string, string | undefined>,
@@ -24,6 +28,7 @@ const h = vi.hoisted(() => ({
 vi.mock('azure-pipelines-task-lib/task.js', () => {
   h.tl = {
     getInput: vi.fn((name: string) => h.inputs[name]),
+    filePathSupplied: vi.fn((name: string) => h.inputs[name] !== undefined && h.inputs[name] !== SOURCES),
     getEndpointAuthorizationParameter: vi.fn((_id: string, name: string) => h.auth[name]),
     getEndpointDataParameter: vi.fn((_id: string, name: string) => h.data[name]),
     getEndpointAuthorizationScheme: vi.fn(() => h.scheme),
@@ -88,6 +93,18 @@ describe('the task entry point', () => {
     expect(raw['parametersFile']).toBeUndefined();
     expect(Object.keys(raw)).toHaveLength(21);
     expect(Object.keys(raw)).toContain('publishSummary');
+  });
+
+  it('reads a filePath input the agent filled with the sources directory as unset', async () => {
+    const manifest = JSON.parse(readFileSync(new URL('../task.json', import.meta.url), 'utf8')) as {
+      inputs: { name: string; type: string }[];
+    };
+    const pathInputs = manifest.inputs.filter((i) => i.type === 'filePath').map((i) => i.name);
+    expect(pathInputs).toContain('parametersFile');
+    for (const name of pathInputs) h.inputs[name] = SOURCES;
+    await start();
+    const raw = h.runDeps?.['raw'] as Record<string, string | undefined>;
+    for (const name of pathInputs) expect(raw[name], name).toBeUndefined();
   });
 
   it('reads the service connection field by field', async () => {
