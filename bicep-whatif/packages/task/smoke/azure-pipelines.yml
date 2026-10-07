@@ -54,7 +54,7 @@ stages:
           > "$(Agent.TempDirectory)/empty.json"
       displayName: 'Write an empty subscription template'
 
-    - task: StackWhatIfDev@0
+    - task: StackWhatIfDev@1
       displayName: 'StackWhatIfDev — ${{ parameters.mode }}, empty template'
       inputs:
         mode: ${{ parameters.mode }}

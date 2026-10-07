@@ -23,7 +23,20 @@ const h = vi.hoisted(() => ({
   runImpl: undefined as undefined | ((deps: Record<string, unknown>) => Promise<unknown>),
   runDeps: undefined as Record<string, unknown> | undefined,
   tl: {} as Record<string, ReturnType<typeof vi.fn>>,
+  /** The task.json beside the entry point, as packaging stamped it; undefined reads the disk. */
+  shippedManifest: undefined as string | undefined,
 }));
+
+// In the VSIX the entry point sits beside its task.json; under test it sits in src/, which has
+// none. Reads of that one path get the manifest the test chose.
+vi.mock('node:fs', async (importOriginal) => {
+  const fs = await importOriginal<typeof import('node:fs')>();
+  const readFileSync = ((file: Parameters<typeof fs.readFileSync>[0], ...rest: unknown[]) =>
+    String(file).endsWith('/src/task.json') && h.shippedManifest !== undefined
+      ? h.shippedManifest
+      : (fs.readFileSync as (...a: unknown[]) => unknown)(file, ...rest)) as typeof fs.readFileSync;
+  return { ...fs, readFileSync, default: { ...fs, readFileSync } };
+});
 
 vi.mock('azure-pipelines-task-lib/task.js', () => {
   h.tl = {
@@ -62,6 +75,7 @@ beforeEach(() => {
   h.results = [];
   h.runImpl = async () => ({ status: 'succeeded', message: 'All good.' });
   h.runDeps = undefined;
+  h.shippedManifest = JSON.stringify({ version: { Major: 1, Minor: 4, Patch: 2 } });
 });
 
 /** Import the entry point and wait for it to settle on a result. */
@@ -170,7 +184,17 @@ describe('the task entry point', () => {
     expect(h.tl.addAttachment).toHaveBeenCalledWith('whatif.stack.json', 'network', '/tmp/x.json');
     expect(deps.now()).toBeInstanceOf(Date);
     await expect(deps.sleep(0)).resolves.toBeUndefined();
-    expect(deps.version).toMatch(/^\d+\.\d+\.\d+$/);
+  });
+
+  it('stamps the sidecar with the version of the task.json it shipped beside', async () => {
+    await start();
+    expect(h.runDeps?.['version']).toBe('1.4.2');
+  });
+
+  it('still runs, as version unknown, when that task.json cannot be read', async () => {
+    h.shippedManifest = undefined;
+    expect(await start()).toEqual({ result: 0, message: 'All good.' });
+    expect(h.runDeps?.['version']).toBe('unknown');
   });
 
   it('succeeds with the run message when the run succeeds', async () => {

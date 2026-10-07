@@ -7,7 +7,6 @@
   "type": "module",
   "scripts": {
     "package": "node scripts/package.mjs",
-    "package:rev": "node scripts/package.mjs --rev-version",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },

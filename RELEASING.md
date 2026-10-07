@@ -27,7 +27,7 @@ carries over. So identity is decided once and protected from accidents.
   not a default someone inherits.
 - **A pipeline task needs its own identity too.** Bicep What-If ships a task. An organization
   cannot install two extensions whose tasks share a GUID, and two tasks with one name make
-  `StackWhatIf@0` ambiguous. So `overrides/dev.json` also gives the dev build's task its own
+  `StackWhatIf@1` ambiguous. So `overrides/dev.json` also gives the dev build's task its own
   GUID and name, and `package.mjs` applies them to the staged copy only. With that, dev and
   release can be installed side by side.
 - **Dev builds are shared with one test organization you own.** Sharing a dev build into an
@@ -133,6 +133,12 @@ Environments, create `marketplace-release`:
 2. **Choose the bump.** Leave the version blank and the run takes the newest published release
    and raises it by `bump`: `patch` (the default), `minor` or `major`. A typed version
    overrides that. The first release of an extension has nothing to raise, so type it once.
+
+   Bicep What-If ships its task at the extension's own version, because Azure DevOps keeps
+   running the package it already holds for a task version. Packaging refuses a version whose
+   major differs from `task.json`'s, since the major is the `@1` in every pipeline that uses
+   the task: a `major` bump means changing `task.json` first, and breaks those pipelines. Its
+   first release is 1.0.0.
 3. **Dry run.** Actions → *Pipeline Insights Publish* or *Bicep What-If Publish* → Run workflow
    on `main`, in the `release dry run` mode, with the `bump` you chose. The run's summary shows
    the version it picked. A release is always public; to keep the Preview badge on a version you

@@ -7,14 +7,12 @@
  * at all — `azure-pipelines-task-lib` reads its inputs from environment
  * variables set by an agent, and there is no agent in a unit test.
  */
+import { readFileSync } from 'node:fs';
 import * as path from 'node:path';
 import * as tl from 'azure-pipelines-task-lib/task.js';
 import { run } from './run.js';
 import type { EndpointDetails } from './arm/auth.js';
 import type { RawInputs } from './inputs.js';
-
-/** Kept in step with `package.json` and `task.json`; stamped into the sidecar. */
-const VERSION = '0.1.0';
 
 const INPUT_NAMES = [
   'mode',
@@ -99,11 +97,30 @@ function readJobAccessToken(): string | undefined {
   return auth?.scheme === 'OAuth' ? auth.parameters['AccessToken'] : undefined;
 }
 
+/**
+ * The version of the task.json shipped beside this bundle, for the sidecar's
+ * `producer`. Packaging stamps that file from the extension's version, so it is
+ * the only place the version the agent actually ran is written down. A sidecar
+ * is written on every path out of the run, so an unreadable manifest is
+ * reported as `unknown` rather than stopping it.
+ */
+function readVersion(manifestPath: string): string {
+  try {
+    const { version } = JSON.parse(readFileSync(manifestPath, 'utf8')) as {
+      version: { Major: number; Minor: number; Patch: number };
+    };
+    return `${version.Major}.${version.Minor}.${version.Patch}`;
+  } catch {
+    return 'unknown';
+  }
+}
+
 async function main(): Promise<void> {
   // Resource strings for any message task-lib localizes on this task's behalf.
   // `__dirname` rather than `import.meta`: the shipped artefact is a CommonJS
   // bundle sitting beside its own task.json (see scripts/bundle.mjs).
-  tl.setResourcePath(path.join(__dirname, 'task.json'), true);
+  const manifestPath = path.join(__dirname, 'task.json');
+  tl.setResourcePath(manifestPath, true);
 
   const connectedService = tl.getInput('azureSubscription', true);
   if (connectedService === undefined) {
@@ -123,7 +140,7 @@ async function main(): Promise<void> {
     setSecret: (value) => tl.setSecret(value),
     addAttachment: (type, name, filePath) => tl.addAttachment(type, name, filePath),
     now: () => new Date(),
-    version: VERSION,
+    version: readVersion(manifestPath),
   });
 
   tl.setResult(

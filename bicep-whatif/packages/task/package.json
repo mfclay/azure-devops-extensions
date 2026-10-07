@@ -1,6 +1,6 @@
 {
   "name": "@bicep-whatif/task",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "The Azure Pipelines task: runs deployment-stack what-if against ARM, redacts the response, and attaches it to the build.",
   "license": "MIT",
   "private": true,

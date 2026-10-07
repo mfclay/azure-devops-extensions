@@ -8,7 +8,6 @@
  *
  *   node scripts/package.mjs                            # dev publisher
  *   node scripts/package.mjs --overrides overrides/release.json
- *   node scripts/package.mjs --rev-version              # bump the patch first
  *
  * **The publisher is never read from the manifest.** Extension identity is
  * `{publisher}.{id}`, so a committed publisher would have to be edited to
@@ -37,7 +36,12 @@ const flag = (name, fallback) => {
   return i >= 0 && argv[i + 1] !== undefined ? argv[i + 1] : fallback;
 };
 const overridesPath = path.resolve(root, flag('overrides', 'overrides/dev.json'));
-const revVersion = argv.includes('--rev-version');
+// tfx's `--rev-version` bumps the copy staged in `build/`, after the task has
+// been stamped from the unbumped version, and re-derives from the committed one
+// every run. The version comes from the overrides file instead.
+if (argv.includes('--rev-version')) {
+  throw new Error('--rev-version is not supported: set "version" in the overrides file.');
+}
 
 // ── Preconditions ────────────────────────────────────────────────────────────
 
@@ -99,11 +103,36 @@ const strays = (await fs.readdir(path.join(build, 'ui'), { recursive: true })).f
 );
 if (strays.length > 0) throw new Error(`Unexpected task.json inside the tab: ${strays.join(', ')}`);
 
+// ── The task's version follows the extension's ──────────────────────────────
+//
+// Azure DevOps keeps serving the package it already holds for a task version,
+// so a build that changes the task but not its version installs cleanly and
+// then runs the old task. Every build, dev or release, therefore ships the task
+// at the extension's own version. The major is the `@1` in every pipeline's
+// YAML, so it never moves this way: task.json's major is changed by hand, and a
+// version that disagrees with it stops here.
+const manifestVersion = JSON.parse(await fs.readFile(path.join(build, 'vss-extension.json'), 'utf8')).version;
+const extensionVersion = String(overrides.version ?? manifestVersion);
+{
+  const taskJsonPath = path.join(build, 'task', 'task.json');
+  const taskJson = JSON.parse(await fs.readFile(taskJsonPath, 'utf8'));
+  const [Major, Minor, Patch] = extensionVersion.split('.').map(Number);
+  if (Major !== taskJson.version.Major) {
+    throw new Error(
+      `Extension version ${extensionVersion} would move the task from ` +
+        `@${taskJson.version.Major} to @${Major}; change task.json's major instead.`,
+    );
+  }
+  taskJson.version = { Major, Minor, Patch };
+  await fs.writeFile(taskJsonPath, `${JSON.stringify(taskJson, null, 2)}\n`);
+  console.log(`Task version: ${Major}.${Minor}.${Patch} (from the extension version)`);
+}
+
 // ── A separate task identity, for builds that ask for one ────────────────────
 //
 // The dev extension and the release extension both ship this task. An
 // organisation cannot install two extensions whose tasks share a GUID, and two
-// tasks with one name make `StackWhatIf@0` ambiguous, so a dev build carries
+// tasks with one name make `StackWhatIf@1` ambiguous, so a dev build carries
 // its own id and name (`task` in overrides/dev.json). It is applied to the
 // staged copies only, and `supportsTasks` follows it, or the tab would gate on a
 // task that is not in the package. tfx gets the overrides without the block.
@@ -120,22 +149,6 @@ if (overrides.task) {
   }
   const releaseId = taskJson.id;
   Object.assign(taskJson, { id, name }, friendlyName ? { friendlyName } : {});
-
-  // The dev task's version follows the extension's. Azure DevOps keeps serving
-  // the package it already holds for a task version, so a dev build that changes
-  // the task but not its version installs cleanly and then runs the old task.
-  // The major is the `@0` in every pipeline's YAML, so it never moves this way.
-  if (overrides.version !== undefined) {
-    const [Major, Minor, Patch] = String(overrides.version).split('.').map(Number);
-    if (Major !== taskJson.version.Major) {
-      throw new Error(
-        `${overridesPath}: version ${overrides.version} would move the task from ` +
-          `${name}@${taskJson.version.Major} to ${name}@${Major}; change task.json's major instead.`,
-      );
-    }
-    taskJson.version = { Major, Minor, Patch };
-    console.log(`Task version: ${Major}.${Minor}.${Patch} (from the extension version)`);
-  }
   await fs.writeFile(taskJsonPath, `${JSON.stringify(taskJson, null, 2)}\n`);
 
   const manifestPath = path.join(build, 'vss-extension.json');
@@ -169,7 +182,6 @@ const args = [
   out,
   '--no-color',
 ];
-if (revVersion) args.push('--rev-version');
 
 console.log(`tfx ${args.join(' ')}\n`);
 try {

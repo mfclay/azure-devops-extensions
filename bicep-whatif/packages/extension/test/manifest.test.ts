@@ -60,7 +60,7 @@ describe('vss-extension.json — identity', () => {
 
   it('gives the dev build a task identity of its own', () => {
     // One organisation runs dev builds beside release ones. Two installed tasks
-    // cannot share a GUID, and a shared name makes `StackWhatIf@0` ambiguous.
+    // cannot share a GUID, and a shared name makes `StackWhatIf@1` ambiguous.
     const dev = read('overrides/dev.json');
     const task = JSON.parse(readFileSync(join(root, '../task/task.json'), 'utf8')) as Record<string, any>;
     expect(dev['task']['id']).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);

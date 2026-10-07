@@ -39,8 +39,9 @@ const EXTERNAL = ['azure-pipelines-task-lib', 'azure-pipelines-tool-lib'];
 const pkg = JSON.parse(await fs.readFile(path.join(root, 'package.json'), 'utf8'));
 const manifest = JSON.parse(await fs.readFile(path.join(root, 'task.json'), 'utf8'));
 
-// The version reaches the sidecar as `producer`, so a mismatch between the two
-// manifests would mislabel every payload the task writes.
+// The two manifests name the same package, and the task folder ships both.
+// Packaging restamps task.json from the extension's version, which is what the
+// sidecar's `producer` reads; this keeps the committed pair from disagreeing.
 const manifestVersion = `${manifest.version.Major}.${manifest.version.Minor}.${manifest.version.Patch}`;
 if (manifestVersion !== pkg.version) {
   throw new Error(

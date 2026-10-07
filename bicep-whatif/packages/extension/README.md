@@ -30,7 +30,7 @@ Dev builds ship the task as `StackWhatIfDev`, with its own GUID, so a dev build
 and a release build can be installed in the same organisation. The `task` block
 in `overrides/dev.json` holds that identity; `scripts/package.mjs` writes it into
 the staged `task.json` and points `supportsTasks` at it. Pipelines that run
-against a dev build reference `StackWhatIfDev@0`.
+against a dev build reference `StackWhatIfDev@1`.
 
 ## The publisher is never committed
 
@@ -44,7 +44,6 @@ without `--overrides-file`:
 ```bash
 npm run package                                          # overrides/dev.json
 node scripts/package.mjs --overrides overrides/release.json
-node scripts/package.mjs --rev-version                    # bump the patch first
 ```
 
 `overrides/dev.json` is committed and names `MichaelC`, marked `public: false`.

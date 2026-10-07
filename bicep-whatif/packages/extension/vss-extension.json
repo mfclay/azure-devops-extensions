@@ -1,7 +1,7 @@
 {
   "manifestVersion": 1,
   "id": "bicep-whatif",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "name": "Bicep What-If for Deployment Stacks",
   "description": "Renders Azure Deployment Stacks what-if output across every stack in a run — filterable, severity-ranked, and honest about what it could not evaluate.",
   "categories": ["Azure Pipelines"],

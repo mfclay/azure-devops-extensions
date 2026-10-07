@@ -144,7 +144,7 @@ jobs:
       #
       # So this runs after `npm ci`, which is where `tfx` comes from. `tfx
       # extension show --json` prints `null` for an extension that does not
-      # exist yet: a dev build then starts at 0.1.0, and a release refuses,
+      # exist yet: a dev build then starts at 1.0.0, task.json's major, and a release refuses,
       # because a first release's version is a choice nothing can derive. A bad
       # token or anything unparseable stops the run instead of guessing.
       - name: Resolve version
@@ -167,7 +167,7 @@ jobs:
               const vs = (d?.versions ?? []).map((v) => v.version.split(".").map(Number));
               if (vs.length === 0) {
                 if (process.env.RELEASE === "true") throw new Error("never published: name the first release version");
-                console.log("0.1.0");
+                console.log("1.0.0");
                 process.exit(0);
               }
               vs.sort((a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2]);

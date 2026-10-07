@@ -113,16 +113,16 @@ describe('task.json — agreement with the code', () => {
     expect(inputByName('bicepVersion')!['defaultValue']).toBe(DEFAULT_BICEP_VERSION);
   });
 
-  it('keeps the two manifests on the same version, because the sidecar stamps it', () => {
+  it('keeps the two manifests on the same version, because the task folder ships both', () => {
     const v = task['version'];
     expect(`${v.Major}.${v.Minor}.${v.Patch}`).toBe(pkg['version']);
   });
 
-  it('stays at major 0 while the input schema is not frozen', () => {
-    // Going fat means any breaking input change is a major bump that every
-    // consumer has to edit their YAML for. 0.x says "not yet frozen" out loud.
-    expect(task['version'].Major).toBe(0);
-    expect(task['preview']).toBe(true);
+  it('is at major 1, so the input schema is frozen', () => {
+    // The major is the `@1` in every consumer's YAML, and packaging refuses an
+    // extension version with any other. A breaking input change is therefore a
+    // move to `@2` that every consumer has to edit their YAML for.
+    expect(task['version'].Major).toBe(1);
   });
 
   it('marks the mode-specific inputs so the editor hides the irrelevant ones', () => {

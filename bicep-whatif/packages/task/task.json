@@ -7,7 +7,7 @@
   "helpMarkDown": "Runs `Microsoft.Resources/deploymentStacksWhatIfResults` against ARM and files the raw response as a build attachment, plus a sidecar manifest that is written even when the run fails. [Documentation](https://github.com/mfclay/azure-devops-extensions/tree/main/bicep-whatif)",
   "category": "Deploy",
   "author": "mfclay",
-  "version": { "Major": 0, "Minor": 1, "Patch": 0 },
+  "version": { "Major": 1, "Minor": 0, "Patch": 0 },
   "preview": true,
   "minimumAgentVersion": "3.232.1",
   "instanceNameFormat": "$(mode) $(stackId)",

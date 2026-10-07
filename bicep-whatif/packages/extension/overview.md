@@ -110,7 +110,7 @@ every consumer's what-if should compile identically.
 ## Getting started
 
 ```yaml
-- task: StackWhatIf@0
+- task: StackWhatIf@1
   displayName: What-If — network
   continueOnError: true
   inputs:
