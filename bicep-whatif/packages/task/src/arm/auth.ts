@@ -81,6 +81,33 @@ export function resourceFor(endpoint: EndpointDetails): string {
   return endpoint.resourceId ?? endpoint.managementUrl ?? PUBLIC_ARM;
 }
 
+/**
+ * One line about a token's shape, for the log: who it is for and which identity
+ * claims it carries, never the token or a claim's value beyond those. ARM
+ * accepts a token at its front door that a deployment stack's own deployment
+ * can still reject for lacking an identity claim, and this is what tells those
+ * cases apart. Never throws: a token it cannot read is reported as such.
+ */
+export function describeToken(token: string): string {
+  try {
+    const payload = token.split('.')[1];
+    if (payload === undefined) return 'not a JWT';
+    const claims = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8')) as Record<
+      string,
+      unknown
+    >;
+    const text = (name: string): string =>
+      typeof claims[name] === 'string' ? (claims[name] as string) : '(none)';
+    const identity = ['oid', 'puid', 'altsecid'].filter((name) => claims[name] !== undefined);
+    return (
+      `aud ${text('aud')}, ver ${text('ver')}, idtyp ${text('idtyp')}, ` +
+      `identity claims: ${identity.length > 0 ? identity.join(' ') : 'none'}`
+    );
+  } catch {
+    return 'not a readable JWT';
+  }
+}
+
 interface TokenResponse {
   access_token?: unknown;
   expires_in?: unknown;

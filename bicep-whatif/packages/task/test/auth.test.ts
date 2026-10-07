@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  describeToken,
   AuthError,
   acquireArmToken,
   armBaseUrl,
@@ -158,5 +159,31 @@ describe('acquireArmToken — anything else', () => {
     await expect(
       acquireArmToken({ fetch: net.fetch, env: {} }, { ...SPN, scheme: 'PublishProfile' }),
     ).rejects.toThrow(/WorkloadIdentityFederation/);
+  });
+});
+
+describe('describeToken', () => {
+  const jwt = (claims: Record<string, unknown>): string =>
+    `h.${Buffer.from(JSON.stringify(claims)).toString('base64url')}.sig`;
+
+  it('names the audience, version and which identity claims are present, not their values', () => {
+    const line = describeToken(
+      jwt({ aud: 'https://management.core.windows.net/', ver: '1.0', idtyp: 'app', oid: 'oid-value' }),
+    );
+    expect(line).toBe(
+      'aud https://management.core.windows.net/, ver 1.0, idtyp app, identity claims: oid',
+    );
+    expect(line).not.toContain('oid-value');
+  });
+
+  it('says when a token carries no identity claim', () => {
+    expect(describeToken(jwt({ aud: 'x', ver: '2.0' }))).toBe(
+      'aud x, ver 2.0, idtyp (none), identity claims: none',
+    );
+  });
+
+  it('never throws on something that is not a JWT', () => {
+    expect(describeToken('opaque')).toBe('not a JWT');
+    expect(describeToken('a.!!!.c')).toBe('not a readable JWT');
   });
 });

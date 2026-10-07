@@ -36,7 +36,14 @@ import { buildDeployRequest, buildWhatIfRequest } from './request.js';
 import { redactPayload, redactText, secureValuesFrom } from './redact.js';
 import { deploySidecar, whatIfSidecar } from './sidecar.js';
 import { renderSummary, resultLine } from './summary.js';
-import { acquireArmToken, armBaseUrl, type EndpointDetails } from './arm/auth.js';
+import {
+  acquireArmToken,
+  armBaseUrl,
+  describeToken,
+  resourceFor,
+  scopeFor,
+  type EndpointDetails,
+} from './arm/auth.js';
 import { ArmClient } from './arm/client.js';
 import {
   createDeploymentStack,
@@ -237,6 +244,10 @@ export async function run(deps: RunDeps): Promise<RunResult> {
     subscriptionId = requireSubscription(deps.endpoint);
     const authDeps = { fetch: deps.fetch, env: deps.env, jobAccessToken: deps.jobAccessToken };
     const token = await acquireArmToken(authDeps, deps.endpoint);
+    deps.log(
+      `ARM token for ${scopeFor(resourceFor(deps.endpoint))} (${deps.endpoint.scheme}): ` +
+        describeToken(token),
+    );
     client = new ArmClient(
       {
         fetch: deps.fetch,
