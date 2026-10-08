@@ -154,8 +154,8 @@ the agent gives every task as the `SYSTEMVSSCONNECTION` endpoint, so there is no
 
 5. **Severity is not re-implemented here.** `@bicep-whatif/core` owns the
    four-axis collapse, and sharing it is the entire payoff of running TypeScript
-   on `Node20_1`. The log summary calls the same `severityOf` the tab does, so
-   the two cannot rank a run differently.
+   on Node (`Node20_1` and `Node24`). The log summary calls the same
+   `severityOf` the tab does, so the two cannot rank a run differently.
 
 6. **`azure-pipelines-task-lib` and `azure-pipelines-tool-lib` stay external to
    the bundle.** The task library resolves its own string resources relative to

@@ -8,7 +8,6 @@
   "category": "Deploy",
   "author": "mfclay",
   "version": { "Major": 1, "Minor": 0, "Patch": 0 },
-  "preview": true,
   "minimumAgentVersion": "3.232.1",
   "instanceNameFormat": "$(mode) $(stackId)",
   "groups": [
@@ -203,6 +202,9 @@
   },
   "execution": {
     "Node20_1": {
+      "target": "index.js"
+    },
+    "Node24": {
       "target": "index.js"
     }
   }

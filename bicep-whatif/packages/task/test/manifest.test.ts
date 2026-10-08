@@ -37,12 +37,23 @@ describe('task.json — the traps', () => {
     expect(task['restrictions']?.settableVariables?.allowed).toEqual([]);
   });
 
-  it('runs on the Node20_1 handler', () => {
+  it('runs on the Node20_1 and Node24 handlers', () => {
     // PowerShell3 would need a Windows agent; the consuming pipeline is
     // ubuntu-latest. This is what forces TypeScript, and what lets the task
     // share `core` with the tab.
-    expect(Object.keys(task['execution'])).toEqual(['Node20_1']);
+    //
+    // Both, because Node 20 leaves the agent in April 2027 and an agent picks
+    // the newest handler it knows: 4.265.1 and later run Node24, older ones
+    // ignore the key and run Node20_1, so `minimumAgentVersion` need not move.
+    expect(Object.keys(task['execution'])).toEqual(['Node20_1', 'Node24']);
     expect(task['execution'].Node20_1.target).toBe('index.js');
+    expect(task['execution'].Node24.target).toBe('index.js');
+  });
+
+  it('is not marked preview', () => {
+    // Untested areas, such as clouds other than Azure public, are stated in
+    // the docs rather than carried as a flag on the whole task.
+    expect(task).not.toHaveProperty('preview');
   });
 
   it('keeps the task id stable', () => {

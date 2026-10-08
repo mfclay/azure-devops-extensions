@@ -29,9 +29,10 @@ ARG AGENT_VERSION=5.277.0
 # prints the old URL. This is the host the release notes actually link to;
 # verified returning 200 on 2026-08-26.
 ARG AGENT_BASE_URL=https://download.agent.dev.azure.com/agent
-# Node 20 is the line the shipped task runs on (`Node20_1`) and the floor this
-# workspace claims, so the harness runs on the version CI verifies against
-# rather than on whatever the base image happens to carry.
+# Node 20 is the floor this workspace claims, so tooling in the image runs on
+# the version CI verifies against rather than on whatever the base image
+# happens to carry. The task itself runs on the agent's own bundled Node: this
+# agent picks the `Node24` handler, so `Node20_1` is proven by the unit tests.
 ARG NODE_MAJOR=20
 # Supplied by BuildKit. Both are real targets: an Apple Silicon machine builds
 # arm64 natively, and there is no reason to emulate x64 for this.
