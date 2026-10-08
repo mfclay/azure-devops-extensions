@@ -228,11 +228,64 @@ describe('ArmClient.pollOperation', () => {
     );
   });
 
-  it('refuses an accepted operation with no Location to follow', async () => {
+  // What Azure sends for a stack delete, though the REST spec promises Location.
+  const ASYNC = `${BASE}/subscriptions/s/providers/Microsoft.Resources/locations/eastus2/deploymentStackOperationStatus/op-2?api-version=x`;
+
+  it('follows Azure-AsyncOperation when there is no Location, as a stack delete answers', async () => {
+    const { client: c, net, clock } = client([
+      { status: 202, headers: { 'azure-asyncoperation': ASYNC, 'retry-after': '17' } },
+      { status: 200, body: { name: 'op-2', status: 'deleting' } },
+      { status: 200, body: { name: 'op-2', status: 'deletingResources' } },
+      { status: 200, body: { name: 'op-2', status: 'succeeded' } },
+    ]);
+    const accepted = await c.request({ method: 'DELETE', url: c.url(PATH) });
+    const done = await c.pollOperation(accepted, { ...poll, describe: 'Delete' });
+    expect(done.body).toEqual({ name: 'op-2', status: 'succeeded' });
+    expect(net.calls.slice(1).map((call) => call.url)).toEqual([ASYNC, ASYNC, ASYNC]);
+    expect(clock.slept).toEqual([17_000, 5000, 5000]);
+  });
+
+  it('throws an Azure-AsyncOperation that ends failed, with its error', async () => {
+    const { client: c } = client([
+      { status: 202, headers: { 'azure-asyncoperation': ASYNC } },
+      {
+        status: 200,
+        body: { status: 'failed', error: { code: 'DeploymentStackDeleteFailed', message: 'Locked.' } },
+      },
+    ]);
+    const accepted = await c.request({ method: 'DELETE', url: c.url(PATH) });
+    const thrown = await c.pollOperation(accepted, { ...poll, describe: 'Delete' }).catch((e) => e);
+    expect(thrown).toBeInstanceOf(ArmError);
+    expect(thrown.code).toBe('DeploymentStackDeleteFailed');
+    expect(thrown.message).toContain('Locked.');
+  });
+
+  it('throws an Azure-AsyncOperation that ends canceled, though it carries no error', async () => {
+    const { client: c } = client([
+      { status: 202, headers: { 'azure-asyncoperation': ASYNC } },
+      { status: 200, body: { status: 'canceled' } },
+    ]);
+    const accepted = await c.request({ method: 'DELETE', url: c.url(PATH) });
+    await expect(c.pollOperation(accepted, { ...poll, describe: 'Delete' })).rejects.toThrow(
+      'Delete ended canceled.',
+    );
+  });
+
+  it('prefers Location when ARM sends both', async () => {
+    const { client: c, net } = client([
+      { status: 202, headers: { location: LOCATION, 'azure-asyncoperation': ASYNC } },
+      { status: 204 },
+    ]);
+    const accepted = await c.request({ method: 'DELETE', url: c.url(PATH) });
+    await c.pollOperation(accepted, { ...poll, describe: 'Delete' });
+    expect(net.calls.slice(1).map((call) => call.url)).toEqual([LOCATION]);
+  });
+
+  it('refuses an accepted operation with nothing to follow', async () => {
     const { client: c } = client([{ status: 202 }]);
     const accepted = await c.request({ method: 'DELETE', url: c.url(PATH) });
     await expect(c.pollOperation(accepted, { ...poll, describe: 'Delete' })).rejects.toThrow(
-      /no Location to follow/,
+      /neither a Location nor an Azure-AsyncOperation to follow/,
     );
   });
 });

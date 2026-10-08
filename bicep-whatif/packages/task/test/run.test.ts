@@ -681,6 +681,22 @@ describe('run — the delete operation', () => {
     expect(h.requests.some((r) => r.url === location)).toBe(true);
   });
 
+  it('follows a delete that names only an Azure-AsyncOperation, as Azure answers', async () => {
+    const status = 'https://management.azure.com/deploymentStackOperationStatus/del-2';
+    const h = harness({
+      raw: DELETE_RAW,
+      routes: [
+        {
+          match: (u, m) => u.includes('/deploymentStacks/') && m === 'DELETE',
+          reply: () => ({ status: 202, headers: { 'azure-asyncoperation': status } }),
+        },
+        { match: (u) => u === status, reply: () => ({ body: { status: 'succeeded' } }) },
+      ],
+    });
+    expect((await run(h.deps)).status).toBe('succeeded');
+    expect(h.requests.some((r) => r.url === status)).toBe(true);
+  });
+
   it('counts a stack that is already gone as deleted', async () => {
     const h = harness({
       raw: DELETE_RAW,
