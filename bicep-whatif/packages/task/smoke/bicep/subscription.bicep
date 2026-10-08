@@ -1,4 +1,4 @@
-// The smoke pipeline's `bicep` template. It exists to put three things in front
+// The smoke pipeline's `bicep` template at subscription scope. It exists to put three things in front
 // of Azure that the empty template cannot: a Bicep compile (and the run-time
 // download of the compiler), a `.bicepparam` file, and a `@secure()` value that
 // redaction would have to catch if it reached the what-if payload.
@@ -16,7 +16,7 @@
 // group, created or modified. The captured fixtures, which do carry
 // `resourceConfigurationChanges`, came from stacks scoped to a resource group.
 //
-// The stamp is passed in by main.bicepparam, not defaulted here. As a
+// The stamp is passed in by subscription.bicepparam, not defaulted here. As a
 // `utcNow()` default it changed every run and the stack what-if still called
 // the tag a definite noChange; passed as a value, the same change is a modify.
 // The stack what-if compares the parameter values it is handed and does not
@@ -27,10 +27,10 @@ targetScope = 'subscription'
 param location string = deployment().location
 
 @secure()
-@description('A stand-in secret, set in main.bicepparam. Never a real one: it is committed.')
+@description('A stand-in secret, set in subscription.bicepparam. Never a real one: it is committed.')
 param smokeSecret string
 
-@description('Changes every run, so that the tag is always a modify. Set by main.bicepparam.')
+@description('Changes every run, so that the tag is always a modify. Set by subscription.bicepparam.')
 param stamp string
 
 resource smoke 'Microsoft.Resources/resourceGroups@2024-03-01' = {

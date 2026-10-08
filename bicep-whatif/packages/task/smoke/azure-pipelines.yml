@@ -1,23 +1,33 @@
 # One real run of the dev task against Azure, to prove the service connection
 # path. The harness cannot: its task step never runs.
 #
-# `template: empty` (the default) is an inline empty ARM template. With
-# `operation: whatIf` nothing is deployed: the task creates a what-if result at
-# subscription scope and deletes it afterwards. With `create` it creates or
-# updates a subscription-scope deployment stack, `bicep-whatif-smoke`, that
-# manages no resources. The stack stays until it is deleted, e.g.
-#   az stack sub delete --name bicep-whatif-smoke --action-on-unmanage detachAll
+# `operation` is the task's own: `whatIf` (the default) deploys nothing, as the
+# task creates a what-if result and deletes it afterwards; `create` creates or
+# updates the stack; `validate` checks it; `delete` removes it, doing to what it
+# managed what `unmanage` says.
 #
-# `template: bicep` checks out the repo and runs `smoke/bicep/main.bicep` with
-# its `.bicepparam`, so a compile, the compiler download, a parameters file and
-# a `@secure()` value all meet Azure. Its stack is `bicep-whatif-smoke-bicep`,
-# and with `create` it manages a resource group, `rg-bicep-whatif-smoke`,
-# holding one network security group whose tag carries the stand-in secret.
-# After one `create` run, each what-if reports that group as a modify. So far
-# the payload has never carried the secret even then (main.bicep says why), so
-# redaction itself is proven by the task's unit tests, not here. Delete all
-# three with
-#   az stack sub delete --name bicep-whatif-smoke-bicep --action-on-unmanage deleteAll
+# `scope` picks where the stack lives. Resource-group scope uses
+# `resourceGroupName`, which must exist; management-group scope needs
+# `managementGroupId`, a group the connection has rights on.
+#
+# `template: empty` (the default) is an inline empty ARM template for the scope,
+# and its stack, `bicep-whatif-smoke`, manages nothing.
+#
+# `template: bicep` checks out the repo and runs `smoke/bicep/<scope>.bicepparam`
+# with no `templateFile`, so a compile, the compiler download, a parameters
+# file naming its own template and a `@secure()` value all meet Azure. Its stack
+# is `bicep-whatif-smoke-bicep`:
+#   - subscription: a resource group, `rg-bicep-whatif-smoke`, holding one
+#     network security group whose tag carries the stand-in secret.
+#   - resourceGroup: a second security group in that resource group, so run the
+#     subscription `create` first. Delete this stack before that one.
+#   - managementGroup: one policy definition, never assigned, whose metadata
+#     carries the stand-in secret.
+# After one `create`, each what-if reports the tagged resource as a modify. At
+# subscription scope the payload has never carried the secret even then
+# (subscription.bicep says why), so redaction there is proven by the task's
+# unit tests, not here. Clean up with `operation: delete`, `unmanage: delete`,
+# resource-group and management-group stacks first.
 # A step after the task fails the run if the stand-in secret appears in anything
 # the task wrote.
 #
@@ -43,6 +53,16 @@ parameters:
   values:
   - whatIf
   - create
+  - validate
+  - delete
+- name: scope
+  displayName: 'Scope'
+  type: string
+  default: subscription
+  values:
+  - subscription
+  - resourceGroup
+  - managementGroup
 - name: template
   displayName: 'Template'
   type: string
@@ -54,18 +74,42 @@ parameters:
   displayName: 'Azure Resource Manager service connection'
   type: string
 - name: location
-  displayName: 'Location for the stack'
+  displayName: 'Location for the stack (not used at resource-group scope)'
   type: string
   default: centralus
+- name: resourceGroupName
+  displayName: 'Resource group (resource-group scope only)'
+  type: string
+  default: rg-bicep-whatif-smoke
+- name: managementGroupId
+  displayName: 'Management group id (management-group scope only)'
+  type: string
+  default: ''
+- name: unmanage
+  displayName: 'What happens to what the stack stops managing, or what a delete leaves'
+  type: string
+  default: detach
+  values:
+  - detach
+  - delete
 - name: pool
   displayName: 'Agent pool — default is the hosted image; pass {"name":"<pool>"} for self-hosted'
   type: object
   default:
     vmImage: ubuntu-latest
 
+variables:
+  # The empty template's schema names its scope.
+  ${{ if eq(parameters.scope, 'resourceGroup') }}:
+    emptySchema: 'https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#'
+  ${{ elseif eq(parameters.scope, 'managementGroup') }}:
+    emptySchema: 'https://schema.management.azure.com/schemas/2019-08-01/managementGroupDeploymentTemplate.json#'
+  ${{ else }}:
+    emptySchema: 'https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#'
+
 stages:
 - stage: WhatIf_Smoke
-  displayName: 'Smoke — ${{ parameters.operation }}, ${{ parameters.template }} template'
+  displayName: 'Smoke — ${{ parameters.operation }} at ${{ parameters.scope }}, ${{ parameters.template }} template'
   jobs:
   - job: WhatIf
     pool: ${{ parameters.pool }}
@@ -76,41 +120,54 @@ stages:
       - checkout: none
 
       - script: |
-          printf '%s\n' '{"$schema":"https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#","contentVersion":"1.0.0.0","parameters":{},"resources":[]}' \
-            > "$(Agent.TempDirectory)/empty.json"
-        displayName: 'Write an empty subscription template'
+          printf '{"$schema":"%s","contentVersion":"1.0.0.0","parameters":{},"resources":[]}\n' \
+            "$(emptySchema)" > "$(Agent.TempDirectory)/empty.json"
+        displayName: 'Write an empty ${{ parameters.scope }} template'
 
     - ${{ else }}:
       - checkout: self
         fetchDepth: 1
 
     - task: StackWhatIfDev@1
-      displayName: 'StackWhatIfDev — ${{ parameters.operation }}, ${{ parameters.template }} template'
+      displayName: 'StackWhatIfDev — ${{ parameters.operation }} at ${{ parameters.scope }}, ${{ parameters.template }} template'
       inputs:
         operation: ${{ parameters.operation }}
         azureResourceManagerConnection: ${{ parameters.serviceConnection }}
+        scope: ${{ parameters.scope }}
+        # Each input only where the scope and operation use it, so a pass is
+        # also a run with no "is ignored" warnings.
+        ${{ if eq(parameters.scope, 'resourceGroup') }}:
+          resourceGroupName: ${{ parameters.resourceGroupName }}
+        ${{ else }}:
+          actionOnUnmanageResourceGroups: ${{ parameters.unmanage }}
+        ${{ if eq(parameters.scope, 'managementGroup') }}:
+          managementGroupId: ${{ parameters.managementGroupId }}
+          actionOnUnmanageManagementGroups: ${{ parameters.unmanage }}
+        actionOnUnmanageResources: ${{ parameters.unmanage }}
         ${{ if eq(parameters.template, 'empty') }}:
           stackId: smoke
           stackName: bicep-whatif-smoke
-          templateFile: '$(Agent.TempDirectory)/empty.json'
         ${{ else }}:
           stackId: smoke-bicep
           stackName: bicep-whatif-smoke-bicep
-          templateFile: '$(Build.SourcesDirectory)/bicep-whatif/packages/task/smoke/bicep/main.bicep'
-          parametersFile: '$(Build.SourcesDirectory)/bicep-whatif/packages/task/smoke/bicep/main.bicepparam'
-        location: ${{ parameters.location }}
-        actionOnUnmanageResources: detach
-        actionOnUnmanageResourceGroups: detach
-        denySettingsMode: none
+        ${{ if ne(parameters.operation, 'delete') }}:
+          ${{ if ne(parameters.scope, 'resourceGroup') }}:
+            location: ${{ parameters.location }}
+          ${{ if eq(parameters.template, 'empty') }}:
+            templateFile: '$(Agent.TempDirectory)/empty.json'
+          ${{ else }}:
+            parametersFile: '$(Build.SourcesDirectory)/bicep-whatif/packages/task/smoke/bicep/${{ parameters.scope }}.bicepparam'
+          denySettingsMode: none
         outputPath: $(smokeOut)
 
-    # The stand-in is the value in main.bicepparam. Absent from everything is the
+    # The stand-in is the value in each .bicepparam. Absent from everything is the
     # pass. Present as the placeholder means it reached the payload and was
     # caught. A run whose payload never carried it proves less, so that is a
     # warning rather than a pass or a failure. So far every run has been one:
     # the subscription-scope stack what-if returns no property values, for a
     # create or a modify, and a `create` payload is the stack itself.
-    - ${{ if eq(parameters.template, 'bicep') }}:
+    # A delete writes only a sidecar, so there is nothing for the check to read.
+    - ${{ if and(eq(parameters.template, 'bicep'), ne(parameters.operation, 'delete')) }}:
       - script: |
           set -eu
           secret='smoke-stand-in-5c1e9d'
