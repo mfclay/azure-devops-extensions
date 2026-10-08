@@ -23,13 +23,16 @@
 #     subscription `create` first. Delete this stack before that one.
 #   - managementGroup: one policy definition, never assigned, whose metadata
 #     carries the stand-in secret.
-# After one `create`, each what-if reports the tagged resource as a modify. At
-# subscription scope the payload has never carried the secret even then
-# (subscription.bicep says why), so redaction there is proven by the task's
-# unit tests, not here. Clean up with `operation: delete`, `unmanage: delete`,
-# resource-group and management-group stacks first.
+# After one `create`, each what-if reports the tagged resource as a modify. No
+# stack what-if has carried the secret even then, at subscription or resource-
+# group scope (subscription.bicep says why). A `create` is where redaction
+# meets Azure: each template outputs the stand-in inside a longer string, and
+# the stack's outputs are in the payload a `create` attaches.
+# Clean up with `operation: delete`, `unmanage: delete`, resource-group and
+# management-group stacks first.
 # A step after the task fails the run if the stand-in secret appears in anything
-# the task wrote.
+# the task wrote. After a `create`, a second step reads the stack's outputs back
+# as output variables of the task step.
 #
 # The connection is a queue-time parameter, not a committed name: this repo is
 # public, and the name of a real connection does not belong in it. The pipeline
@@ -129,6 +132,7 @@ stages:
         fetchDepth: 1
 
     - task: StackWhatIfDev@1
+      name: stack
       displayName: 'StackWhatIfDev — ${{ parameters.operation }} at ${{ parameters.scope }}, ${{ parameters.template }} template'
       inputs:
         operation: ${{ parameters.operation }}
@@ -158,14 +162,17 @@ stages:
           ${{ else }}:
             parametersFile: '$(Build.SourcesDirectory)/bicep-whatif/packages/task/smoke/bicep/${{ parameters.scope }}.bicepparam'
           denySettingsMode: none
+        ${{ if eq(parameters.operation, 'create') }}:
+          maskedOutputs: smokeMaskedOutput
         outputPath: $(smokeOut)
 
     # The stand-in is the value in each .bicepparam. Absent from everything is the
     # pass. Present as the placeholder means it reached the payload and was
-    # caught. A run whose payload never carried it proves less, so that is a
-    # warning rather than a pass or a failure. So far every run has been one:
-    # the subscription-scope stack what-if returns no property values, for a
-    # create or a modify, and a `create` payload is the stack itself.
+    # caught. A what-if or validate payload has never carried it, so for those
+    # a missing placeholder is a warning rather than a pass or a failure. A
+    # `create` payload carries the stack's outputs, so there it fails unless
+    # smokeSecretOutput reads `echo:<placeholder>|<build id>`, and if the masked
+    # output's value is anywhere.
     # A delete writes only a sidecar, so there is nothing for the check to read.
     - ${{ if and(eq(parameters.template, 'bicep'), ne(parameters.operation, 'delete')) }}:
       - script: |
@@ -176,10 +183,40 @@ stages:
             echo "##vso[task.logissue type=error]The stand-in secret is in the files above, unredacted."
             exit 1
           fi
-          if grep -rqF -- '***REDACTED***' "$(smokeOut)"; then
+          if [ '${{ parameters.operation }}' = create ]; then
+            if grep -rlF -- "masked-$(Build.BuildId)" "$(smokeOut)"; then
+              echo "##vso[task.logissue type=error]The masked output's value is in the files above, unredacted."
+              exit 1
+            fi
+            if ! grep -rqF -- "echo:***REDACTED***|$(Build.BuildId)" "$(smokeOut)"; then
+              echo "##vso[task.logissue type=error]smokeSecretOutput is not in the output with the stand-in replaced in place."
+              exit 1
+            fi
+            echo "Redacted: the stand-in reached the payload inside a longer string and was replaced in place."
+          elif grep -rqF -- '***REDACTED***' "$(smokeOut)"; then
             echo "Redacted: the stand-in reached the payload and was replaced."
           else
             echo "##vso[task.logissue type=warning]No redaction placeholder in the output: the stand-in never reached the payload, so redaction was not exercised."
           fi
         displayName: 'Check the stand-in secret was redacted'
         condition: always()
+
+    # A create sets each stack output as an output variable of the task step,
+    # named for the output, as BicepDeploy@0 does. The masked one arrives as a
+    # secret, so it has to be mapped in to reach the script, and the agent
+    # prints it as ***.
+    - ${{ if and(eq(parameters.template, 'bicep'), eq(parameters.operation, 'create')) }}:
+      - script: |
+          set -eu
+          fail() { echo "##vso[task.logissue type=error]$1"; exit 1; }
+          case "$RESOURCE_ID" in
+            ''|*stack.smokeResourceId*) fail 'The smokeResourceId output did not reach this step.' ;;
+          esac
+          [ "$MASKED" = "masked-$(Build.BuildId)" ] ||
+            fail 'The smokeMaskedOutput output did not reach this step with its value.'
+          echo "smokeResourceId: $RESOURCE_ID"
+          echo "smokeMaskedOutput, which should print masked: $MASKED"
+        displayName: 'Check the stack outputs reached a later step'
+        env:
+          RESOURCE_ID: $(stack.smokeResourceId)
+          MASKED: $(stack.smokeMaskedOutput)

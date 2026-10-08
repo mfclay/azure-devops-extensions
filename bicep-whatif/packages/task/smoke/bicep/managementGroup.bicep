@@ -33,3 +33,16 @@ resource smoke 'Microsoft.Authorization/policyDefinitions@2023-04-01' = {
     }
   }
 }
+
+// Outputs, for a create to set as output variables of the task step, which the
+// smoke reads back in a later step. The second carries the stand-in inside a
+// longer string and is not masked, so only by-value redaction of the @secure()
+// parameter keeps it out of the attached payload. The third is named in
+// maskedOutputs, so the payload must not carry it either, though it holds no
+// secure value.
+output smokeResourceId string = smoke.id
+
+#disable-next-line outputs-should-not-contain-secrets
+output smokeSecretOutput string = 'echo:${smokeSecret}|${stamp}'
+
+output smokeMaskedOutput string = 'masked-${stamp}'

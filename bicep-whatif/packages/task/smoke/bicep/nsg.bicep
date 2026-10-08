@@ -18,3 +18,5 @@ resource nsg 'Microsoft.Network/networkSecurityGroups@2024-05-01' = {
     smokeSecret: '${smokeSecret}|${stamp}'
   }
 }
+
+output id string = nsg.id

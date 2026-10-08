@@ -6,9 +6,9 @@
 // one, or deleting theirs with resource groups set to delete takes this stack
 // with it.
 //
-// Resource-group scope is the one with a chance of proving redaction here:
-// the captured fixtures that carry property values came from stacks at this
-// scope, where the subscription-scope smoke has never seen one.
+// The captured fixtures that carry property values came from stacks at this
+// scope, but this stack's what-if has not returned any either: the tagged
+// group, created or modified, comes back with no resourceConfigurationChanges.
 targetScope = 'resourceGroup'
 
 @secure()
@@ -27,3 +27,16 @@ module nsg 'nsg.bicep' = {
     stamp: stamp
   }
 }
+
+// Outputs, for a create to set as output variables of the task step, which the
+// smoke reads back in a later step. The second carries the stand-in inside a
+// longer string and is not masked, so only by-value redaction of the @secure()
+// parameter keeps it out of the attached payload. The third is named in
+// maskedOutputs, so the payload must not carry it either, though it holds no
+// secure value.
+output smokeResourceId string = nsg.outputs.id
+
+#disable-next-line outputs-should-not-contain-secrets
+output smokeSecretOutput string = 'echo:${smokeSecret}|${stamp}'
+
+output smokeMaskedOutput string = 'masked-${stamp}'
