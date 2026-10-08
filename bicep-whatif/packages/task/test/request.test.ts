@@ -1,20 +1,21 @@
 import { describe, expect, it } from 'vitest';
 import { parseInputs, type RawInputs } from '../src/inputs.js';
 import {
-  buildDeployRequest,
+  actionOnUnmanageBody,
+  buildCreateRequest,
   buildWhatIfRequest,
   denySettingsBody,
-  expandActionOnUnmanage,
   unwrapParameters,
 } from '../src/request.js';
 
 const RAW: RawInputs = {
-  azureSubscription: 'MyConnection',
+  ConnectedServiceName: 'MyConnection',
   stackId: 'network',
   stackName: 'app-network',
   templateFile: 'stacks/01-network-stack.bicep',
   location: 'CentralUS',
-  actionOnUnmanage: 'detachAll',
+  actionOnUnmanageResources: 'detach',
+  actionOnUnmanageResourceGroups: 'detach',
   denySettingsMode: 'none',
 };
 
@@ -22,31 +23,27 @@ const STACK_ID =
   '/subscriptions/00000000-0000-4000-8000-000000000001' +
   '/providers/Microsoft.Resources/deploymentStacks/app-network';
 
-describe('expandActionOnUnmanage', () => {
-  it('expands detachAll to detach on all three', () => {
-    expect(expandActionOnUnmanage('detachAll')).toEqual({
-      resources: 'detach',
-      resourceGroups: 'detach',
-      managementGroups: 'detach',
-    });
+describe('actionOnUnmanageBody', () => {
+  it('passes each switch through as ARM names it', () => {
+    expect(
+      actionOnUnmanageBody({
+        resources: 'delete',
+        resourceGroups: 'detach',
+        managementGroups: 'delete',
+      }),
+    ).toEqual({ resources: 'delete', resourceGroups: 'detach', managementGroups: 'delete' });
   });
 
-  it('expands deleteAll to delete on all three', () => {
-    expect(expandActionOnUnmanage('deleteAll')).toEqual({
-      resources: 'delete',
-      resourceGroups: 'delete',
-      managementGroups: 'delete',
-    });
-  });
-
-  it('deletes resources but DETACHES their groups for deleteResources', () => {
-    // The asymmetry is the whole point of the name, and it is the one a doc
-    // paraphrases away. Read off the Azure CLI's own expansion.
-    expect(expandActionOnUnmanage('deleteResources')).toEqual({
-      resources: 'delete',
-      resourceGroups: 'detach',
-      managementGroups: 'detach',
-    });
+  it('leaves out a switch the scope cannot use, rather than inventing a value for it', () => {
+    // ARM requires only `resources`. Sending `detach` for a switch nobody set
+    // would be a default by the back door.
+    expect(
+      actionOnUnmanageBody({
+        resources: 'detach',
+        resourceGroups: 'delete',
+        managementGroups: undefined,
+      }),
+    ).toEqual({ resources: 'detach', resourceGroups: 'delete' });
   });
 });
 
@@ -128,26 +125,26 @@ describe('the two request bodies', () => {
     });
   });
 
-  it('gives what-if and deploy identical protection settings', () => {
+  it('gives what-if and create identical protection settings', () => {
     // Decision C2, enforced structurally rather than documented: a preview that
     // ran with different values than the deploy it previews is a lie.
     const whatIf = buildWhatIfRequest(args);
-    const deploy = buildDeployRequest(args);
+    const deploy = buildCreateRequest(args);
     expect(deploy.properties['actionOnUnmanage']).toEqual(whatIf.properties['actionOnUnmanage']);
     expect(deploy.properties['denySettings']).toEqual(whatIf.properties['denySettings']);
     expect(deploy.properties['template']).toEqual(whatIf.properties['template']);
     expect(deploy.properties['parameters']).toEqual(whatIf.properties['parameters']);
   });
 
-  it('does not send retention or a stack pointer on a deploy', () => {
-    const deploy = buildDeployRequest(args);
+  it('does not send retention or a stack pointer on a create', () => {
+    const deploy = buildCreateRequest(args);
     expect(deploy.properties).not.toHaveProperty('retentionInterval');
     expect(deploy.properties).not.toHaveProperty('deploymentStackResourceId');
   });
 
   it('omits bypassStackOutOfSyncError unless it was asked for', () => {
-    expect(buildDeployRequest(args).properties).not.toHaveProperty('bypassStackOutOfSyncError');
-    const on = buildDeployRequest({
+    expect(buildCreateRequest(args).properties).not.toHaveProperty('bypassStackOutOfSyncError');
+    const on = buildCreateRequest({
       ...args,
       inputs: parseInputs({ ...RAW, bypassStackOutOfSyncError: 'true' }),
     });

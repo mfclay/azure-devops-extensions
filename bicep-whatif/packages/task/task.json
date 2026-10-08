@@ -9,23 +9,24 @@
   "author": "mfclay",
   "version": { "Major": 1, "Minor": 0, "Patch": 0 },
   "minimumAgentVersion": "3.232.1",
-  "instanceNameFormat": "$(mode) $(stackId)",
+  "instanceNameFormat": "$(operation) $(stackId)",
   "groups": [
     { "name": "protection", "displayName": "Unmanage and deny settings", "isExpanded": true },
     { "name": "advanced", "displayName": "Advanced", "isExpanded": false }
   ],
   "inputs": [
     {
-      "name": "mode",
+      "name": "operation",
       "type": "pickList",
-      "label": "Mode",
-      "defaultValue": "whatif",
+      "label": "Operation",
+      "defaultValue": "whatIf",
       "required": true,
-      "options": { "whatif": "What-if (preview only)", "deploy": "Deploy the stack" },
-      "helpMarkDown": "Both modes read the same inputs and take the same code path to ARM, so a preview cannot disagree with the deploy it previews."
+      "options": { "whatIf": "What-if (preview only)", "create": "Create or update the stack" },
+      "helpMarkDown": "Both operations read the same inputs and take the same code path to ARM, so a preview cannot disagree with the deploy it previews. Defaults to `whatIf`: a step that leaves this out never deploys."
     },
     {
-      "name": "azureSubscription",
+      "name": "ConnectedServiceName",
+      "aliases": ["azureResourceManagerConnection"],
       "type": "connectedService:AzureRM",
       "label": "Azure Resource Manager connection",
       "required": true,
@@ -67,17 +68,31 @@
       "helpMarkDown": "Where the stack — and, in what-if mode, the transient result resource — lives."
     },
     {
-      "name": "actionOnUnmanage",
+      "name": "actionOnUnmanageResources",
       "type": "pickList",
-      "label": "Action on unmanage",
+      "label": "Action on unmanaged resources",
       "required": true,
       "groupName": "protection",
-      "options": {
-        "detachAll": "detachAll — leave everything in Azure",
-        "deleteResources": "deleteResources — delete resources, detach their groups",
-        "deleteAll": "deleteAll — delete resources, groups and management groups"
-      },
-      "helpMarkDown": "An input to what-if, not just to the deploy: it decides whether a resource dropped from the template is previewed as **Detach** or as **Delete**."
+      "options": { "delete": "Delete", "detach": "Detach" },
+      "helpMarkDown": "What happens to a resource the stack stops managing. An input to what-if, not just to the deploy: it decides whether a resource dropped from the template is previewed as **Detach** or as **Delete**."
+    },
+    {
+      "name": "actionOnUnmanageResourceGroups",
+      "type": "pickList",
+      "label": "Action on unmanaged resource groups",
+      "required": true,
+      "groupName": "protection",
+      "options": { "delete": "Delete", "detach": "Detach" },
+      "helpMarkDown": "What happens to a resource group the stack stops managing."
+    },
+    {
+      "name": "actionOnUnmanageManagementGroups",
+      "type": "pickList",
+      "label": "Action on unmanaged management groups",
+      "required": false,
+      "groupName": "protection",
+      "options": { "delete": "Delete", "detach": "Detach" },
+      "helpMarkDown": "What happens to a management group the stack stops managing. Only a management-group-scope stack can manage one."
     },
     {
       "name": "denySettingsMode",
@@ -122,7 +137,7 @@
       "defaultValue": "PT3H",
       "required": false,
       "groupName": "advanced",
-      "visibleRule": "mode = whatif",
+      "visibleRule": "operation = whatIf",
       "helpMarkDown": "ISO 8601. The service enforces one to three hours and rejects anything longer at run time, whatever the documentation says."
     },
     {
@@ -132,7 +147,7 @@
       "defaultValue": "true",
       "required": false,
       "groupName": "advanced",
-      "visibleRule": "mode = whatif",
+      "visibleRule": "operation = whatIf",
       "helpMarkDown": "Stack what-if creates a persistent subscription-scope resource that counts toward that scope's limits. Leave this on; retention is the backstop, not the mechanism."
     },
     {
@@ -142,7 +157,7 @@
       "defaultValue": "false",
       "required": false,
       "groupName": "advanced",
-      "visibleRule": "mode = deploy"
+      "visibleRule": "operation = create"
     },
     {
       "name": "bicepVersion",
@@ -167,7 +182,7 @@
       "label": "What-if result name",
       "required": false,
       "groupName": "advanced",
-      "visibleRule": "mode = whatif",
+      "visibleRule": "operation = whatIf",
       "helpMarkDown": "Defaults to `whatif-<stackId>-<Build.BuildId>`, which is what keeps two concurrent builds from colliding on the same resource."
     },
     {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SIDECAR_SCHEMA_VERSION } from '../src/contract.js';
-import { deploySidecar, whatIfSidecar } from '../src/sidecar.js';
+import { stackSidecar, whatIfSidecar } from '../src/sidecar.js';
 
 const BASE = {
   stackId: 'shared-infra',
@@ -54,7 +54,7 @@ describe('whatIfSidecar', () => {
 
   it('declares the schema version it actually is', () => {
     expect(sidecar.schemaVersion).toBe(SIDECAR_SCHEMA_VERSION);
-    expect(sidecar.mode).toBe('whatif');
+    expect(sidecar.operation).toBe('whatIf');
   });
 
   it('writes nulls rather than dropping fields when something is unknown', () => {
@@ -77,10 +77,11 @@ describe('whatIfSidecar', () => {
   });
 });
 
-describe('deploySidecar', () => {
+describe('stackSidecar', () => {
   it('counts the resource arrays rather than copying them', () => {
-    const sidecar = deploySidecar({
+    const sidecar = stackSidecar({
       ...BASE,
+      operation: 'create',
       stackName: 'app-shared-infra',
       stackResourceId: '/subscriptions/s/providers/Microsoft.Resources/deploymentStacks/a',
       provisioningState: 'succeeded',
@@ -96,6 +97,6 @@ describe('deploySidecar', () => {
     expect(sidecar.deletedResources).toBe(0);
     // Absent from the payload entirely — null, not zero.
     expect(sidecar.failedResources).toBeNull();
-    expect(sidecar.mode).toBe('deploy');
+    expect(sidecar.operation).toBe('create');
   });
 });

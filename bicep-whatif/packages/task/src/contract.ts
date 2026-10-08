@@ -16,24 +16,29 @@ export const ATTACHMENT_TYPE_PAYLOAD = 'whatif.stack.json';
 export const ATTACHMENT_TYPE_SIDECAR = 'whatif.stack.sidecar';
 
 /**
- * Deploy-mode outcome. Deliberately a *different* type from the what-if pair.
+ * Every operation but `whatIf` files its outcome under its own pair of types,
+ * `whatif.stack.<operation>.json` and `.sidecar`.
  *
  * The tab's fallback join keys sidecars by attachment name when the timeline
- * walk fails, and the attachment name is the stack id in both modes — so a
- * deploy stage emitting `whatif.stack.sidecar` for `network` could displace the
+ * walk fails, and the attachment name is the stack id for every operation — so
+ * a `create` emitting `whatif.stack.sidecar` for `network` could displace the
  * what-if sidecar for `network` in that map. Separate types make the collision
  * impossible rather than unlikely. Nothing reads these yet; they are the data
  * decision G1 (predicted-versus-actual) will be built from.
  */
-export const ATTACHMENT_TYPE_DEPLOY_PAYLOAD = 'whatif.stack.deploy.json';
-export const ATTACHMENT_TYPE_DEPLOY_SIDECAR = 'whatif.stack.deploy.sidecar';
+export function attachmentTypesFor(operation: string): { payload: string; sidecar: string } {
+  if (operation === 'whatIf') {
+    return { payload: ATTACHMENT_TYPE_PAYLOAD, sidecar: ATTACHMENT_TYPE_SIDECAR };
+  }
+  return { payload: `whatif.stack.${operation}.json`, sidecar: `whatif.stack.${operation}.sidecar` };
+}
 
 /** Renders as markdown on the build's summary page. Azure DevOps owns this name. */
 export const ATTACHMENT_TYPE_BUILD_SUMMARY = 'Distributedtask.Core.Summary';
 
 /**
  * Bumped from the PowerShell's 1 because this producer adds `producer`,
- * `bicepVersion` and `mode`, and leaves `azCliVersion` null — there is no Azure
+ * `bicepVersion` and `operation`, and leaves `azCliVersion` null — there is no Azure
  * CLI in this path (decision D4). Every field the PowerShell wrote is still
  * written, under the same name, with the same meaning. A reader that only knows
  * version 1 loses nothing.

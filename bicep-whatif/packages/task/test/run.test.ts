@@ -4,8 +4,6 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   ATTACHMENT_TYPE_BUILD_SUMMARY,
-  ATTACHMENT_TYPE_DEPLOY_PAYLOAD,
-  ATTACHMENT_TYPE_DEPLOY_SIDECAR,
   ATTACHMENT_TYPE_PAYLOAD,
   ATTACHMENT_TYPE_SIDECAR,
   REDACTION_PLACEHOLDER,
@@ -73,13 +71,14 @@ const ENDPOINT: EndpointDetails = {
 };
 
 const RAW: RawInputs = {
-  azureSubscription: 'MyConnection',
+  ConnectedServiceName: 'MyConnection',
   stackId: 'network',
   stackName: 'app-network',
   templateFile: 'stacks/01-network-stack.bicep',
   parametersFile: 'params/network.bicepparam',
   location: 'CentralUS',
-  actionOnUnmanage: 'detachAll',
+  actionOnUnmanageResources: 'detach',
+  actionOnUnmanageResourceGroups: 'detach',
   denySettingsMode: 'none',
 };
 
@@ -91,11 +90,17 @@ interface Route {
 interface Harness {
   deps: RunDeps;
   attachments: { type: string; name: string; path: string }[];
-  requests: { url: string; method: string }[];
+  /** `body` is the JSON the task sent, parsed; undefined for a GET or DELETE. */
+  requests: { url: string; method: string; body?: unknown }[];
   logs: string[];
   warnings: string[];
   secrets: string[];
   outputPath: string;
+}
+
+/** ARM requests carry JSON; the token request is form-encoded and not recorded. */
+function parseBody(body: unknown): unknown {
+  return typeof body === 'string' ? (JSON.parse(body) as unknown) : undefined;
 }
 
 function harness(options: {
@@ -122,7 +127,8 @@ function harness(options: {
   const fetchImpl = async (input: unknown, init?: RequestInit): Promise<Response> => {
     const url = String(input);
     const method = init?.method ?? 'GET';
-    requests.push({ url, method });
+    const sent = url.includes('oauth2') ? undefined : parseBody(init?.body);
+    requests.push({ url, method, body: sent });
     const route = routes.find((r) => r.match(url, method));
     const { status = 200, body } = route?.reply() ?? { status: 404, body: {} };
     return new Response(body === undefined ? '' : JSON.stringify(body), {
@@ -184,6 +190,29 @@ describe('run — the happy path', () => {
     expect((payload['properties'] as Record<string, unknown>)['actionOnUnmanage']).toEqual(
       WHATIF_PAYLOAD.properties.actionOnUnmanage,
     );
+  });
+
+  it('sends the unmanage switches as set, and warns about one the scope cannot use', async () => {
+    const h = harness({
+      raw: {
+        ...RAW,
+        actionOnUnmanageResources: 'delete',
+        actionOnUnmanageManagementGroups: 'delete',
+      },
+    });
+    await run(h.deps);
+    const put = h.requests.find((r) => r.method === 'PUT' && r.url.includes('WhatIfResults'));
+    const sent = (put?.body as { properties: Record<string, unknown> }).properties;
+    expect(sent['actionOnUnmanage']).toEqual({ resources: 'delete', resourceGroups: 'detach' });
+    expect(h.warnings).toEqual([expect.stringMatching(/actionOnUnmanageManagementGroups is ignored/)]);
+  });
+
+  it('records the operation in the sidecar', async () => {
+    const h = harness();
+    await run(h.deps);
+    const sidecar = readAttachment(h, ATTACHMENT_TYPE_SIDECAR) as Record<string, unknown>;
+    expect(sidecar['operation']).toBe('whatIf');
+    expect(sidecar).not.toHaveProperty('mode');
   });
 
   it('names the what-if result after the build so concurrent builds cannot collide', async () => {
@@ -333,22 +362,22 @@ describe('run — the sidecar is written whatever happens', () => {
   });
 });
 
-describe('run — deploy mode', () => {
+describe('run — the create operation', () => {
   it('uses attachment types the tab will not confuse with a what-if', async () => {
     // The tab's fallback join keys sidecars by attachment name, and the name is
-    // the stack id in both modes; separate types make a collision impossible.
-    const h = harness({ raw: { ...RAW, mode: 'deploy' } });
+    // the stack id for every operation; separate types make a collision impossible.
+    const h = harness({ raw: { ...RAW, operation: 'create' } });
     const result = await run(h.deps);
 
     expect(result.status).toBe('succeeded');
-    expect(find(h, ATTACHMENT_TYPE_DEPLOY_PAYLOAD)).toBeDefined();
-    expect(find(h, ATTACHMENT_TYPE_DEPLOY_SIDECAR)).toBeDefined();
+    expect(find(h, 'whatif.stack.create.json')).toBeDefined();
+    expect(find(h, 'whatif.stack.create.sidecar')).toBeDefined();
     expect(find(h, ATTACHMENT_TYPE_PAYLOAD)).toBeUndefined();
     expect(find(h, ATTACHMENT_TYPE_SIDECAR)).toBeUndefined();
   });
 
   it('PUTs the stack itself, not a what-if result', async () => {
-    const h = harness({ raw: { ...RAW, mode: 'deploy' } });
+    const h = harness({ raw: { ...RAW, operation: 'create' } });
     await run(h.deps);
     const put = h.requests.find((r) => r.method === 'PUT');
     expect(put?.url).toContain('/deploymentStacks/app-network');
@@ -356,7 +385,7 @@ describe('run — deploy mode', () => {
   });
 
   it('creates no what-if result to clean up', async () => {
-    const h = harness({ raw: { ...RAW, mode: 'deploy' } });
+    const h = harness({ raw: { ...RAW, operation: 'create' } });
     await run(h.deps);
     expect(h.requests.some((r) => r.method === 'DELETE')).toBe(false);
   });

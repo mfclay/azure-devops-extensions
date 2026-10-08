@@ -14,6 +14,7 @@
  * prevent exactly that disagreement.
  */
 import { SIDECAR_SCHEMA_VERSION } from './contract.js';
+import type { Operation } from './inputs.js';
 import type { RunStatus } from './outcome.js';
 
 export interface SidecarCommon {
@@ -26,11 +27,12 @@ export interface SidecarCommon {
   producer: string;
   /** The pinned compiler that produced the template. New in schema 2. */
   bicepVersion: string | null;
-  mode: 'whatif' | 'deploy';
+  /** The task's `operation` input. New in schema 2. */
+  operation: Operation;
 }
 
 export interface WhatIfSidecar extends SidecarCommon {
-  mode: 'whatif';
+  operation: 'whatIf';
   whatIfResultName: string;
   whatIfResultId: string | null;
   /**
@@ -43,8 +45,8 @@ export interface WhatIfSidecar extends SidecarCommon {
   azCliVersion: null;
 }
 
-export interface DeploySidecar extends SidecarCommon {
-  mode: 'deploy';
+export interface StackSidecar extends SidecarCommon {
+  operation: Exclude<Operation, 'whatIf'>;
   deploymentStackName: string;
   deploymentStackId: string | null;
   provisioningState: string | null;
@@ -77,7 +79,7 @@ export function whatIfSidecar(
     error: args.error ?? null,
     producer: args.producer,
     bicepVersion: args.bicepVersion ?? null,
-    mode: 'whatif',
+    operation: 'whatIf',
   };
 }
 
@@ -89,14 +91,15 @@ function countOf(payload: unknown, key: string): number | null {
   return Array.isArray(value) ? value.length : null;
 }
 
-export function deploySidecar(
+export function stackSidecar(
   args: SidecarArgs & {
+    operation: StackSidecar['operation'];
     stackName: string;
     stackResourceId: string | undefined;
     provisioningState: string | undefined;
     payload: unknown;
   },
-): DeploySidecar {
+): StackSidecar {
   return {
     schemaVersion: SIDECAR_SCHEMA_VERSION,
     stackId: args.stackId,
@@ -111,6 +114,6 @@ export function deploySidecar(
     error: args.error ?? null,
     producer: args.producer,
     bicepVersion: args.bicepVersion ?? null,
-    mode: 'deploy',
+    operation: args.operation,
   };
 }

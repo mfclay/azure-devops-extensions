@@ -1,39 +1,35 @@
 /**
  * The ARM request bodies, built as pure data.
  *
- * `mode: whatif` and `mode: deploy` differ by three properties out of nine, and
+ * `operation: whatIf` and `operation: create` differ by three properties out of nine, and
  * building both from one `TaskInputs` is what makes decision **C2** structurally
  * unbreakable rather than merely documented: the preview and the deploy cannot
  * disagree about `actionOnUnmanage` or `denySettings`, because there is only one
  * set of values and one code path that reads them.
  */
-import type { ActionOnUnmanage, DenySettingsInput, TaskInputs } from './inputs.js';
-
-/** ARM's own shape: three independent actions, not the CLI's three shorthands. */
-export interface ActionOnUnmanageBody {
-  resources: 'delete' | 'detach';
-  resourceGroups: 'delete' | 'detach';
-  managementGroups: 'delete' | 'detach';
-}
+import type {
+  ActionOnUnmanageInput,
+  DenySettingsInput,
+  TaskInputs,
+  UnmanageAction,
+} from './inputs.js';
 
 /**
- * Expand the CLI shorthand.
- *
- * Taken from `_prepare_stacks_action_on_unmanage` in the Azure CLI's
- * `resource/custom.py`, not from the documentation — `deleteResources` deleting
- * resources while *detaching* their resource groups is the kind of asymmetry a
- * doc paraphrases away, and getting it wrong changes whether a dropped resource
- * is previewed as Detach or as Delete.
+ * ARM's own shape. Only `resources` is required by the service; a switch the
+ * scope cannot use is left out rather than sent with a value that means nothing.
  */
-export function expandActionOnUnmanage(action: ActionOnUnmanage): ActionOnUnmanageBody {
-  switch (action) {
-    case 'deleteAll':
-      return { resources: 'delete', resourceGroups: 'delete', managementGroups: 'delete' };
-    case 'deleteResources':
-      return { resources: 'delete', resourceGroups: 'detach', managementGroups: 'detach' };
-    case 'detachAll':
-      return { resources: 'detach', resourceGroups: 'detach', managementGroups: 'detach' };
-  }
+export interface ActionOnUnmanageBody {
+  resources: UnmanageAction;
+  resourceGroups?: UnmanageAction;
+  managementGroups?: UnmanageAction;
+}
+
+export function actionOnUnmanageBody(action: ActionOnUnmanageInput): ActionOnUnmanageBody {
+  return {
+    resources: action.resources,
+    ...(action.resourceGroups !== undefined ? { resourceGroups: action.resourceGroups } : {}),
+    ...(action.managementGroups !== undefined ? { managementGroups: action.managementGroups } : {}),
+  };
 }
 
 export interface DenySettingsBody {
@@ -97,7 +93,7 @@ export function buildWhatIfRequest(args: BuildRequestArgs): WhatIfRequestBody {
     properties: {
       template: args.template,
       parameters: unwrapParameters(args.parameters),
-      actionOnUnmanage: expandActionOnUnmanage(inputs.actionOnUnmanage),
+      actionOnUnmanage: actionOnUnmanageBody(inputs.actionOnUnmanage),
       denySettings: denySettingsBody(inputs.denySettings),
       deploymentStackResourceId: args.deploymentStackResourceId,
       retentionInterval: inputs.retentionInterval,
@@ -107,14 +103,14 @@ export function buildWhatIfRequest(args: BuildRequestArgs): WhatIfRequestBody {
 }
 
 /** `PUT .../deploymentStacks/{name}` */
-export function buildDeployRequest(args: BuildRequestArgs): WhatIfRequestBody {
+export function buildCreateRequest(args: BuildRequestArgs): WhatIfRequestBody {
   const { inputs } = args;
   return {
     location: inputs.location,
     properties: {
       template: args.template,
       parameters: unwrapParameters(args.parameters),
-      actionOnUnmanage: expandActionOnUnmanage(inputs.actionOnUnmanage),
+      actionOnUnmanage: actionOnUnmanageBody(inputs.actionOnUnmanage),
       denySettings: denySettingsBody(inputs.denySettings),
       ...(inputs.bypassStackOutOfSyncError ? { bypassStackOutOfSyncError: true } : {}),
       ...(inputs.description !== undefined ? { description: inputs.description } : {}),

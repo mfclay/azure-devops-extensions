@@ -73,14 +73,15 @@ stages:
     #
     # **`condition: false` does not exempt this step from validation.** The
     # condition governs runtime; inputs are resolved when the pipeline is
-    # queued, before any stage starts. So `azureSubscription` must name a
+    # queued, before any stage starts. So `ConnectedServiceName` must name a
     # service connection that exists and is authorised even though the step
     # never executes — which is why the harness needs a placeholder connection
-    # despite never authenticating with it. `azureSubscription` is
+    # despite never authenticating with it. `ConnectedServiceName` is
     # `required: true` and typed `connectedService:AzureRM` in task.json, so it
     # cannot simply be dropped.
     #
-    # Established the hard way: a run failed at queue time with "input
+    # Established the hard way, when the input was still called
+    # `azureSubscription`: a run failed at queue time with "input
     # azureSubscription references service connection
     # harness-placeholder-connection which could not be found", having executed
     # nothing at all.
@@ -89,12 +90,13 @@ stages:
       displayName: 'StackWhatIfDev (never runs — here to make the tab visible)'
       condition: false
       inputs:
-        mode: whatif
-        azureSubscription: 'harness-placeholder-connection'
+        operation: whatIf
+        ConnectedServiceName: 'harness-placeholder-connection'
         stackId: network
         templateFile: '$(Build.SourcesDirectory)/does-not-exist.json'
         location: CentralUS
-        actionOnUnmanage: detachAll
+        actionOnUnmanageResources: detach
+        actionOnUnmanageResourceGroups: detach
         denySettingsMode: none
 
     - script: node bicep-whatif/packages/extension/harness/attach-fixture.mjs --stack network --layer 1 --payload $(REAL)/build-7700017-app-network.json

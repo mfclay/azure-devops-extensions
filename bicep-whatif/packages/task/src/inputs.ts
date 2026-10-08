@@ -10,17 +10,28 @@
  */
 import { DEFAULT_RETENTION_INTERVAL } from './contract.js';
 
-export type Mode = 'whatif' | 'deploy';
-
-export const MODES = ['whatif', 'deploy'] as const;
+/**
+ * `BicepDeploy@0`'s operation names. `whatIf` is the default, where Microsoft's
+ * is `create`: a step that leaves `operation` out must never deploy.
+ */
+export const OPERATIONS = ['whatIf', 'create'] as const;
+export type Operation = (typeof OPERATIONS)[number];
 
 /**
- * The three CLI-shaped shorthands. ARM itself takes an object of three
- * independent actions; these are the combinations the Azure CLI exposes and the
- * ones the consuming pipelines already speak. `request.ts` expands them.
+ * ARM's own shape, one switch per kind of thing a stack can stop managing, and
+ * `BicepDeploy@0`'s input names for them. The Azure CLI's three shorthands
+ * cannot say "delete resources and groups, detach management groups".
  */
-export const ACTIONS_ON_UNMANAGE = ['detachAll', 'deleteResources', 'deleteAll'] as const;
-export type ActionOnUnmanage = (typeof ACTIONS_ON_UNMANAGE)[number];
+export const UNMANAGE_ACTIONS = ['delete', 'detach'] as const;
+export type UnmanageAction = (typeof UNMANAGE_ACTIONS)[number];
+
+export interface ActionOnUnmanageInput {
+  resources: UnmanageAction;
+  /** Undefined where the scope cannot hold resource groups. */
+  resourceGroups: UnmanageAction | undefined;
+  /** Undefined where the scope cannot hold management groups. */
+  managementGroups: UnmanageAction | undefined;
+}
 
 export const DENY_SETTINGS_MODES = ['none', 'denyDelete', 'denyWriteAndDelete'] as const;
 export type DenySettingsMode = (typeof DENY_SETTINGS_MODES)[number];
@@ -33,7 +44,7 @@ export interface DenySettingsInput {
 }
 
 export interface TaskInputs {
-  mode: Mode;
+  operation: Operation;
   /** Name of the AzureRM service connection to mint an ARM token from. */
   connectedService: string;
   /** Logical stack id, kebab-case. The attachment name and the tab's filter key. */
@@ -44,7 +55,7 @@ export interface TaskInputs {
   /** A `.bicepparam`, or a JSON parameters file. Optional: a template may take none. */
   parametersFile: string | undefined;
   location: string;
-  actionOnUnmanage: ActionOnUnmanage;
+  actionOnUnmanage: ActionOnUnmanageInput;
   denySettings: DenySettingsInput;
   /** ISO 8601 duration. What-if only; the service caps it at PT3H. */
   retentionInterval: string;
@@ -100,6 +111,16 @@ function bool(raw: RawInputs, name: string, fallback: boolean, problems: string[
   return fallback;
 }
 
+function optionalOneOf<T extends string>(
+  raw: RawInputs,
+  name: string,
+  allowed: readonly T[],
+  problems: string[],
+): T | undefined {
+  if (trimmed(raw, name) === undefined) return undefined;
+  return oneOf(raw, name, allowed, undefined, problems);
+}
+
 function oneOf<T extends string>(
   raw: RawInputs,
   name: string,
@@ -152,11 +173,15 @@ const ISO_DURATION = /^P(?!$)(\d+Y)?(\d+M)?(\d+W)?(\d+D)?(T(?!$)(\d+H)?(\d+M)?(\
  */
 const SAFE_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,88}[A-Za-z0-9_-]$|^[A-Za-z0-9]$/;
 
-export function parseInputs(raw: RawInputs): TaskInputs {
+/**
+ * `warnings` collects inputs that were set but mean nothing here. They do not
+ * stop the run, so they are kept apart from the problems that do.
+ */
+export function parseInputs(raw: RawInputs, warnings: string[] = []): TaskInputs {
   const problems: string[] = [];
 
-  const mode = oneOf(raw, 'mode', MODES, 'whatif', problems);
-  const connectedService = required(raw, 'azureSubscription', problems);
+  const operation = oneOf(raw, 'operation', OPERATIONS, 'whatIf', problems);
+  const connectedService = required(raw, 'ConnectedServiceName', problems);
   const stackId = required(raw, 'stackId', problems);
   const templateFile = required(raw, 'templateFile', problems);
   const location = required(raw, 'location', problems);
@@ -210,15 +235,17 @@ export function parseInputs(raw: RawInputs): TaskInputs {
     );
   }
 
+  const actionOnUnmanage = parseActionOnUnmanage(raw, problems, warnings);
+
   const inputs: TaskInputs = {
-    mode,
+    operation,
     connectedService,
     stackId,
     stackName,
     templateFile,
     parametersFile: trimmed(raw, 'parametersFile'),
     location,
-    actionOnUnmanage: oneOf(raw, 'actionOnUnmanage', ACTIONS_ON_UNMANAGE, undefined, problems),
+    actionOnUnmanage,
     denySettings,
     retentionInterval,
     layer,
@@ -233,4 +260,32 @@ export function parseInputs(raw: RawInputs): TaskInputs {
 
   if (problems.length > 0) throw new InputError(problems);
   return inputs;
+}
+
+/**
+ * Each switch is required where the scope can hold that kind of thing, and has
+ * no default anywhere: a default can be added in a later version, but never
+ * taken away. A subscription-scope stack can create resource groups but not
+ * management groups, so the management-group switch means nothing there.
+ */
+function parseActionOnUnmanage(
+  raw: RawInputs,
+  problems: string[],
+  warnings: string[],
+): ActionOnUnmanageInput {
+  const resources = oneOf(raw, 'actionOnUnmanageResources', UNMANAGE_ACTIONS, undefined, problems);
+  const resourceGroups = oneOf(
+    raw,
+    'actionOnUnmanageResourceGroups',
+    UNMANAGE_ACTIONS,
+    undefined,
+    problems,
+  );
+  if (optionalOneOf(raw, 'actionOnUnmanageManagementGroups', UNMANAGE_ACTIONS, problems)) {
+    warnings.push(
+      'actionOnUnmanageManagementGroups is ignored: a subscription-scope stack cannot ' +
+        'manage management groups.',
+    );
+  }
+  return { resources, resourceGroups, managementGroups: undefined };
 }

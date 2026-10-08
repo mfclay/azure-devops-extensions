@@ -2,18 +2,19 @@ import { describe, expect, it } from 'vitest';
 import { InputError, parseInputs, type RawInputs } from '../src/inputs.js';
 
 const MINIMAL: RawInputs = {
-  azureSubscription: 'MyConnection',
+  ConnectedServiceName: 'MyConnection',
   stackId: 'network',
   templateFile: 'stacks/01-network-stack.bicep',
   location: 'CentralUS',
-  actionOnUnmanage: 'detachAll',
+  actionOnUnmanageResources: 'detach',
+  actionOnUnmanageResourceGroups: 'detach',
   denySettingsMode: 'none',
 };
 
 describe('parseInputs', () => {
   it('accepts the minimal set and defaults the rest', () => {
     const inputs = parseInputs(MINIMAL);
-    expect(inputs.mode).toBe('whatif');
+    expect(inputs.operation).toBe('whatIf');
     expect(inputs.retentionInterval).toBe('PT3H');
     expect(inputs.deleteWhatIfResult).toBe(true);
     expect(inputs.publishSummary).toBe(true);
@@ -40,28 +41,74 @@ describe('parseInputs', () => {
     // A consumer should not have to know that ARM rejects `detachall`.
     const inputs = parseInputs({
       ...MINIMAL,
-      actionOnUnmanage: 'DETACHALL',
+      actionOnUnmanageResources: 'DELETE',
       denySettingsMode: 'denydelete',
-      mode: 'WhatIf',
+      operation: 'WHATIF',
     });
-    expect(inputs.actionOnUnmanage).toBe('detachAll');
+    expect(inputs.actionOnUnmanage.resources).toBe('delete');
     expect(inputs.denySettings.mode).toBe('denyDelete');
-    expect(inputs.mode).toBe('whatif');
+    expect(inputs.operation).toBe('whatIf');
   });
 
   it('reports every problem at once, not just the first', () => {
     // One bad input per run costs a five-minute agent round trip per typo.
     try {
-      parseInputs({ mode: 'preview', actionOnUnmanage: 'nope' });
+      parseInputs({ operation: 'preview', actionOnUnmanageResources: 'nope' });
       expect.unreachable('should have thrown');
     } catch (error) {
       expect(error).toBeInstanceOf(InputError);
       const problems = (error as InputError).problems;
       expect(problems.length).toBeGreaterThan(4);
-      expect(problems.join('\n')).toContain('azureSubscription is required');
+      expect(problems.join('\n')).toContain('ConnectedServiceName is required');
       expect(problems.join('\n')).toContain('stackId is required');
-      expect(problems.join('\n')).toContain('mode must be one of whatif, deploy');
+      expect(problems.join('\n')).toContain('operation must be one of whatIf, create');
+      expect(problems.join('\n')).toContain('actionOnUnmanageResources must be one of');
     }
+  });
+
+  it('defaults the operation to whatIf, so a step that leaves it out never deploys', () => {
+    // Microsoft's BicepDeploy@0 defaults to create; this task deliberately does not.
+    expect(parseInputs({ ...MINIMAL, operation: undefined }).operation).toBe('whatIf');
+    expect(parseInputs({ ...MINIMAL, operation: 'create' }).operation).toBe('create');
+  });
+
+  it('requires each unmanage switch the scope can use, with no default', () => {
+    // A default can be added in a later version but never taken away, and a
+    // default that followed the resources switch would turn `delete` there into
+    // deleting resource groups too.
+    const { actionOnUnmanageResourceGroups: _, ...noGroups } = MINIMAL;
+    expect(() => parseInputs(noGroups)).toThrow(/actionOnUnmanageResourceGroups is required/);
+    const { actionOnUnmanageResources: __, ...noResources } = MINIMAL;
+    expect(() => parseInputs(noResources)).toThrow(/actionOnUnmanageResources is required/);
+  });
+
+  it('keeps the resources and resource-group switches independent', () => {
+    const inputs = parseInputs({
+      ...MINIMAL,
+      actionOnUnmanageResources: 'delete',
+      actionOnUnmanageResourceGroups: 'detach',
+    });
+    expect(inputs.actionOnUnmanage).toEqual({
+      resources: 'delete',
+      resourceGroups: 'detach',
+      managementGroups: undefined,
+    });
+  });
+
+  it('warns about, and drops, a management-group switch a subscription stack cannot use', () => {
+    const warnings: string[] = [];
+    const inputs = parseInputs(
+      { ...MINIMAL, actionOnUnmanageManagementGroups: 'delete' },
+      warnings,
+    );
+    expect(inputs.actionOnUnmanage.managementGroups).toBeUndefined();
+    expect(warnings).toEqual([expect.stringMatching(/actionOnUnmanageManagementGroups is ignored/)]);
+  });
+
+  it('still rejects a management-group switch with a value that is not an action', () => {
+    expect(() => parseInputs({ ...MINIMAL, actionOnUnmanageManagementGroups: 'deleteAll' })).toThrow(
+      /actionOnUnmanageManagementGroups must be one of delete, detach/,
+    );
   });
 
   it('rejects a stackId that would break the attachment href', () => {

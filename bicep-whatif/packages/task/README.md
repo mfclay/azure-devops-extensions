@@ -63,11 +63,16 @@ explaining here:
   is the Azure resource name (`app-network`). They are usually related by
   a prefix, and conflating them makes the attachment name disagree with what the
   tab looks for. `stackName` defaults to `stackId`.
-- **`actionOnUnmanage` and `denySettingsMode` are inputs to what-if, not just to
-  the deploy.** A preview that ran with different values than the deploy it
-  previews is a lie, most obviously about whether a dropped resource is reported
-  as `Detach` or as `Delete`. One task with a `mode` input is what makes that
-  parity structural rather than documented.
+- **The `actionOnUnmanage*` switches and `denySettingsMode` are inputs to
+  what-if, not just to the deploy.** A preview that ran with different values
+  than the deploy it previews is a lie, most obviously about whether a dropped
+  resource is reported as `Detach` or as `Delete`. One task with an `operation`
+  input is what makes that parity structural rather than documented.
+- **The unmanage switches have no defaults.** `actionOnUnmanageResources` and
+  `actionOnUnmanageResourceGroups` are required; the management-group switch
+  means nothing to a subscription-scope stack and is ignored with a warning.
+- **`operation` defaults to `whatIf`**, not to `create` as `BicepDeploy@0`'s
+  does: a step that leaves it out never deploys.
 - **`retentionInterval` maxes out at `PT3H`.** The service enforces one to three
   hours and rejects `P1D` at run time. Both Microsoft documents are wrong about
   this, in opposite directions.
@@ -93,14 +98,15 @@ stage per stack:
       displayName: What-If
       continueOnError: true
       inputs:
-        mode: whatif
-        azureSubscription: 'My ARM Connection'
+        operation: whatIf
+        azureResourceManagerConnection: 'My ARM Connection'
         stackId: network
         stackName: app-network
         templateFile: '$(STACKS)/bicep/stacks/01-network-stack.bicep'
         parametersFile: '$(STACKS)/params/network.bicepparam'
         location: CentralUS
-        actionOnUnmanage: $(NETWORK_ACTION_ON_UNMANAGE)
+        actionOnUnmanageResources: $(NETWORK_ACTION_ON_UNMANAGE)
+        actionOnUnmanageResourceGroups: detach
         denySettingsMode: $(NETWORK_DENY_SETTINGS_MODE)
 
 - stage: WhatIf_SharedInfra

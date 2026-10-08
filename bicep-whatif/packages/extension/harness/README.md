@@ -15,7 +15,7 @@ stacks.**
 
 It does need one thing it used to claim it did not: **a placeholder Azure
 Resource Manager service connection.** Not because anything uses it — nothing
-does — but because `azureSubscription` is `required: true` and typed
+does — but because `ConnectedServiceName` is `required: true` and typed
 `connectedService:AzureRM` in `task.json`, so the disabled `StackWhatIfDev@1` step
 cannot omit it, and `supportsTasks` means the step cannot be removed either. See
 "Setting it up", step 2.
@@ -196,7 +196,7 @@ needed. This paragraph used to hedge; it no longer has to.
 condition governs runtime only; the step's inputs are resolved when the pipeline
 is queued. A missing or unauthorised `harness-placeholder-connection` therefore
 fails the whole run before a single stage starts, with an error naming
-`azureSubscription` and pointing at `aka.ms/yamlauthz`. If you see that, the
+`ConnectedServiceName` and pointing at `aka.ms/yamlauthz`. If you see that, the
 problem is step 2 of "Setting it up", not `supportsTasks` and not the handshake.
 
 Two other things worth checking before digging deeper:

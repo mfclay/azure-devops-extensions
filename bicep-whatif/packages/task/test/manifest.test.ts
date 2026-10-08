@@ -11,7 +11,12 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { ACTIONS_ON_UNMANAGE, DENY_SETTINGS_MODES, MODES, parseInputs } from '../src/inputs.js';
+import {
+  DENY_SETTINGS_MODES,
+  OPERATIONS,
+  UNMANAGE_ACTIONS,
+  parseInputs,
+} from '../src/inputs.js';
 import { DEFAULT_BICEP_VERSION } from '../src/bicep/asset.js';
 import { needsCompiler } from '../src/bicep/tool.js';
 
@@ -76,24 +81,27 @@ describe('task.json — agreement with the code', () => {
     // An input declared here and unread is dead UI; one read here and undeclared
     // is silently always empty. Both are invisible until a pipeline runs.
     const parsed = parseInputs({
-      azureSubscription: 'c',
+      ConnectedServiceName: 'c',
       stackId: 's',
       templateFile: 't.bicep',
       location: 'l',
-      actionOnUnmanage: 'detachAll',
+      actionOnUnmanageResources: 'detach',
+      actionOnUnmanageResourceGroups: 'detach',
       denySettingsMode: 'none',
     });
     // Every TaskInputs field traces to an input, allowing for the two renames.
     const known = new Set(inputNames);
     for (const required of [
-      'mode',
-      'azureSubscription',
+      'operation',
+      'ConnectedServiceName',
       'stackId',
       'stackName',
       'templateFile',
       'parametersFile',
       'location',
-      'actionOnUnmanage',
+      'actionOnUnmanageResources',
+      'actionOnUnmanageResourceGroups',
+      'actionOnUnmanageManagementGroups',
       'denySettingsMode',
       'retentionInterval',
       'layer',
@@ -107,14 +115,27 @@ describe('task.json — agreement with the code', () => {
     ]) {
       expect(known.has(required), `task.json is missing the input "${required}"`).toBe(true);
     }
-    expect(parsed.mode).toBe('whatif');
+    expect(parsed.operation).toBe('whatIf');
+  });
+
+  it("takes BicepDeploy@0's connection input name, and its alias", () => {
+    // Users moving between the two tasks should find the same vocabulary.
+    expect(inputByName('ConnectedServiceName')!['aliases']).toEqual([
+      'azureResourceManagerConnection',
+    ]);
   });
 
   it('offers exactly the enum values the parser accepts', () => {
-    expect(Object.keys(inputByName('mode')!['options'])).toEqual([...MODES]);
-    expect(Object.keys(inputByName('actionOnUnmanage')!['options'])).toEqual([
-      ...ACTIONS_ON_UNMANAGE,
-    ]);
+    expect(Object.keys(inputByName('operation')!['options'])).toEqual([...OPERATIONS]);
+    expect(inputByName('operation')!['defaultValue']).toBe('whatIf');
+    for (const name of [
+      'actionOnUnmanageResources',
+      'actionOnUnmanageResourceGroups',
+      'actionOnUnmanageManagementGroups',
+    ]) {
+      expect(Object.keys(inputByName(name)!['options'])).toEqual([...UNMANAGE_ACTIONS]);
+      expect(inputByName(name)).not.toHaveProperty('defaultValue');
+    }
     expect(Object.keys(inputByName('denySettingsMode')!['options'])).toEqual([
       ...DENY_SETTINGS_MODES,
     ]);
@@ -136,10 +157,10 @@ describe('task.json — agreement with the code', () => {
     expect(task['version'].Major).toBe(1);
   });
 
-  it('marks the mode-specific inputs so the editor hides the irrelevant ones', () => {
-    expect(inputByName('retentionInterval')!['visibleRule']).toBe('mode = whatif');
-    expect(inputByName('deleteWhatIfResult')!['visibleRule']).toBe('mode = whatif');
-    expect(inputByName('bypassStackOutOfSyncError')!['visibleRule']).toBe('mode = deploy');
+  it('marks the operation-specific inputs so the editor hides the irrelevant ones', () => {
+    expect(inputByName('retentionInterval')!['visibleRule']).toBe('operation = whatIf');
+    expect(inputByName('deleteWhatIfResult')!['visibleRule']).toBe('operation = whatIf');
+    expect(inputByName('bypassStackOutOfSyncError')!['visibleRule']).toBe('operation = create');
   });
 
   it('requires only what the task genuinely cannot infer', () => {
@@ -148,11 +169,12 @@ describe('task.json — agreement with the code', () => {
       .map((i) => i['name']);
     expect(required.sort()).toEqual(
       [
-        'actionOnUnmanage',
-        'azureSubscription',
+        'actionOnUnmanageResourceGroups',
+        'actionOnUnmanageResources',
+        'ConnectedServiceName',
         'denySettingsMode',
         'location',
-        'mode',
+        'operation',
         'stackId',
         'templateFile',
       ].sort(),

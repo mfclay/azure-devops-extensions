@@ -21,20 +21,19 @@
  *   4. The what-if result is deleted in a `finally`, and a failure to delete it
  *      never replaces the result it was cleaning up after.
  */
-import {
-  ATTACHMENT_TYPE_BUILD_SUMMARY,
-  ATTACHMENT_TYPE_DEPLOY_PAYLOAD,
-  ATTACHMENT_TYPE_DEPLOY_SIDECAR,
-  ATTACHMENT_TYPE_PAYLOAD,
-  ATTACHMENT_TYPE_SIDECAR,
-} from './contract.js';
+import { ATTACHMENT_TYPE_BUILD_SUMMARY, attachmentTypesFor } from './contract.js';
 import { writeAndAttach, type AttachDeps } from './attach.js';
 import { defaultResultName, deploymentStackId, layerFromTemplateFile } from './ids.js';
 import { parseInputs, type RawInputs, type TaskInputs } from './inputs.js';
 import { failureEnvelope, outcomeOf, type RunStatus } from './outcome.js';
-import { buildDeployRequest, buildWhatIfRequest } from './request.js';
+import {
+  actionOnUnmanageBody,
+  buildCreateRequest,
+  buildWhatIfRequest,
+  type ActionOnUnmanageBody,
+} from './request.js';
 import { redactPayload, redactText, secureValuesFrom } from './redact.js';
-import { deploySidecar, whatIfSidecar } from './sidecar.js';
+import { stackSidecar, whatIfSidecar } from './sidecar.js';
 import { renderSummary, resultLine } from './summary.js';
 import {
   acquireArmToken,
@@ -95,16 +94,17 @@ export interface RunResult {
 const POLL = { intervalMs: 5_000, timeoutMs: 60 * 60 * 1000 };
 
 export async function run(deps: RunDeps): Promise<RunResult> {
-  const inputs: TaskInputs = parseInputs(deps.raw);
+  const warnings: string[] = [];
+  const inputs: TaskInputs = parseInputs(deps.raw, warnings);
+  for (const warning of warnings) deps.warn(warning);
   const layer = inputs.layer ?? layerFromTemplateFile(inputs.templateFile);
   const buildId = deps.env['BUILD_BUILDID'];
   const resultName = inputs.resultName ?? defaultResultName(inputs.stackId, buildId, deps.now());
   const outputPath = inputs.outputPath ?? (await defaultOutputPath(inputs.stackId));
   const producer = `bicep-whatif-task/${deps.version}`;
-  const isWhatIf = inputs.mode === 'whatif';
-
-  const payloadType = isWhatIf ? ATTACHMENT_TYPE_PAYLOAD : ATTACHMENT_TYPE_DEPLOY_PAYLOAD;
-  const sidecarType = isWhatIf ? ATTACHMENT_TYPE_SIDECAR : ATTACHMENT_TYPE_DEPLOY_SIDECAR;
+  const operation = inputs.operation;
+  const isWhatIf = operation === 'whatIf';
+  const { payload: payloadType, sidecar: sidecarType } = attachmentTypesFor(operation);
 
   // Assigned before the try so the catch can still redact the message it reports
   // — an exception thrown after compilation can quote a parameter value.
@@ -140,7 +140,8 @@ export async function run(deps: RunDeps): Promise<RunResult> {
           resultName,
           resultId: outcome.resourceId,
         })
-      : deploySidecar({
+      : stackSidecar({
+          operation,
           stackId: inputs.stackId,
           layer,
           status: outcome.status,
@@ -198,7 +199,7 @@ export async function run(deps: RunDeps): Promise<RunResult> {
         thrown !== undefined
           ? redactText(thrown instanceof Error ? thrown.message : String(thrown), secureValues)
           : describe(outcome.error);
-      message = `${inputs.stackName}: ${inputs.mode} failed — ${detail}`;
+      message = `${inputs.stackName}: ${operation} failed — ${detail}`;
       deps.warn(message);
     }
 
@@ -261,6 +262,7 @@ export async function run(deps: RunDeps): Promise<RunResult> {
     );
 
     const stackResourceId = deploymentStackId(subscriptionId, inputs.stackName);
+    const unmanage = describeUnmanage(actionOnUnmanageBody(inputs.actionOnUnmanage));
 
     // ── Run it ────────────────────────────────────────────────────────────────
     if (isWhatIf) {
@@ -271,7 +273,7 @@ export async function run(deps: RunDeps): Promise<RunResult> {
         deploymentStackResourceId: stackResourceId,
       });
       deps.log(
-        `Stack what-if for ${inputs.stackName} (${inputs.actionOnUnmanage}, deny ` +
+        `Stack what-if for ${inputs.stackName} (${unmanage}, deny ` +
           `${inputs.denySettings.mode}) as ${resultName}, retained ${inputs.retentionInterval}.`,
       );
       deleteNeeded = inputs.deleteWhatIfResult;
@@ -284,13 +286,13 @@ export async function run(deps: RunDeps): Promise<RunResult> {
       return await finish(payload);
     }
 
-    const body = buildDeployRequest({
+    const body = buildCreateRequest({
       inputs,
       template: compiled.template,
       parameters: compiled.parameters,
       deploymentStackResourceId: stackResourceId,
     });
-    deps.log(`Deploying stack ${inputs.stackName} (${inputs.actionOnUnmanage}).`);
+    deps.log(`Deploying stack ${inputs.stackName} (${unmanage}).`);
     const payload = await createDeploymentStack(client, {
       subscriptionId,
       name: inputs.stackName,
@@ -317,6 +319,13 @@ function requireSubscription(endpoint: EndpointDetails): string {
     );
   }
   return id.trim();
+}
+
+/** `resources: detach, resourceGroups: delete`, in the order ARM lists them. */
+function describeUnmanage(action: ActionOnUnmanageBody): string {
+  return Object.entries(action)
+    .map(([kind, value]) => `${kind}: ${value}`)
+    .join(', ');
 }
 
 function describe(error: unknown): string {

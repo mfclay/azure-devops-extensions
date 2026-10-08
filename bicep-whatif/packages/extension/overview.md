@@ -16,12 +16,12 @@ came from. Filter by severity, by stack, or by resource type; click a row for it
 property-level diff; every filter and selection lives in the URL, so a link picks
 out the row you were looking at.
 
-**A pipeline task.** One task, two modes. `whatif` previews a stack against what
-it currently manages and attaches the result; `deploy` applies it. Both read the
-same inputs and take the same code path, so a preview cannot disagree with the
-deploy it previews about `actionOnUnmanage` or deny settings — a difference there
-makes the preview a lie, most obviously about whether a dropped resource is
-reported as Detach or as Delete.
+**A pipeline task.** One task, two operations. `whatIf` previews a stack against
+what it currently manages and attaches the result; `create` applies it. Both read
+the same inputs and take the same code path, so a preview cannot disagree with
+the deploy it previews about the unmanage actions or deny settings — a
+difference there makes the preview a lie, most obviously about whether a dropped
+resource is reported as Detach or as Delete.
 
 ## When Microsoft's Bicep Deploy task is enough
 
@@ -114,14 +114,15 @@ every consumer's what-if should compile identically.
   displayName: What-If — network
   continueOnError: true
   inputs:
-    mode: whatif
-    azureSubscription: 'My ARM Connection'
+    operation: whatIf
+    azureResourceManagerConnection: 'My ARM Connection'
     stackId: network
     stackName: app-network
     templateFile: stacks/01-network-stack.bicep
     parametersFile: params/network.bicepparam
     location: CentralUS
-    actionOnUnmanage: detachAll
+    actionOnUnmanageResources: detach
+    actionOnUnmanageResourceGroups: detach
     denySettingsMode: none
 ```
 

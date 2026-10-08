@@ -67,7 +67,7 @@ vi.mock('../src/run.js', () => ({
 
 beforeEach(() => {
   vi.resetModules();
-  h.inputs = { azureSubscription: 'svc-contoso', stackId: 'network', templateFile: 'main.bicep', mode: 'whatIf' };
+  h.inputs = { ConnectedServiceName: 'svc-contoso', stackId: 'network', templateFile: 'main.bicep', operation: 'whatIf' };
   h.auth = { serviceprincipalid: 'client-1', serviceprincipalkey: 'key-1', tenantid: 'tenant-1' };
   h.data = { subscriptionid: 'sub-1', environmentAuthorityUrl: 'https://login.microsoftonline.com/' };
   h.scheme = 'WorkloadIdentityFederation';
@@ -90,7 +90,7 @@ async function start(): Promise<{ result: number; message: string }> {
 describe('the task entry point', () => {
   it('fails at once, without running, when there is no service connection', async () => {
     h.inputs = {};
-    expect(await start()).toEqual({ result: 2, message: 'azureSubscription is required.' });
+    expect(await start()).toEqual({ result: 2, message: 'ConnectedServiceName is required.' });
     expect(h.runDeps).toBeUndefined();
   });
 
@@ -105,7 +105,7 @@ describe('the task entry point', () => {
     expect(raw['stackId']).toBe('network');
     expect(raw['templateFile']).toBe('main.bicep');
     expect(raw['parametersFile']).toBeUndefined();
-    expect(Object.keys(raw)).toHaveLength(21);
+    expect(Object.keys(raw)).toHaveLength(23);
     expect(Object.keys(raw)).toContain('publishSummary');
   });
 

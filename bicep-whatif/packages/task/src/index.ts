@@ -15,14 +15,16 @@ import type { EndpointDetails } from './arm/auth.js';
 import type { RawInputs } from './inputs.js';
 
 const INPUT_NAMES = [
-  'mode',
-  'azureSubscription',
+  'operation',
+  'ConnectedServiceName',
   'stackId',
   'stackName',
   'templateFile',
   'parametersFile',
   'location',
-  'actionOnUnmanage',
+  'actionOnUnmanageResources',
+  'actionOnUnmanageResourceGroups',
+  'actionOnUnmanageManagementGroups',
   'denySettingsMode',
   'denySettingsApplyToChildScopes',
   'denySettingsExcludedActions',
@@ -122,9 +124,10 @@ async function main(): Promise<void> {
   const manifestPath = path.join(__dirname, 'task.json');
   tl.setResourcePath(manifestPath, true);
 
-  const connectedService = tl.getInput('azureSubscription', true);
+  // The agent resolves the `azureResourceManagerConnection` alias to this name.
+  const connectedService = tl.getInput('ConnectedServiceName', true);
   if (connectedService === undefined) {
-    tl.setResult(tl.TaskResult.Failed, 'azureSubscription is required.');
+    tl.setResult(tl.TaskResult.Failed, 'ConnectedServiceName is required.');
     return;
   }
 
