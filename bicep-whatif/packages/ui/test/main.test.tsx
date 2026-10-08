@@ -12,6 +12,12 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+/**
+ * The first import of `main.tsx` transforms the whole tab, which can take
+ * longer than `waitFor`'s one-second default when every suite runs at once.
+ */
+const SETTLE = { timeout: 10_000 };
+
 const h = vi.hoisted(() => ({ calls: [] as string[], initialised: false, rendered: [] as unknown[] }));
 
 vi.mock('azure-devops-extension-sdk', () => ({
@@ -64,7 +70,7 @@ describe('main', () => {
     await import('../src/main.js');
     await vi.waitFor(() => {
       expect(h.calls).toContain('notifyLoadSucceeded');
-    });
+    }, SETTLE);
     expect(h.calls).toEqual(['init', 'ready', 'getService', 'render', 'notifyLoadSucceeded']);
     expect(appProps().source.kind).toBe('ado');
   });
@@ -74,7 +80,7 @@ describe('main', () => {
     await import('../src/main.js');
     await vi.waitFor(() => {
       expect(h.calls).toContain('render');
-    });
+    }, SETTLE);
     // Give a stray notifyLoadSucceeded the chance to arrive before asserting it did not.
     await new Promise((r) => setTimeout(r, 0));
     expect(h.calls).toEqual(['render']);
