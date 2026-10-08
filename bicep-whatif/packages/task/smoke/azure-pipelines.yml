@@ -10,12 +10,13 @@
 #
 # `template: bicep` checks out the repo and runs `smoke/bicep/main.bicep` with
 # its `.bicepparam`, so a compile, the compiler download, a parameters file and
-# redaction of a `@secure()` value all meet Azure. Its stack is
-# `bicep-whatif-smoke-bicep`, and in `deploy` mode it manages a resource group,
-# `rg-bicep-whatif-smoke`, holding one network security group whose tag carries
-# the stand-in secret. A what-if after one `deploy` run is the one that is sure
-# to put the secret in the payload, as a modify (main.bicep says why). Delete
-# all three with
+# a `@secure()` value all meet Azure. Its stack is `bicep-whatif-smoke-bicep`,
+# and in `deploy` mode it manages a resource group, `rg-bicep-whatif-smoke`,
+# holding one network security group whose tag carries the stand-in secret.
+# After one `deploy` run, each what-if reports that group as a modify. So far
+# the payload has never carried the secret even then (main.bicep says why), so
+# redaction itself is proven by the task's unit tests, not here. Delete all
+# three with
 #   az stack sub delete --name bicep-whatif-smoke-bicep --action-on-unmanage deleteAll
 # A step after the task fails the run if the stand-in secret appears in anything
 # the task wrote.
@@ -101,9 +102,10 @@ stages:
 
     # The stand-in is the value in main.bicepparam. Absent from everything is the
     # pass. Present as the placeholder means it reached the payload and was
-    # caught. A run whose payload never carried it (a create, or deploy mode,
-    # whose payload is the stack itself) proves less, so that is a warning
-    # rather than a pass or a failure.
+    # caught. A run whose payload never carried it proves less, so that is a
+    # warning rather than a pass or a failure. So far every run has been one:
+    # the subscription-scope stack what-if returns no property values, for a
+    # create or a modify, and deploy mode's payload is the stack itself.
     - ${{ if eq(parameters.template, 'bicep') }}:
       - script: |
           set -eu
@@ -116,7 +118,7 @@ stages:
           if grep -rqF -- '***REDACTED***' "$(smokeOut)"; then
             echo "Redacted: the stand-in reached the payload and was replaced."
           else
-            echo "##vso[task.logissue type=warning]No redaction placeholder in the output, so this run did not exercise redaction. A what-if after one deploy run does."
+            echo "##vso[task.logissue type=warning]No redaction placeholder in the output: the stand-in never reached the payload, so redaction was not exercised."
           fi
         displayName: 'Check the stand-in secret was redacted'
         condition: always()

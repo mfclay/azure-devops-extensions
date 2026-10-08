@@ -1,13 +1,16 @@
 /**
  * Decision **F3**: redact by value, not by path.
  *
- * A `@secure()` parameter's value reaches the what-if payload. In the estate
- * this was written for, `04-client-stack.bicep` declares
- * `@secure() param postgresAdminPassword`, which lands on
- * `administratorLoginPassword` in `postgresql-server.bicep`. ARM never returns
- * that property from a GET — it is write-only, so `before` is safe — but `after`
- * is computed from the template just handed over, so a Create puts the literal
- * password there.
+ * A `@secure()` parameter's value can reach the what-if payload wherever a
+ * template wires it into a property the what-if reports, such as a database's
+ * administrator password. ARM never returns a write-only property like that
+ * from a GET, so `before` is safe, but `after` and `delta` are computed from
+ * the template just handed over, and would carry the literal value.
+ *
+ * Whether they do depends on what ARM chooses to report. Against Azure, the
+ * subscription-scope stack what-if this task runs has so far returned no
+ * property values at all, for creates or modifies, and ARM blanks secure values
+ * in the parameters it echoes. Redaction does not rely on that staying true.
  *
  * A path denylist has to predict where a secret is echoed back, and is wrong the
  * first time a template wires the same parameter somewhere new: a connection
