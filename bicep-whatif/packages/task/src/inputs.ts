@@ -17,6 +17,10 @@ import { DEFAULT_RETENTION_INTERVAL } from './contract.js';
 export const OPERATIONS = ['whatIf', 'create'] as const;
 export type Operation = (typeof OPERATIONS)[number];
 
+/** The three scopes a deployment stack can live at. There is no tenant scope. */
+export const SCOPES = ['resourceGroup', 'subscription', 'managementGroup'] as const;
+export type Scope = (typeof SCOPES)[number];
+
 /**
  * ARM's own shape, one switch per kind of thing a stack can stop managing, and
  * `BicepDeploy@0`'s input names for them. The Azure CLI's three shorthands
@@ -51,10 +55,19 @@ export interface TaskInputs {
   stackId: string;
   /** The actual deployment stack resource name, e.g. `app-network`. */
   stackName: string;
-  templateFile: string;
+  scope: Scope;
+  /** Overrides the connection's subscription. Always undefined at management-group scope. */
+  subscriptionId: string | undefined;
+  /** Set exactly when `scope` is `resourceGroup`. */
+  resourceGroupName: string | undefined;
+  /** Set exactly when `scope` is `managementGroup`. */
+  managementGroupId: string | undefined;
+  /** Undefined only when `parametersFile` is a `.bicepparam`, which names its own. */
+  templateFile: string | undefined;
   /** A `.bicepparam`, or a JSON parameters file. Optional: a template may take none. */
   parametersFile: string | undefined;
-  location: string;
+  /** Undefined at resource-group scope, where the stack takes its group's location. */
+  location: string | undefined;
   actionOnUnmanage: ActionOnUnmanageInput;
   denySettings: DenySettingsInput;
   /** ISO 8601 duration. What-if only; the service caps it at PT3H. */
@@ -183,8 +196,17 @@ export function parseInputs(raw: RawInputs, warnings: string[] = []): TaskInputs
   const operation = oneOf(raw, 'operation', OPERATIONS, 'whatIf', problems);
   const connectedService = required(raw, 'ConnectedServiceName', problems);
   const stackId = required(raw, 'stackId', problems);
-  const templateFile = required(raw, 'templateFile', problems);
-  const location = required(raw, 'location', problems);
+  const scope = oneOf(raw, 'scope', SCOPES, 'subscription', problems);
+  const where = parseWhere(raw, scope, problems, warnings);
+
+  const parametersFile = trimmed(raw, 'parametersFile');
+  const templateFile = trimmed(raw, 'templateFile');
+  if (templateFile === undefined && !isBicepParamFile(parametersFile)) {
+    problems.push(
+      'templateFile is required, unless parametersFile is a .bicepparam, which names its ' +
+        'own template.',
+    );
+  }
 
   if (stackId.length > 0 && !SAFE_NAME.test(stackId)) {
     problems.push(
@@ -235,16 +257,17 @@ export function parseInputs(raw: RawInputs, warnings: string[] = []): TaskInputs
     );
   }
 
-  const actionOnUnmanage = parseActionOnUnmanage(raw, problems, warnings);
+  const actionOnUnmanage = parseActionOnUnmanage(raw, scope, problems, warnings);
 
   const inputs: TaskInputs = {
     operation,
     connectedService,
     stackId,
     stackName,
+    scope,
+    ...where,
     templateFile,
-    parametersFile: trimmed(raw, 'parametersFile'),
-    location,
+    parametersFile,
     actionOnUnmanage,
     denySettings,
     retentionInterval,
@@ -262,30 +285,114 @@ export function parseInputs(raw: RawInputs, warnings: string[] = []): TaskInputs
   return inputs;
 }
 
+function isBicepParamFile(file: string | undefined): boolean {
+  return file !== undefined && file.toLowerCase().endsWith('.bicepparam');
+}
+
+/** Say that an input was set but means nothing for this run, and carry on. */
+function ignored(raw: RawInputs, name: string, why: string, warnings: string[]): void {
+  if (trimmed(raw, name) !== undefined) warnings.push(`${name} is ignored: ${why}`);
+}
+
+/** A subscription id, loosely: enough to catch a name pasted where the GUID goes. */
+const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Resource group and management group names: 1 to 90 of letters, digits,
+ * `._-()`, not ending in a dot. Checked because the name goes into a URL path,
+ * and a slash in it would address a different resource.
+ */
+const GROUP_NAME = /^[\w.()-]{0,89}[\w()-]$/;
+
+interface Where {
+  subscriptionId: string | undefined;
+  resourceGroupName: string | undefined;
+  managementGroupId: string | undefined;
+  location: string | undefined;
+}
+
+/**
+ * The inputs that say where the stack is. Each is required at the scope that
+ * needs it and ignored, with a warning, at the others.
+ */
+function parseWhere(raw: RawInputs, scope: Scope, problems: string[], warnings: string[]): Where {
+  let subscriptionId = trimmed(raw, 'subscriptionId');
+  let resourceGroupName: string | undefined;
+  let managementGroupId: string | undefined;
+  let location = trimmed(raw, 'location');
+
+  if (scope === 'managementGroup') {
+    ignored(raw, 'subscriptionId', 'a management-group stack belongs to no subscription.', warnings);
+    subscriptionId = undefined;
+  } else if (subscriptionId !== undefined && !GUID.test(subscriptionId)) {
+    problems.push(`subscriptionId "${subscriptionId}" is not a subscription id (a GUID).`);
+  }
+
+  if (scope === 'resourceGroup') {
+    resourceGroupName = required(raw, 'resourceGroupName', problems);
+    if (resourceGroupName.length > 0 && !GROUP_NAME.test(resourceGroupName)) {
+      problems.push(`resourceGroupName "${resourceGroupName}" is not a valid resource group name.`);
+    }
+    ignored(raw, 'location', "a resource-group stack takes its group's location.", warnings);
+    location = undefined;
+  } else {
+    ignored(raw, 'resourceGroupName', `scope is ${scope}.`, warnings);
+    if (location === undefined) problems.push(`location is required at ${scope} scope.`);
+  }
+
+  if (scope === 'managementGroup') {
+    managementGroupId = required(raw, 'managementGroupId', problems);
+    if (managementGroupId.length > 0 && !GROUP_NAME.test(managementGroupId)) {
+      problems.push(`managementGroupId "${managementGroupId}" is not a valid management group id.`);
+    }
+  } else {
+    ignored(raw, 'managementGroupId', `scope is ${scope}.`, warnings);
+  }
+
+  return { subscriptionId, resourceGroupName, managementGroupId, location };
+}
+
+const SCOPE_NOUN: Record<Scope, string> = {
+  resourceGroup: 'resource-group',
+  subscription: 'subscription-scope',
+  managementGroup: 'management-group',
+};
+
 /**
  * Each switch is required where the scope can hold that kind of thing, and has
  * no default anywhere: a default can be added in a later version, but never
- * taken away. A subscription-scope stack can create resource groups but not
- * management groups, so the management-group switch means nothing there.
+ * taken away. A resource-group stack can hold neither resource groups nor
+ * management groups; a subscription stack can create resource groups; a
+ * management-group stack can reach both.
  */
 function parseActionOnUnmanage(
   raw: RawInputs,
+  scope: Scope,
   problems: string[],
   warnings: string[],
 ): ActionOnUnmanageInput {
   const resources = oneOf(raw, 'actionOnUnmanageResources', UNMANAGE_ACTIONS, undefined, problems);
-  const resourceGroups = oneOf(
-    raw,
-    'actionOnUnmanageResourceGroups',
-    UNMANAGE_ACTIONS,
-    undefined,
-    problems,
-  );
-  if (optionalOneOf(raw, 'actionOnUnmanageManagementGroups', UNMANAGE_ACTIONS, problems)) {
-    warnings.push(
-      'actionOnUnmanageManagementGroups is ignored: a subscription-scope stack cannot ' +
-        'manage management groups.',
-    );
-  }
-  return { resources, resourceGroups, managementGroups: undefined };
+
+  const switchFor = (name: string, applies: boolean, kind: string): UnmanageAction | undefined => {
+    if (applies) return oneOf(raw, name, UNMANAGE_ACTIONS, undefined, problems);
+    // Still checked, so a typo is reported rather than hidden behind the warning.
+    if (optionalOneOf(raw, name, UNMANAGE_ACTIONS, problems) !== undefined) {
+      warnings.push(`${name} is ignored: a ${SCOPE_NOUN[scope]} stack cannot manage ${kind}.`);
+    }
+    return undefined;
+  };
+
+  return {
+    resources,
+    resourceGroups: switchFor(
+      'actionOnUnmanageResourceGroups',
+      scope !== 'resourceGroup',
+      'resource groups',
+    ),
+    managementGroups: switchFor(
+      'actionOnUnmanageManagementGroups',
+      scope === 'managementGroup',
+      'management groups',
+    ),
+  };
 }

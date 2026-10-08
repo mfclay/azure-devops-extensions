@@ -33,6 +33,43 @@
       "helpMarkDown": "Service principal (secret), workload identity federation, or managed identity. Certificate-based service principals are not supported."
     },
     {
+      "name": "scope",
+      "type": "pickList",
+      "label": "Scope",
+      "defaultValue": "subscription",
+      "required": true,
+      "options": {
+        "resourceGroup": "Resource group",
+        "subscription": "Subscription",
+        "managementGroup": "Management group"
+      },
+      "helpMarkDown": "Where the stack lives. Stacks exist at these three scopes only."
+    },
+    {
+      "name": "subscriptionId",
+      "type": "string",
+      "label": "Subscription id",
+      "required": false,
+      "visibleRule": "scope != managementGroup",
+      "helpMarkDown": "Defaults to the service connection's subscription."
+    },
+    {
+      "name": "resourceGroupName",
+      "type": "string",
+      "label": "Resource group",
+      "required": true,
+      "visibleRule": "scope = resourceGroup",
+      "helpMarkDown": "The resource group the stack lives in. It must already exist."
+    },
+    {
+      "name": "managementGroupId",
+      "type": "string",
+      "label": "Management group id",
+      "required": true,
+      "visibleRule": "scope = managementGroup",
+      "helpMarkDown": "The id of the management group the stack lives in, not its display name."
+    },
+    {
       "name": "stackId",
       "type": "string",
       "label": "Stack id",
@@ -50,8 +87,8 @@
       "name": "templateFile",
       "type": "filePath",
       "label": "Template file",
-      "required": true,
-      "helpMarkDown": "A `.bicep` with `targetScope = 'subscription'`, or a compiled ARM `.json`."
+      "required": false,
+      "helpMarkDown": "A `.bicep` whose `targetScope` matches **Scope**, or a compiled ARM `.json`. Required unless **Parameters file** is a `.bicepparam`, which names its own template with `using`."
     },
     {
       "name": "parametersFile",
@@ -65,7 +102,8 @@
       "type": "string",
       "label": "Location",
       "required": true,
-      "helpMarkDown": "Where the stack — and, in what-if mode, the transient result resource — lives."
+      "visibleRule": "scope != resourceGroup",
+      "helpMarkDown": "Where the stack — and, for a what-if, the transient result resource — lives. Not used at resource-group scope, where both take the group's location."
     },
     {
       "name": "actionOnUnmanageResources",
@@ -82,15 +120,17 @@
       "label": "Action on unmanaged resource groups",
       "required": true,
       "groupName": "protection",
+      "visibleRule": "scope != resourceGroup",
       "options": { "delete": "Delete", "detach": "Detach" },
-      "helpMarkDown": "What happens to a resource group the stack stops managing."
+      "helpMarkDown": "What happens to a resource group the stack stops managing. A resource-group stack cannot manage one."
     },
     {
       "name": "actionOnUnmanageManagementGroups",
       "type": "pickList",
       "label": "Action on unmanaged management groups",
-      "required": false,
+      "required": true,
       "groupName": "protection",
+      "visibleRule": "scope = managementGroup",
       "options": { "delete": "Delete", "detach": "Detach" },
       "helpMarkDown": "What happens to a management group the stack stops managing. Only a management-group-scope stack can manage one."
     },

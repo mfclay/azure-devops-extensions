@@ -108,6 +108,7 @@ function harness(options: {
   routes?: Route[];
   compile?: () => Promise<{ template: unknown; parameters: unknown }>;
   ensure?: () => Promise<string>;
+  endpoint?: EndpointDetails;
 } = {}): Harness {
   const outputPath = mkdtempSync(join(tmpdir(), 'whatif-task-test-'));
   const attachments: Harness['attachments'] = [];
@@ -139,7 +140,7 @@ function harness(options: {
 
   const deps: RunDeps = {
     raw: { ...(options.raw ?? RAW), outputPath },
-    endpoint: ENDPOINT,
+    endpoint: options.endpoint ?? ENDPOINT,
     env: { BUILD_BUILDID: '7700017' },
     jobAccessToken: undefined,
     fetch: fetchImpl as unknown as typeof globalThis.fetch,
@@ -359,6 +360,82 @@ describe('run — the sidecar is written whatever happens', () => {
     const result = await run(h.deps);
     expect(result.message).not.toContain(SECRET);
     expect(readFileSync(find(h, ATTACHMENT_TYPE_SIDECAR)!.path, 'utf8')).not.toContain(SECRET);
+  });
+});
+
+describe('run — scopes', () => {
+  it('puts a resource-group what-if under the group, and sends no location', async () => {
+    const h = harness({
+      raw: { ...RAW, scope: 'resourceGroup', resourceGroupName: 'rg-app', location: '' },
+    });
+    const result = await run(h.deps);
+    expect(result.status).toBe('succeeded');
+    const put = h.requests.find((r) => r.method === 'PUT' && r.url.includes('WhatIfResults'));
+    expect(put?.url).toContain(
+      '/subscriptions/sub-1/resourceGroups/rg-app/providers/Microsoft.Resources/' +
+        'deploymentStacksWhatIfResults/whatif-network-7700017',
+    );
+    const sent = put?.body as { location?: string; properties: Record<string, unknown> };
+    expect(sent).not.toHaveProperty('location');
+    expect(sent.properties['deploymentStackResourceId']).toBe(
+      '/subscriptions/sub-1/resourceGroups/rg-app/providers/Microsoft.Resources/' +
+        'deploymentStacks/app-network',
+    );
+    expect(h.requests.find((r) => r.method === 'DELETE')?.url).toContain('/resourceGroups/rg-app/');
+  });
+
+  it('puts a management-group what-if under the group, with no subscription in the path', async () => {
+    const h = harness({
+      raw: {
+        ...RAW,
+        scope: 'managementGroup',
+        managementGroupId: 'mg-contoso',
+        actionOnUnmanageManagementGroups: 'detach',
+      },
+    });
+    await run(h.deps);
+    const put = h.requests.find((r) => r.method === 'PUT' && r.url.includes('WhatIfResults'));
+    expect(put?.url).toContain(
+      '/providers/Microsoft.Management/managementGroups/mg-contoso/providers/' +
+        'Microsoft.Resources/deploymentStacksWhatIfResults/',
+    );
+    expect(put?.url).not.toContain('/subscriptions/');
+    const sent = put?.body as { location?: string; properties: Record<string, unknown> };
+    expect(sent.location).toBe('CentralUS');
+    expect(sent.properties['actionOnUnmanage']).toEqual({
+      resources: 'detach',
+      resourceGroups: 'detach',
+      managementGroups: 'detach',
+    });
+  });
+
+  it('needs no subscription from a connection used at management-group scope', async () => {
+    const h = harness({
+      raw: {
+        ...RAW,
+        scope: 'managementGroup',
+        managementGroupId: 'mg-contoso',
+        actionOnUnmanageManagementGroups: 'detach',
+      },
+      endpoint: { ...ENDPOINT, subscriptionId: undefined },
+    });
+    expect((await run(h.deps)).status).toBe('succeeded');
+  });
+
+  it('fails, with a sidecar, when nothing names a subscription for a subscription stack', async () => {
+    const h = harness({ endpoint: { ...ENDPOINT, subscriptionId: undefined } });
+    const result = await run(h.deps);
+    expect(result.status).toBe('failed');
+    expect(result.message).toMatch(/carries no subscription id, and subscriptionId is not set/);
+    expect(result.sidecarAttached).toBe(true);
+  });
+
+  it('takes subscriptionId over the connection\'s own', async () => {
+    const other = '00000000-0000-4000-8000-000000000002';
+    const h = harness({ raw: { ...RAW, subscriptionId: other } });
+    await run(h.deps);
+    const put = h.requests.find((r) => r.method === 'PUT' && r.url.includes('WhatIfResults'));
+    expect(put?.url).toContain(`/subscriptions/${other}/providers/`);
   });
 });
 

@@ -145,6 +145,16 @@ describe('compile', () => {
     expect(result.parameters).toEqual({});
   });
 
+  it('lets a .bicepparam name its own template when there is no templateFile at all', async () => {
+    const out = join(dir, 'argv.json');
+    const bicep = fakeBicep(
+      `require('node:fs').writeFileSync(${JSON.stringify(out)}, JSON.stringify(args));\n` +
+        `process.stdout.write(JSON.stringify({ templateJson: '{}' }));`,
+    );
+    await compile(bicep, undefined, 'main.bicepparam');
+    expect(JSON.parse(readFileSync(out, 'utf8'))).toEqual(['build-params', 'main.bicepparam', '--stdout']);
+  });
+
   it('refuses a .bicepparam that compiles to no template', async () => {
     const bicep = fakeBicep(`process.stdout.write(JSON.stringify({ parametersJson: '{}' }));`);
     await expect(compile(bicep, 'main.bicep', 'main.bicepparam')).rejects.toThrow(/template spec is not supported/);

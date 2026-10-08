@@ -111,6 +111,104 @@ describe('parseInputs', () => {
     );
   });
 
+  it('defaults to subscription scope, taking the subscription from the connection', () => {
+    const inputs = parseInputs(MINIMAL);
+    expect(inputs.scope).toBe('subscription');
+    expect(inputs.subscriptionId).toBeUndefined();
+    expect(inputs.location).toBe('CentralUS');
+  });
+
+  it('needs a resource group, and no location or group switch, at resource-group scope', () => {
+    const { location: _, actionOnUnmanageResourceGroups: __, ...rest } = MINIMAL;
+    expect(() => parseInputs({ ...rest, scope: 'resourceGroup' })).toThrow(
+      /resourceGroupName is required/,
+    );
+    const inputs = parseInputs({ ...rest, scope: 'resourceGroup', resourceGroupName: 'rg-app' });
+    expect(inputs.resourceGroupName).toBe('rg-app');
+    expect(inputs.location).toBeUndefined();
+    expect(inputs.actionOnUnmanage.resourceGroups).toBeUndefined();
+  });
+
+  it('warns about, and drops, the location at resource-group scope', () => {
+    // The stack takes its group's location; sending another is at best ignored.
+    const warnings: string[] = [];
+    const inputs = parseInputs(
+      { ...MINIMAL, scope: 'resourceGroup', resourceGroupName: 'rg-app' },
+      warnings,
+    );
+    expect(inputs.location).toBeUndefined();
+    expect(warnings).toEqual([
+      expect.stringMatching(/^location is ignored/),
+      expect.stringMatching(/^actionOnUnmanageResourceGroups is ignored: a resource-group stack/),
+    ]);
+  });
+
+  it('needs a management group id, all three switches and a location at management-group scope', () => {
+    try {
+      parseInputs({ ...MINIMAL, scope: 'managementGroup' });
+      expect.unreachable('should have thrown');
+    } catch (error) {
+      const problems = (error as InputError).problems.join('\n');
+      expect(problems).toContain('managementGroupId is required');
+      expect(problems).toContain('actionOnUnmanageManagementGroups is required');
+    }
+    const inputs = parseInputs({
+      ...MINIMAL,
+      scope: 'managementGroup',
+      managementGroupId: 'mg-contoso',
+      actionOnUnmanageManagementGroups: 'detach',
+    });
+    expect(inputs.managementGroupId).toBe('mg-contoso');
+    expect(inputs.actionOnUnmanage.managementGroups).toBe('detach');
+    expect(() =>
+      parseInputs({ ...MINIMAL, location: '', scope: 'managementGroup', managementGroupId: 'mg' }),
+    ).toThrow(/location is required at managementGroup scope/);
+  });
+
+  it('ignores a subscription id at management-group scope', () => {
+    const warnings: string[] = [];
+    const inputs = parseInputs(
+      {
+        ...MINIMAL,
+        scope: 'managementGroup',
+        managementGroupId: 'mg-contoso',
+        actionOnUnmanageManagementGroups: 'detach',
+        subscriptionId: '00000000-0000-4000-8000-000000000001',
+      },
+      warnings,
+    );
+    expect(inputs.subscriptionId).toBeUndefined();
+    expect(warnings).toEqual([expect.stringMatching(/^subscriptionId is ignored/)]);
+  });
+
+  it('warns about group inputs set for a scope that does not use them', () => {
+    const warnings: string[] = [];
+    parseInputs({ ...MINIMAL, resourceGroupName: 'rg', managementGroupId: 'mg' }, warnings);
+    expect(warnings).toEqual([
+      'resourceGroupName is ignored: scope is subscription.',
+      'managementGroupId is ignored: scope is subscription.',
+    ]);
+  });
+
+  it('rejects a subscription id or group name that would address something else', () => {
+    expect(() => parseInputs({ ...MINIMAL, subscriptionId: 'my-sub' })).toThrow(/not a subscription id/);
+    expect(() =>
+      parseInputs({ ...MINIMAL, scope: 'resourceGroup', resourceGroupName: 'rg/other' }),
+    ).toThrow(/not a valid resource group name/);
+    expect(() =>
+      parseInputs({ ...MINIMAL, scope: 'resourceGroup', resourceGroupName: 'rg.' }),
+    ).toThrow(/not a valid resource group name/);
+  });
+
+  it('takes the template from a .bicepparam when templateFile is left out', () => {
+    const { templateFile: _, ...rest } = MINIMAL;
+    expect(parseInputs({ ...rest, parametersFile: 'p/network.bicepparam' }).templateFile).toBeUndefined();
+    expect(() => parseInputs({ ...rest, parametersFile: 'p/network.json' })).toThrow(
+      /templateFile is required, unless parametersFile is a .bicepparam/,
+    );
+    expect(() => parseInputs(rest)).toThrow(/templateFile is required/);
+  });
+
   it('rejects a stackId that would break the attachment href', () => {
     // The tab recovers the stack id by parsing `_links.self.href`; a slash in
     // the name puts an extra segment in that URL and the parse silently fails.

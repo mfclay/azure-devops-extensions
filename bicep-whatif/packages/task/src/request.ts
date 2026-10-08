@@ -71,7 +71,8 @@ export function unwrapParameters(compiled: unknown): Record<string, unknown> {
 }
 
 export interface WhatIfRequestBody {
-  location: string;
+  /** Absent at resource-group scope, where ARM takes the group's location. */
+  location?: string;
   properties: Record<string, unknown>;
 }
 
@@ -81,7 +82,7 @@ export interface BuildRequestArgs {
   template: unknown;
   /** Whatever the parameters compiled to; unwrapped here. */
   parameters: unknown;
-  /** Fully qualified `/subscriptions/.../deploymentStacks/{name}`. */
+  /** Fully qualified `<scope>/providers/Microsoft.Resources/deploymentStacks/{name}`. */
   deploymentStackResourceId: string;
 }
 
@@ -89,7 +90,7 @@ export interface BuildRequestArgs {
 export function buildWhatIfRequest(args: BuildRequestArgs): WhatIfRequestBody {
   const { inputs } = args;
   return {
-    location: inputs.location,
+    ...(inputs.location !== undefined ? { location: inputs.location } : {}),
     properties: {
       template: args.template,
       parameters: unwrapParameters(args.parameters),
@@ -106,7 +107,7 @@ export function buildWhatIfRequest(args: BuildRequestArgs): WhatIfRequestBody {
 export function buildCreateRequest(args: BuildRequestArgs): WhatIfRequestBody {
   const { inputs } = args;
   return {
-    location: inputs.location,
+    ...(inputs.location !== undefined ? { location: inputs.location } : {}),
     properties: {
       template: args.template,
       parameters: unwrapParameters(args.parameters),

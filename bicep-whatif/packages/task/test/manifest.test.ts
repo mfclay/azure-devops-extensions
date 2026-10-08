@@ -13,7 +13,9 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
   DENY_SETTINGS_MODES,
+  InputError,
   OPERATIONS,
+  SCOPES,
   UNMANAGE_ACTIONS,
   parseInputs,
 } from '../src/inputs.js';
@@ -102,6 +104,10 @@ describe('task.json — agreement with the code', () => {
       'actionOnUnmanageResources',
       'actionOnUnmanageResourceGroups',
       'actionOnUnmanageManagementGroups',
+      'scope',
+      'subscriptionId',
+      'resourceGroupName',
+      'managementGroupId',
       'denySettingsMode',
       'retentionInterval',
       'layer',
@@ -127,6 +133,8 @@ describe('task.json — agreement with the code', () => {
 
   it('offers exactly the enum values the parser accepts', () => {
     expect(Object.keys(inputByName('operation')!['options'])).toEqual([...OPERATIONS]);
+    expect(Object.keys(inputByName('scope')!['options'])).toEqual([...SCOPES]);
+    expect(inputByName('scope')!['defaultValue']).toBe('subscription');
     expect(inputByName('operation')!['defaultValue']).toBe('whatIf');
     for (const name of [
       'actionOnUnmanageResources',
@@ -165,20 +173,57 @@ describe('task.json — agreement with the code', () => {
 
   it('requires only what the task genuinely cannot infer', () => {
     const required = (task['inputs'] as Record<string, any>[])
-      .filter((i) => i['required'] === true)
+      .filter((i) => i['required'] === true && i['visibleRule'] === undefined)
       .map((i) => i['name']);
     expect(required.sort()).toEqual(
       [
-        'actionOnUnmanageResourceGroups',
         'actionOnUnmanageResources',
         'ConnectedServiceName',
         'denySettingsMode',
-        'location',
         'operation',
+        'scope',
         'stackId',
-        'templateFile',
       ].sort(),
     );
+  });
+
+  it("requires each scope's inputs exactly where the parser does", () => {
+    // `required` with a `visibleRule` is how Microsoft's own tasks say "required
+    // at this scope"; the editor enforces it only while the input is shown. The
+    // parser is what enforces it in YAML, so the two must agree scope by scope.
+    const conditional = (task['inputs'] as Record<string, any>[]).filter(
+      (i) => i['required'] === true && i['visibleRule'] !== undefined,
+    );
+    const visible = (rule: string, scope: string): boolean => {
+      const m = /^scope (!?=) (\w+)$/.exec(rule);
+      if (!m) throw new Error(`Unexpected visibleRule "${rule}"`);
+      return m[1] === '=' ? scope === m[2] : scope !== m[2];
+    };
+
+    for (const scope of SCOPES) {
+      let problems: readonly string[] = [];
+      try {
+        parseInputs({
+          ConnectedServiceName: 'c',
+          stackId: 's',
+          templateFile: 't.bicep',
+          actionOnUnmanageResources: 'detach',
+          denySettingsMode: 'none',
+          scope,
+        });
+      } catch (error) {
+        problems = (error as InputError).problems;
+      }
+      const demanded = problems
+        .map((p) => /^(\w+) is required/.exec(p)?.[1])
+        .filter((n): n is string => n !== undefined)
+        .sort();
+      const shown = conditional
+        .filter((i) => visible(i['visibleRule'], scope))
+        .map((i) => i['name'] as string)
+        .sort();
+      expect(demanded, `at ${scope} scope`).toEqual(shown);
+    }
   });
 });
 
@@ -187,6 +232,7 @@ describe('needsCompiler', () => {
     expect(needsCompiler('main.bicep', undefined)).toBe(true);
     expect(needsCompiler('main.json', 'p.bicepparam')).toBe(true);
     expect(needsCompiler('main.BICEP', undefined)).toBe(true);
+    expect(needsCompiler(undefined, 'p.bicepparam')).toBe(true);
   });
 
   it('is false for an already-compiled pair', () => {

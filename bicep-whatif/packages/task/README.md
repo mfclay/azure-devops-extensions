@@ -68,9 +68,18 @@ explaining here:
   than the deploy it previews is a lie, most obviously about whether a dropped
   resource is reported as `Detach` or as `Delete`. One task with an `operation`
   input is what makes that parity structural rather than documented.
-- **The unmanage switches have no defaults.** `actionOnUnmanageResources` and
-  `actionOnUnmanageResourceGroups` are required; the management-group switch
-  means nothing to a subscription-scope stack and is ignored with a warning.
+- **`scope` is `resourceGroup`, `subscription` (the default) or
+  `managementGroup`**, the three scopes a stack can live at. `resourceGroupName`
+  and `managementGroupId` are required at their own scope. `subscriptionId`
+  defaults to the service connection's. `location` is required except at
+  resource-group scope, where the stack takes its group's location. An input
+  set for a scope that does not use it is ignored with a warning.
+- **The unmanage switches have no defaults, and each is required where the
+  scope can use it.** `actionOnUnmanageResources` always;
+  `actionOnUnmanageResourceGroups` at subscription and management-group scope;
+  `actionOnUnmanageManagementGroups` at management-group scope.
+- **`templateFile` can be left out when `parametersFile` is a `.bicepparam`**,
+  whose `using` names the template.
 - **`operation` defaults to `whatIf`**, not to `create` as `BicepDeploy@0`'s
   does: a step that leaves it out never deploys.
 - **`retentionInterval` maxes out at `PT3H`.** The service enforces one to three

@@ -17,6 +17,10 @@ import type { RawInputs } from './inputs.js';
 const INPUT_NAMES = [
   'operation',
   'ConnectedServiceName',
+  'scope',
+  'subscriptionId',
+  'resourceGroupName',
+  'managementGroupId',
   'stackId',
   'stackName',
   'templateFile',

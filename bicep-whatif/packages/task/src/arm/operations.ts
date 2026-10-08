@@ -2,6 +2,7 @@
  * The two ARM lifecycles this task drives, and the cleanup one of them needs.
  */
 import { ArmClient, ArmError, provisioningStateOf } from './client.js';
+import { deploymentStackId, whatIfResultId, type StackScope } from '../ids.js';
 import { failureEnvelope } from '../outcome.js';
 
 export interface PollSettings {
@@ -9,21 +10,8 @@ export interface PollSettings {
   timeoutMs: number;
 }
 
-function whatIfPath(subscriptionId: string, resultName: string): string {
-  return (
-    `/subscriptions/${subscriptionId}` +
-    `/providers/Microsoft.Resources/deploymentStacksWhatIfResults/${resultName}`
-  );
-}
-
-function stackPath(subscriptionId: string, stackName: string): string {
-  return (
-    `/subscriptions/${subscriptionId}/providers/Microsoft.Resources/deploymentStacks/${stackName}`
-  );
-}
-
 export interface OperationArgs {
-  subscriptionId: string;
+  scope: StackScope;
   name: string;
   body: unknown;
   poll: PollSettings;
@@ -42,7 +30,7 @@ export async function createWhatIfResult(
   client: ArmClient,
   args: OperationArgs,
 ): Promise<unknown> {
-  const url = client.url(whatIfPath(args.subscriptionId, args.name));
+  const url = client.url(whatIfResultId(args.scope, args.name));
 
   const created = await client.request({ method: 'PUT', url, body: args.body, maxAttempts: 3 });
 
@@ -62,7 +50,7 @@ export async function createWhatIfResult(
  * Delete the what-if result.
  *
  * Stack what-if is not a transient operation — the result is a persistent
- * resource that counts toward the subscription's resource limits — so a busy PR
+ * resource that counts toward its scope's resource limits — so a busy PR
  * queue accumulates them. Expiry is the backstop, not the mechanism; this is the
  * mechanism.
  *
@@ -72,14 +60,14 @@ export async function createWhatIfResult(
  */
 export async function deleteWhatIfResult(
   client: ArmClient,
-  subscriptionId: string,
+  scope: StackScope,
   name: string,
   log: (message: string) => void,
 ): Promise<void> {
   try {
     const response = await client.request({
       method: 'DELETE',
-      url: client.url(whatIfPath(subscriptionId, name)),
+      url: client.url(whatIfResultId(scope, name)),
       tolerate: [404, 204],
       maxAttempts: 3,
     });
@@ -102,7 +90,7 @@ export async function createDeploymentStack(
   client: ArmClient,
   args: OperationArgs & { bypassStackOutOfSyncError: boolean },
 ): Promise<unknown> {
-  const url = client.url(stackPath(args.subscriptionId, args.name));
+  const url = client.url(deploymentStackId(args.scope, args.name));
   const created = await client.request({ method: 'PUT', url, body: args.body, maxAttempts: 3 });
 
   const state = provisioningStateOf(created.body);

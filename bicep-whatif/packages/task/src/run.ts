@@ -23,7 +23,13 @@
  */
 import { ATTACHMENT_TYPE_BUILD_SUMMARY, attachmentTypesFor } from './contract.js';
 import { writeAndAttach, type AttachDeps } from './attach.js';
-import { defaultResultName, deploymentStackId, layerFromTemplateFile } from './ids.js';
+import {
+  defaultResultName,
+  deploymentStackId,
+  layerFromTemplateFile,
+  scopePath,
+  type StackScope,
+} from './ids.js';
 import { parseInputs, type RawInputs, type TaskInputs } from './inputs.js';
 import { failureEnvelope, outcomeOf, type RunStatus } from './outcome.js';
 import {
@@ -97,7 +103,10 @@ export async function run(deps: RunDeps): Promise<RunResult> {
   const warnings: string[] = [];
   const inputs: TaskInputs = parseInputs(deps.raw, warnings);
   for (const warning of warnings) deps.warn(warning);
-  const layer = inputs.layer ?? layerFromTemplateFile(inputs.templateFile);
+  // A `.bicepparam` that names its own template is the only file there is, and
+  // `05-network.bicepparam` says the layer as well as `05-network.bicep` would.
+  const layer =
+    inputs.layer ?? layerFromTemplateFile(inputs.templateFile ?? inputs.parametersFile ?? '');
   const buildId = deps.env['BUILD_BUILDID'];
   const resultName = inputs.resultName ?? defaultResultName(inputs.stackId, buildId, deps.now());
   const outputPath = inputs.outputPath ?? (await defaultOutputPath(inputs.stackId));
@@ -111,7 +120,7 @@ export async function run(deps: RunDeps): Promise<RunResult> {
   let secureValues: string[] = [];
   let compilerVersion: string | undefined;
   let deleteNeeded = false;
-  let subscriptionId = '';
+  let scope: StackScope | undefined;
   let client: ArmClient | undefined;
 
   const bicep = deps.bicep ?? { ensure: ensureBicep, compile, version: bicepVersion };
@@ -226,7 +235,8 @@ export async function run(deps: RunDeps): Promise<RunResult> {
       compilerVersion = await bicep.version(binary);
     } else {
       deps.log(
-        `${inputs.templateFile} is already compiled, so no Bicep compiler is downloaded.`,
+        `${inputs.templateFile ?? 'The template'} is already compiled, so no Bicep compiler ` +
+          'is downloaded.',
       );
     }
 
@@ -242,7 +252,7 @@ export async function run(deps: RunDeps): Promise<RunResult> {
     );
 
     // ── Authenticate ──────────────────────────────────────────────────────────
-    subscriptionId = requireSubscription(deps.endpoint);
+    scope = stackScope(inputs, deps.endpoint);
     const authDeps = { fetch: deps.fetch, env: deps.env, jobAccessToken: deps.jobAccessToken };
     const token = await acquireArmToken(authDeps, deps.endpoint);
     deps.log(
@@ -261,7 +271,8 @@ export async function run(deps: RunDeps): Promise<RunResult> {
       token,
     );
 
-    const stackResourceId = deploymentStackId(subscriptionId, inputs.stackName);
+    deps.log(`Stack ${inputs.stackName} at ${scopePath(scope)}.`);
+    const stackResourceId = deploymentStackId(scope, inputs.stackName);
     const unmanage = describeUnmanage(actionOnUnmanageBody(inputs.actionOnUnmanage));
 
     // ── Run it ────────────────────────────────────────────────────────────────
@@ -278,7 +289,7 @@ export async function run(deps: RunDeps): Promise<RunResult> {
       );
       deleteNeeded = inputs.deleteWhatIfResult;
       const payload = await createWhatIfResult(client, {
-        subscriptionId,
+        scope,
         name: resultName,
         body,
         poll: POLL,
@@ -294,7 +305,7 @@ export async function run(deps: RunDeps): Promise<RunResult> {
     });
     deps.log(`Deploying stack ${inputs.stackName} (${unmanage}).`);
     const payload = await createDeploymentStack(client, {
-      subscriptionId,
+      scope,
       name: inputs.stackName,
       body,
       poll: POLL,
@@ -304,21 +315,33 @@ export async function run(deps: RunDeps): Promise<RunResult> {
   } catch (error) {
     return await finish(envelopeFor(error), error);
   } finally {
-    if (deleteNeeded && client !== undefined) {
-      await deleteWhatIfResult(client, subscriptionId, resultName, deps.log);
+    if (deleteNeeded && client !== undefined && scope !== undefined) {
+      await deleteWhatIfResult(client, scope, resultName, deps.log);
     }
   }
 }
 
-function requireSubscription(endpoint: EndpointDetails): string {
-  const id = endpoint.subscriptionId;
-  if (id === undefined || id.trim().length === 0) {
+/**
+ * Where the stack lives, from the inputs and the connection.
+ *
+ * `subscriptionId` defaults to the connection's own. A connection scoped to a
+ * management group carries none, which is fine at management-group scope and
+ * a stop everywhere else.
+ */
+function stackScope(inputs: TaskInputs, endpoint: EndpointDetails): StackScope {
+  if (inputs.scope === 'managementGroup') {
+    return { kind: 'managementGroup', managementGroupId: inputs.managementGroupId ?? '' };
+  }
+  const subscriptionId = inputs.subscriptionId ?? endpoint.subscriptionId?.trim();
+  if (subscriptionId === undefined || subscriptionId.length === 0) {
     throw new Error(
-      `Service connection "${endpoint.id}" carries no subscription id. This task runs at ` +
-        'subscription scope and cannot infer one.',
+      `Service connection "${endpoint.id}" carries no subscription id, and subscriptionId ` +
+        `is not set. A ${inputs.scope} stack needs one of them.`,
     );
   }
-  return id.trim();
+  return inputs.scope === 'resourceGroup'
+    ? { kind: 'resourceGroup', subscriptionId, resourceGroupName: inputs.resourceGroupName ?? '' }
+    : { kind: 'subscription', subscriptionId };
 }
 
 /** `resources: detach, resourceGroups: delete`, in the order ARM lists them. */

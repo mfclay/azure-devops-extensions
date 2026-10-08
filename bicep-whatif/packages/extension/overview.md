@@ -39,8 +39,9 @@ page before relying on this section.*
 - deploy ordinary deployments rather than stacks. It can preview those with
   what-if too.
 - deploy stacks and do not need to preview the change first.
-- deploy at resource group, management group or tenant scope. This extension's
-  task deploys at subscription scope only.
+- deploy at tenant scope. Deployment stacks do not exist there, so this
+  extension's task covers resource group, subscription and management group
+  scope only.
 - need template outputs as pipeline variables, inline parameter overrides, stack
   tags or masked outputs. This extension's task has none of these.
 - run classic release pipelines. This extension's tab is a build results tab, so
