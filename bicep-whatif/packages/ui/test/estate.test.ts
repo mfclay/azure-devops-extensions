@@ -81,6 +81,15 @@ describe('buildEstateView', () => {
     });
   });
 
+  it('keys two failed stacks in one stage apart, so selecting one does not select both', () => {
+    const failed = (stackId: string) =>
+      stage({ stageId: 'WhatIf_Platform', stackId, sidecar: { stackId, status: 'failed' } });
+    const view = buildEstateView([failed('network'), failed('shared-infra')]);
+    const keys = view.rows.map((r) => r.key);
+    expect(new Set(keys).size).toBe(2);
+    expect(view.stacks.map((s) => s.key)).toEqual(['network', 'shared-infra']);
+  });
+
   it('carries the sidecar error through when the what-if failed', () => {
     const view = buildEstateView([
       stage({

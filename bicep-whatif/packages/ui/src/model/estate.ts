@@ -161,7 +161,9 @@ function placeholderRow(stage: StageResult, stackKey: string, label: string): Gr
       'Treat it as unknown, not as unchanged.';
 
   return {
-    key: `stage:${stage.stageId}`,
+    // A stage can hold several stacks that each failed, so the stack is part of
+    // the key when there is one.
+    key: stage.stackId === undefined ? `stage:${stage.stageId}` : `stage:${stage.stageId}:${stackKey}`,
     stackKey,
     stackLabel: label,
     severity: 'unevaluated',

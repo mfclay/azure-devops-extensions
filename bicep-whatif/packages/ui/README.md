@@ -29,7 +29,8 @@ ninth was never evaluated at all.
 
 So the data layer reconciles against the build **Timeline API**, not against the
 attachment list. Every `WhatIf_*` stage in the run gets a row; attachments join
-onto it. A stage with no attachment becomes a row ranked `unevaluated` — the rung
+onto it, one stack per stack id when a stage runs several. A stage with no
+attachment becomes a row ranked `unevaluated` — the rung
 `core` reserves for exactly this, which sits above `noChange` so the default
 filter cannot bury it — plus a banner at the top of the page that does not
 dismiss.

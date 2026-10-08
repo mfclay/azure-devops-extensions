@@ -148,9 +148,17 @@ export interface JoinInput {
   sidecars: ReadonlyArray<{ ref: AttachmentRef; sidecar: Sidecar }>;
 }
 
+/** A stage's attachments, one entry per stack id, in the order they came. */
+type StackHit = { payload?: { payload: unknown; error?: string | undefined }; sidecar?: Sidecar };
+
 /**
- * Every `WhatIf_*` stage in the run becomes a `StageResult`, whether or not it
- * attached anything. That is the entire point.
+ * Every `WhatIf_*` stage in the run becomes at least one `StageResult`, whether
+ * or not it attached anything. That is the entire point.
+ *
+ * A stage that ran several stacks gives one result per stack, keyed by the
+ * stack id each attachment is filed under; a stage that attached nothing gives
+ * one result with no stack. Keying by stage alone let the second stack in a
+ * stage silently replace the first.
  */
 export function joinStages(input: JoinInput): StageResult[] {
   const byId = new Map<string, TimelineRecordLike>();
@@ -158,65 +166,80 @@ export function joinStages(input: JoinInput): StageResult[] {
 
   const stages = input.records.filter(isWhatIfStage);
 
-  const payloadByStage = new Map<string, { payload: unknown; stackId: string; error?: string | undefined }>();
+  // Stage record id → stack id → what that stack attached there.
+  const hitsByStage = new Map<string, Map<string, StackHit>>();
+  const hitFor = (stageId: string, stackId: string): StackHit => {
+    let stacks = hitsByStage.get(stageId);
+    if (!stacks) hitsByStage.set(stageId, (stacks = new Map()));
+    let hit = stacks.get(stackId);
+    if (!hit) stacks.set(stackId, (hit = {}));
+    return hit;
+  };
+
   const unattachedPayloads: { ref: AttachmentRef; payload: unknown; error?: string | undefined }[] = [];
   for (const p of input.payloads) {
     const stage = stageRecordFor(p.ref.recordId, byId);
-    if (stage) {
-      payloadByStage.set(stage.id, { payload: p.payload, stackId: p.ref.name, error: p.error });
-    } else {
-      unattachedPayloads.push(p);
-    }
+    if (stage) hitFor(stage.id, p.ref.name).payload = { payload: p.payload, error: p.error };
+    else unattachedPayloads.push(p);
   }
 
-  const sidecarByStage = new Map<string, Sidecar>();
   const sidecarByStackId = new Map<string, Sidecar>();
   for (const s of input.sidecars) {
     sidecarByStackId.set(s.ref.name, s.sidecar);
     const stage = stageRecordFor(s.ref.recordId, byId);
-    if (stage) sidecarByStage.set(stage.id, s.sidecar);
+    if (stage) hitFor(stage.id, s.ref.name).sidecar = s.sidecar;
   }
 
   // Structural join failed for these — fall back to the stage-id naming rule so
   // the payload is still shown, and say so in the notes.
   const byDerivedStageId = new Map<string, TimelineRecordLike>();
   for (const s of stages) byDerivedStageId.set((s.identifier ?? s.name ?? '').toLowerCase(), s);
-  const fallbackNotes = new Map<string, string>();
+  const fallbackNotes = new Map<StackHit, string>();
   for (const p of unattachedPayloads) {
     const guess = stageIdFromStackId(p.ref.name).toLowerCase();
     const stage = byDerivedStageId.get(guess);
-    if (stage && !payloadByStage.has(stage.id)) {
-      payloadByStage.set(stage.id, { payload: p.payload, stackId: p.ref.name, error: p.error });
-      fallbackNotes.set(
-        stage.id,
-        `Attachment "${p.ref.name}" could not be traced to this stage through the timeline; ` +
-          'matched on the stage-id naming rule instead.',
-      );
-    }
+    if (!stage) continue;
+    const hit = hitFor(stage.id, p.ref.name);
+    if (hit.payload) continue;
+    hit.payload = { payload: p.payload, error: p.error };
+    fallbackNotes.set(
+      hit,
+      `Attachment "${p.ref.name}" could not be traced to this stage through the timeline; ` +
+        'matched on the stage-id naming rule instead.',
+    );
   }
 
   const out: StageResult[] = [];
   for (const stage of stages) {
     const stageId = stage.identifier ?? stage.name ?? stage.id;
-    const hit = payloadByStage.get(stage.id);
-    const sidecar = sidecarByStage.get(stage.id) ?? (hit ? sidecarByStackId.get(hit.stackId) : undefined);
-    const notes: string[] = [];
-    const fallback = fallbackNotes.get(stage.id);
-    if (fallback) notes.push(fallback);
-    if (hit?.error) notes.push(hit.error);
-
-    const stackId = hit?.stackId ?? sidecar?.stackId;
-
-    out.push({
+    const base = {
       stageId,
       displayName: stage.name ?? stageId,
       ...(asString(stage.state) !== undefined ? { state: asString(stage.state) } : {}),
       ...(asString(stage.result) !== undefined ? { result: asString(stage.result) } : {}),
-      ...(stackId !== undefined ? { stackId } : {}),
-      ...(hit !== undefined ? { payload: hit.payload } : {}),
-      ...(sidecar !== undefined ? { sidecar } : {}),
-      notes,
-    });
+    };
+
+    const stacks = hitsByStage.get(stage.id);
+    if (!stacks || stacks.size === 0) {
+      out.push({ ...base, notes: [] });
+      continue;
+    }
+
+    for (const [stackId, hit] of stacks) {
+      const sidecar = hit.sidecar ?? (hit.payload ? sidecarByStackId.get(stackId) : undefined);
+      const notes: string[] = [];
+      const fallback = fallbackNotes.get(hit);
+      if (fallback) notes.push(fallback);
+      if (hit.payload?.error) notes.push(hit.payload.error);
+
+      out.push({
+        ...base,
+        stackId,
+        ...(hit.payload !== undefined ? { payload: hit.payload.payload } : {}),
+        ...(sidecar !== undefined ? { sidecar } : {}),
+        notes,
+      });
+    }
   }
 
   // Attachments whose stage is not in the timeline at all. Rare, but dropping

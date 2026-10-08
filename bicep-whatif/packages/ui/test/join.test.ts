@@ -115,6 +115,67 @@ describe('joinStages', () => {
     expect(missing?.payload).toBeUndefined();
   });
 
+  describe('a stage that runs several stacks', () => {
+    // One stage, one job, a task per stack.
+    const records: TimelineRecordLike[] = [
+      ...chain('WhatIf_Platform', ['s1', 'j1', 't1']),
+      { id: 't2', type: 'Task', parentId: 'j1', name: 'What-If shared-infra' },
+    ];
+    const payload = (recordId: string, name: string, body: unknown) => ({
+      ref: { timelineId: 'tl', recordId, type: 'whatif.stack.json', name },
+      payload: body,
+    });
+    const sidecar = (recordId: string, name: string, status: string) => ({
+      ref: { timelineId: 'tl', recordId, type: 'whatif.stack.sidecar', name },
+      sidecar: { stackId: name, status },
+    });
+
+    it('gives each stack a result of its own, where the second used to replace the first', () => {
+      const stages = joinStages({
+        records,
+        payloads: [payload('t1', 'network', { n: 1 }), payload('t2', 'shared-infra', { s: 2 })],
+        sidecars: [],
+      });
+
+      expect(stages.map((s) => [s.stageId, s.stackId, s.payload])).toEqual([
+        ['WhatIf_Platform', 'network', { n: 1 }],
+        ['WhatIf_Platform', 'shared-infra', { s: 2 }],
+      ]);
+    });
+
+    it('pairs each sidecar with its own stack', () => {
+      const stages = joinStages({
+        records,
+        payloads: [payload('t1', 'network', { n: 1 }), payload('t2', 'shared-infra', { s: 2 })],
+        sidecars: [sidecar('t1', 'network', 'succeeded'), sidecar('t2', 'shared-infra', 'partial')],
+      });
+
+      expect(stages.map((s) => [s.stackId, s.sidecar?.status])).toEqual([
+        ['network', 'succeeded'],
+        ['shared-infra', 'partial'],
+      ]);
+    });
+
+    it('keeps a stack that failed beside one that attached', () => {
+      const stages = joinStages({
+        records,
+        payloads: [payload('t1', 'network', { n: 1 })],
+        sidecars: [sidecar('t1', 'network', 'succeeded'), sidecar('t2', 'shared-infra', 'failed')],
+      });
+
+      expect(stages).toHaveLength(2);
+      const failed = stages.find((s) => s.stackId === 'shared-infra');
+      expect(failed?.payload).toBeUndefined();
+      expect(failed?.sidecar?.status).toBe('failed');
+    });
+
+    it('still gives a stage that attached nothing one result, with no stack', () => {
+      const stages = joinStages({ records, payloads: [], sidecars: [] });
+      expect(stages).toHaveLength(1);
+      expect(stages[0]?.stackId).toBeUndefined();
+    });
+  });
+
   it('takes the stack id off the sidecar when only the sidecar attached', () => {
     const records = chain('WhatIf_PlatformProd', ['s1', 'j1', 't1']);
     const stages = joinStages({
