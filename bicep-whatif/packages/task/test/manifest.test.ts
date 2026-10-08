@@ -29,6 +29,23 @@ const task = JSON.parse(readFileSync(join(root, 'task.json'), 'utf8')) as Record
 const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')) as Record<string, any>;
 
 const inputNames = (task['inputs'] as { name: string }[]).map((i) => i.name);
+/**
+ * The subset of the visibleRule grammar task.json uses: `a = b` and `a != b`,
+ * joined by `&&` or by `||`, never both in one rule.
+ */
+function visible(rule: string, values: Readonly<Record<string, string>>): boolean {
+  const test = (clause: string): boolean => {
+    const m = /^(\w+) (!?=) (\w+)$/.exec(clause.trim());
+    if (!m) throw new Error(`Unexpected visibleRule clause "${clause}"`);
+    const actual = values[m[1] as string];
+    return m[2] === '=' ? actual === m[3] : actual !== m[3];
+  };
+  if (rule.includes('&&') && rule.includes('||')) throw new Error(`Mixed visibleRule "${rule}"`);
+  return rule.includes('||')
+    ? rule.split('||').some(test)
+    : rule.split('&&').every(test);
+}
+
 const inputByName = (name: string) =>
   (task['inputs'] as Record<string, any>[]).find((i) => i['name'] === name);
 
@@ -40,9 +57,11 @@ describe('task.json — the traps', () => {
     expect(task['restrictions']?.commands?.mode).not.toBe('restricted');
   });
 
-  it('still constrains settableVariables, which keeps most of the posture', () => {
-    // The task sets no variables, so an empty allowlist costs nothing.
-    expect(task['restrictions']?.settableVariables?.allowed).toEqual([]);
+  it('does not restrict settableVariables', () => {
+    // A create sets every template output as an output variable, and the names
+    // are the template's, so no allowlist written here could hold them. An
+    // allowlist would make the outputs silently not exist, with the task green.
+    expect(task['restrictions']?.settableVariables).toBeUndefined();
   });
 
   it('runs on the Node20_1 and Node24 handlers', () => {
@@ -104,6 +123,7 @@ describe('task.json — agreement with the code', () => {
       'parameters',
       'tags',
       'validationLevel',
+      'maskedOutputs',
       'location',
       'actionOnUnmanageResources',
       'actionOnUnmanageResourceGroups',
@@ -175,7 +195,10 @@ describe('task.json — agreement with the code', () => {
   it('marks the operation-specific inputs so the editor hides the irrelevant ones', () => {
     expect(inputByName('retentionInterval')!['visibleRule']).toBe('operation = whatIf');
     expect(inputByName('deleteWhatIfResult')!['visibleRule']).toBe('operation = whatIf');
-    expect(inputByName('bypassStackOutOfSyncError')!['visibleRule']).toBe('operation = create');
+    expect(inputByName('bypassStackOutOfSyncError')!['visibleRule']).toBe(
+      'operation = create || operation = delete',
+    );
+    expect(inputByName('maskedOutputs')!['visibleRule']).toBe('operation = create');
   });
 
   it('requires only what the task genuinely cannot infer', () => {
@@ -186,7 +209,6 @@ describe('task.json — agreement with the code', () => {
       [
         'actionOnUnmanageResources',
         'ConnectedServiceName',
-        'denySettingsMode',
         'operation',
         'scope',
         'stackId',
@@ -194,42 +216,40 @@ describe('task.json — agreement with the code', () => {
     );
   });
 
-  it("requires each scope's inputs exactly where the parser does", () => {
+  it('requires each conditional input exactly where the parser does', () => {
     // `required` with a `visibleRule` is how Microsoft's own tasks say "required
     // at this scope"; the editor enforces it only while the input is shown. The
-    // parser is what enforces it in YAML, so the two must agree scope by scope.
+    // parser is what enforces it in YAML, so the two must agree for every scope
+    // and operation.
     const conditional = (task['inputs'] as Record<string, any>[]).filter(
       (i) => i['required'] === true && i['visibleRule'] !== undefined,
     );
-    const visible = (rule: string, scope: string): boolean => {
-      const m = /^scope (!?=) (\w+)$/.exec(rule);
-      if (!m) throw new Error(`Unexpected visibleRule "${rule}"`);
-      return m[1] === '=' ? scope === m[2] : scope !== m[2];
-    };
 
     for (const scope of SCOPES) {
-      let problems: readonly string[] = [];
-      try {
-        parseInputs({
-          ConnectedServiceName: 'c',
-          stackId: 's',
-          templateFile: 't.bicep',
-          actionOnUnmanageResources: 'detach',
-          denySettingsMode: 'none',
-          scope,
-        });
-      } catch (error) {
-        problems = (error as InputError).problems;
+      for (const operation of OPERATIONS) {
+        const values: Record<string, string> = { scope, operation };
+        let problems: readonly string[] = [];
+        try {
+          parseInputs({
+            ConnectedServiceName: 'c',
+            stackId: 's',
+            templateFile: 't.bicep',
+            actionOnUnmanageResources: 'detach',
+            ...values,
+          });
+        } catch (error) {
+          problems = (error as InputError).problems;
+        }
+        const demanded = problems
+          .map((p) => /^(\w+) is required/.exec(p)?.[1])
+          .filter((n): n is string => n !== undefined)
+          .sort();
+        const shown = conditional
+          .filter((i) => visible(i['visibleRule'], values))
+          .map((i) => i['name'] as string)
+          .sort();
+        expect(demanded, `${operation} at ${scope} scope`).toEqual(shown);
       }
-      const demanded = problems
-        .map((p) => /^(\w+) is required/.exec(p)?.[1])
-        .filter((n): n is string => n !== undefined)
-        .sort();
-      const shown = conditional
-        .filter((i) => visible(i['visibleRule'], scope))
-        .map((i) => i['name'] as string)
-        .sort();
-      expect(demanded, `at ${scope} scope`).toEqual(shown);
     }
   });
 });

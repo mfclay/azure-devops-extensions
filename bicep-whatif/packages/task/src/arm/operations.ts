@@ -1,8 +1,10 @@
 /**
- * The two ARM lifecycles this task drives, and the cleanup one of them needs.
+ * The ARM lifecycles this task drives — one per operation — and the cleanup
+ * the what-if one needs.
  */
 import { ArmClient, ArmError, provisioningStateOf } from './client.js';
 import { deploymentStackId, whatIfResultId, type StackScope } from '../ids.js';
+import type { ActionOnUnmanageBody } from '../request.js';
 import { failureEnvelope } from '../outcome.js';
 
 export interface PollSettings {
@@ -103,6 +105,68 @@ export async function createDeploymentStack(
     describe: `Deployment stack ${args.name}`,
   });
   return settled.body ?? created.body;
+}
+
+/**
+ * Validate the stack without deploying it: the same body a create would send,
+ * checked by the service. The result carries `properties.validatedResources`
+ * on success and `error` on failure, and no `provisioningState`.
+ */
+export async function validateDeploymentStack(
+  client: ArmClient,
+  args: OperationArgs,
+): Promise<unknown> {
+  const url = client.url(`${deploymentStackId(args.scope, args.name)}/validate`);
+  const response = await client.request({ method: 'POST', url, body: args.body, maxAttempts: 3 });
+  if (response.status !== 202) return response.body;
+  const settled = await client.pollOperation(response, {
+    ...args.poll,
+    describe: `Validating deployment stack ${args.name}`,
+  });
+  return settled.body;
+}
+
+export interface DeleteArgs {
+  scope: StackScope;
+  name: string;
+  actionOnUnmanage: ActionOnUnmanageBody;
+  bypassStackOutOfSyncError: boolean;
+  poll: PollSettings;
+}
+
+/**
+ * Delete the stack, doing to what it managed what `actionOnUnmanage` says.
+ *
+ * The switches travel as query parameters here, not in a body. A stack that is
+ * already gone is success: the step's job is that it not exist afterwards.
+ * Returns nothing, because ARM returns nothing — so there is no payload to
+ * attach, only the sidecar.
+ */
+export async function deleteDeploymentStack(
+  client: ArmClient,
+  args: DeleteArgs,
+  log: (message: string) => void,
+): Promise<void> {
+  const { resources, resourceGroups, managementGroups } = args.actionOnUnmanage;
+  const url = client.url(deploymentStackId(args.scope, args.name), {
+    'unmanageAction.Resources': resources,
+    ...(resourceGroups !== undefined ? { 'unmanageAction.ResourceGroups': resourceGroups } : {}),
+    ...(managementGroups !== undefined
+      ? { 'unmanageAction.ManagementGroups': managementGroups }
+      : {}),
+    ...(args.bypassStackOutOfSyncError ? { bypassStackOutOfSyncError: 'true' } : {}),
+  });
+  const response = await client.request({ method: 'DELETE', url, tolerate: [404], maxAttempts: 3 });
+  if (response.status === 404) {
+    log(`No deployment stack named ${args.name} — nothing to delete.`);
+    return;
+  }
+  if (response.status === 202) {
+    await client.pollOperation(response, {
+      ...args.poll,
+      describe: `Deleting deployment stack ${args.name}`,
+    });
+  }
 }
 
 /** Turn a thrown ARM error into the payload shape everything downstream reads. */

@@ -9,12 +9,13 @@
  * bad input per run costs a five-minute agent round trip per typo.
  */
 import { DEFAULT_RETENTION_INTERVAL } from './contract.js';
+import { DEFAULT_BICEP_VERSION } from './bicep/asset.js';
 
 /**
  * `BicepDeploy@0`'s operation names. `whatIf` is the default, where Microsoft's
  * is `create`: a step that leaves `operation` out must never deploy.
  */
-export const OPERATIONS = ['whatIf', 'create'] as const;
+export const OPERATIONS = ['whatIf', 'create', 'validate', 'delete'] as const;
 export type Operation = (typeof OPERATIONS)[number];
 
 /** The three scopes a deployment stack can live at. There is no tenant scope. */
@@ -38,7 +39,7 @@ export interface ActionOnUnmanageInput {
 }
 
 /** `BicepDeploy@0`'s spellings; `request.ts` sends ARM's capitalised ones. */
-export const VALIDATION_LEVELS = ['template', 'provider', 'providerNoRbac'] as const;
+export const VALIDATION_LEVELS = ['provider', 'template', 'providerNoRbac'] as const;
 export type ValidationLevel = (typeof VALIDATION_LEVELS)[number];
 
 export const DENY_SETTINGS_MODES = ['none', 'denyDelete', 'denyWriteAndDelete'] as const;
@@ -81,6 +82,8 @@ export interface TaskInputs {
   tags: Record<string, string>;
   /** Undefined leaves the service's own default. */
   validationLevel: ValidationLevel | undefined;
+  /** Outputs masked in the log and redacted from the payload. `create` only. */
+  maskedOutputs: string[];
   actionOnUnmanage: ActionOnUnmanageInput;
   denySettings: DenySettingsInput;
   /** ISO 8601 duration. What-if only; the service caps it at PT3H. */
@@ -210,11 +213,13 @@ export function parseInputs(raw: RawInputs, warnings: string[] = []): TaskInputs
   const connectedService = required(raw, 'ConnectedServiceName', problems);
   const stackId = required(raw, 'stackId', problems);
   const scope = oneOf(raw, 'scope', SCOPES, 'subscription', problems);
-  const where = parseWhere(raw, scope, problems, warnings);
+  const isDelete = operation === 'delete';
+  warnUnused(raw, operation, warnings);
+  const where = parseWhere(raw, scope, isDelete, problems, warnings);
 
   const parametersFile = trimmed(raw, 'parametersFile');
   const templateFile = trimmed(raw, 'templateFile');
-  if (templateFile === undefined && !isBicepParamFile(parametersFile)) {
+  if (!isDelete && templateFile === undefined && !isBicepParamFile(parametersFile)) {
     problems.push(
       'templateFile is required, unless parametersFile is a .bicepparam, which names its ' +
         'own template.',
@@ -258,7 +263,14 @@ export function parseInputs(raw: RawInputs, warnings: string[] = []): TaskInputs
   }
 
   const denySettings: DenySettingsInput = {
-    mode: oneOf(raw, 'denySettingsMode', DENY_SETTINGS_MODES, undefined, problems),
+    // A delete sends no deny settings, so it does not ask for them.
+    mode: oneOf(
+      raw,
+      'denySettingsMode',
+      DENY_SETTINGS_MODES,
+      isDelete ? 'none' : undefined,
+      problems,
+    ),
     applyToChildScopes: bool(raw, 'denySettingsApplyToChildScopes', false, problems),
     excludedActions: list(raw, 'denySettingsExcludedActions'),
     excludedPrincipals: list(raw, 'denySettingsExcludedPrincipals'),
@@ -292,6 +304,7 @@ export function parseInputs(raw: RawInputs, warnings: string[] = []): TaskInputs
     parameters,
     tags: tags as Record<string, string>,
     validationLevel: optionalOneOf(raw, 'validationLevel', VALIDATION_LEVELS, problems),
+    maskedOutputs: list(raw, 'maskedOutputs'),
     actionOnUnmanage,
     denySettings,
     retentionInterval,
@@ -332,6 +345,62 @@ function jsonObject(raw: RawInputs, name: string, problems: string[]): Record<st
   return parsed as Record<string, unknown>;
 }
 
+/**
+ * The inputs each operation has no use for. A delete compiles nothing and
+ * sends no body; only a what-if has a result resource; only a create has
+ * outputs; and the validate and what-if APIs take no out-of-sync bypass.
+ */
+const UNUSED_BY: Record<Operation, readonly string[]> = {
+  whatIf: ['maskedOutputs', 'bypassStackOutOfSyncError'],
+  create: ['retentionInterval', 'deleteWhatIfResult', 'resultName'],
+  validate: [
+    'retentionInterval',
+    'deleteWhatIfResult',
+    'resultName',
+    'maskedOutputs',
+    'bypassStackOutOfSyncError',
+  ],
+  delete: [
+    'templateFile',
+    'parametersFile',
+    'parameters',
+    'location',
+    'denySettingsMode',
+    'denySettingsApplyToChildScopes',
+    'denySettingsExcludedActions',
+    'denySettingsExcludedPrincipals',
+    'tags',
+    'validationLevel',
+    'description',
+    'bicepVersion',
+    'retentionInterval',
+    'deleteWhatIfResult',
+    'resultName',
+    'maskedOutputs',
+  ],
+};
+
+/**
+ * `task.json`'s default values. The agent fills one in for every input a step
+ * leaves out, so a value equal to its default says nothing about intent.
+ */
+const TASK_DEFAULTS: Readonly<Record<string, string>> = {
+  retentionInterval: DEFAULT_RETENTION_INTERVAL,
+  deleteWhatIfResult: 'true',
+  bypassStackOutOfSyncError: 'false',
+  denySettingsApplyToChildScopes: 'false',
+  bicepVersion: DEFAULT_BICEP_VERSION,
+};
+
+function warnUnused(raw: RawInputs, operation: Operation, warnings: string[]): void {
+  for (const name of UNUSED_BY[operation]) {
+    const value = trimmed(raw, name);
+    if (value === undefined) continue;
+    if (value.toLowerCase() === TASK_DEFAULTS[name]?.toLowerCase()) continue;
+    warnings.push(`${name} is ignored: operation ${operation} does not use it.`);
+  }
+}
+
 function isBicepParamFile(file: string | undefined): boolean {
   return file !== undefined && file.toLowerCase().endsWith('.bicepparam');
 }
@@ -362,14 +431,25 @@ interface Where {
  * The inputs that say where the stack is. Each is required at the scope that
  * needs it and ignored, with a warning, at the others.
  */
-function parseWhere(raw: RawInputs, scope: Scope, problems: string[], warnings: string[]): Where {
+function parseWhere(
+  raw: RawInputs,
+  scope: Scope,
+  isDelete: boolean,
+  problems: string[],
+  warnings: string[],
+): Where {
   let subscriptionId = trimmed(raw, 'subscriptionId');
   let resourceGroupName: string | undefined;
   let managementGroupId: string | undefined;
   let location = trimmed(raw, 'location');
 
   if (scope === 'managementGroup') {
-    ignored(raw, 'subscriptionId', 'a management-group stack belongs to no subscription.', warnings);
+    ignored(
+      raw,
+      'subscriptionId',
+      'a management-group stack belongs to no subscription.',
+      warnings,
+    );
     subscriptionId = undefined;
   } else if (subscriptionId !== undefined && !GUID.test(subscriptionId)) {
     problems.push(`subscriptionId "${subscriptionId}" is not a subscription id (a GUID).`);
@@ -380,11 +460,16 @@ function parseWhere(raw: RawInputs, scope: Scope, problems: string[], warnings: 
     if (resourceGroupName.length > 0 && !GROUP_NAME.test(resourceGroupName)) {
       problems.push(`resourceGroupName "${resourceGroupName}" is not a valid resource group name.`);
     }
-    ignored(raw, 'location', "a resource-group stack takes its group's location.", warnings);
+    if (!isDelete) {
+      ignored(raw, 'location', "a resource-group stack takes its group's location.", warnings);
+    }
     location = undefined;
   } else {
     ignored(raw, 'resourceGroupName', `scope is ${scope}.`, warnings);
-    if (location === undefined) problems.push(`location is required at ${scope} scope.`);
+    // A delete creates nothing, so it needs no location; `warnUnused` says so if one is set.
+    if (location === undefined && !isDelete) {
+      problems.push(`location is required at ${scope} scope.`);
+    }
   }
 
   if (scope === 'managementGroup') {

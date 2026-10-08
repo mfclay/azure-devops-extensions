@@ -84,7 +84,7 @@ const RAW: RawInputs = {
 
 interface Route {
   match: (url: string, method: string) => boolean;
-  reply: () => { status?: number; body?: unknown };
+  reply: () => { status?: number; body?: unknown; headers?: Record<string, string> };
 }
 
 interface Harness {
@@ -95,6 +95,7 @@ interface Harness {
   logs: string[];
   warnings: string[];
   secrets: string[];
+  outputs: Record<string, string>;
   outputPath: string;
 }
 
@@ -116,6 +117,7 @@ function harness(options: {
   const logs: string[] = [];
   const warnings: string[] = [];
   const secrets: string[] = [];
+  const outputs: Record<string, string> = {};
 
   const defaultRoutes: Route[] = [
     { match: (u) => u.includes('oauth2'), reply: () => ({ body: { access_token: 't', expires_in: 3599 } }) },
@@ -131,10 +133,11 @@ function harness(options: {
     const sent = url.includes('oauth2') ? undefined : parseBody(init?.body);
     requests.push({ url, method, body: sent });
     const route = routes.find((r) => r.match(url, method));
-    const { status = 200, body } = route?.reply() ?? { status: 404, body: {} };
-    return new Response(body === undefined ? '' : JSON.stringify(body), {
+    const { status = 200, body, headers } = route?.reply() ?? { status: 404, body: {} };
+    // A 204 must have no body at all; `Response` throws on even an empty one.
+    return new Response(body === undefined ? null : JSON.stringify(body), {
       status,
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', ...(headers ?? {}) },
     });
   };
 
@@ -148,6 +151,9 @@ function harness(options: {
     log: (m) => logs.push(m),
     warn: (m) => warnings.push(m),
     setSecret: (v) => secrets.push(v),
+    setOutput: (name, value) => {
+      outputs[name] = value;
+    },
     addAttachment: (type, name, path) => attachments.push({ type, name, path }),
     now: () => new Date('2026-08-25T20:15:30Z'),
     version: '0.1.0',
@@ -160,7 +166,7 @@ function harness(options: {
     } as unknown as RunDeps['bicep'],
   };
 
-  return { deps, attachments, requests, logs, warnings, secrets, outputPath };
+  return { deps, attachments, requests, logs, warnings, secrets, outputs, outputPath };
 }
 
 const find = (h: Harness, type: string) => h.attachments.find((a) => a.type === type);
@@ -491,6 +497,213 @@ describe('run — the create operation', () => {
     const h = harness({ raw: { ...RAW, operation: 'create' } });
     await run(h.deps);
     expect(h.requests.some((r) => r.method === 'DELETE')).toBe(false);
+  });
+});
+
+describe('run — the create operation, outputs', () => {
+  const CREATED = {
+    id: '/subscriptions/sub-1/providers/Microsoft.Resources/deploymentStacks/app-network',
+    properties: {
+      provisioningState: 'succeeded',
+      outputs: {
+        vnetId: { type: 'String', value: '/subscriptions/sub-1/vnets/v' },
+        connection: { type: 'String', value: 'Server=pg;Password=out-secret-9f2' },
+        subnets: { type: 'Array', value: ['a', 'b'] },
+      },
+    },
+  };
+  const created: Route = {
+    match: (u, m) => u.includes('/deploymentStacks/') && m === 'PUT',
+    reply: () => ({ body: CREATED }),
+  };
+
+  it('sets every output as an output variable, objects as JSON', async () => {
+    const h = harness({ raw: { ...RAW, operation: 'create' }, routes: [created] });
+    await run(h.deps);
+    expect(h.outputs).toEqual({
+      vnetId: '/subscriptions/sub-1/vnets/v',
+      connection: 'Server=pg;Password=out-secret-9f2',
+      subnets: '["a","b"]',
+    });
+  });
+
+  it('masks a named output in the log and redacts it from the attached payload', async () => {
+    const h = harness({
+      raw: { ...RAW, operation: 'create', maskedOutputs: 'Connection' },
+      routes: [created],
+    });
+    await run(h.deps);
+    expect(h.secrets).toContain('Server=pg;Password=out-secret-9f2');
+    const raw = readFileSync(find(h, 'whatif.stack.create.json')!.path, 'utf8');
+    expect(raw).not.toContain('out-secret-9f2');
+    expect(raw).toContain('/subscriptions/sub-1/vnets/v');
+  });
+
+  it('sets no outputs from a create that failed', async () => {
+    const h = harness({
+      raw: { ...RAW, operation: 'create' },
+      routes: [
+        {
+          match: (u, m) => u.includes('/deploymentStacks/') && m === 'PUT',
+          reply: () => ({
+            body: { ...CREATED, properties: { ...CREATED.properties, provisioningState: 'failed' } },
+          }),
+        },
+      ],
+    });
+    await run(h.deps);
+    expect(h.outputs).toEqual({});
+  });
+});
+
+describe('run — the validate operation', () => {
+  const VALID = {
+    id: '/subscriptions/sub-1/providers/Microsoft.Resources/deploymentStacks/app-network',
+    properties: { validatedResources: [{ id: 'r1' }] },
+  };
+
+  it('POSTs the create body to validate, without the out-of-sync bypass', async () => {
+    const h = harness({
+      raw: { ...RAW, operation: 'validate', bypassStackOutOfSyncError: 'true' },
+      routes: [{ match: (u, m) => u.includes('/validate') && m === 'POST', reply: () => ({ body: VALID }) }],
+    });
+    const result = await run(h.deps);
+    expect(result.status).toBe('succeeded');
+    const post = h.requests.find((r) => r.method === 'POST' && r.url.includes('/validate'));
+    expect(post?.url).toContain('/deploymentStacks/app-network/validate?');
+    const sent = post?.body as { properties: Record<string, unknown> };
+    expect(sent.properties).not.toHaveProperty('bypassStackOutOfSyncError');
+    expect(sent.properties['parameters']).toHaveProperty('location');
+    expect(find(h, 'whatif.stack.validate.json')).toBeDefined();
+    const sidecar = readAttachment(h, 'whatif.stack.validate.sidecar') as Record<string, unknown>;
+    expect(sidecar['operation']).toBe('validate');
+    expect(sidecar['status']).toBe('succeeded');
+    // Validate creates nothing, so there is nothing to clean up.
+    expect(h.requests.some((r) => r.method === 'DELETE')).toBe(false);
+  });
+
+  it('follows an accepted validation to its result', async () => {
+    const location = 'https://management.azure.com/operationResults/op-1';
+    const h = harness({
+      raw: { ...RAW, operation: 'validate' },
+      routes: [
+        {
+          match: (u, m) => u.includes('/validate') && m === 'POST',
+          reply: () => ({ status: 202, headers: { location } }),
+        },
+        { match: (u, m) => u === location && m === 'GET', reply: () => ({ body: VALID }) },
+      ],
+    });
+    expect((await run(h.deps)).status).toBe('succeeded');
+  });
+
+  it('fails, and attaches the reason, when the service finds the stack invalid', async () => {
+    const h = harness({
+      raw: { ...RAW, operation: 'validate' },
+      routes: [
+        {
+          match: (u, m) => u.includes('/validate') && m === 'POST',
+          reply: () => ({
+            status: 400,
+            body: { error: { code: 'InvalidTemplate', message: 'Template is invalid.' } },
+          }),
+        },
+      ],
+    });
+    const result = await run(h.deps);
+    expect(result.status).toBe('failed');
+    expect(result.message).toContain('validate failed');
+    const sidecar = readAttachment(h, 'whatif.stack.validate.sidecar') as Record<string, unknown>;
+    expect(JSON.stringify(sidecar['error'])).toContain('InvalidTemplate');
+  });
+});
+
+describe('run — the delete operation', () => {
+  const DELETE_RAW: RawInputs = {
+    ConnectedServiceName: 'MyConnection',
+    operation: 'delete',
+    stackId: 'network',
+    stackName: 'app-network',
+    actionOnUnmanageResources: 'delete',
+    actionOnUnmanageResourceGroups: 'detach',
+  };
+
+  it('compiles nothing and sends the unmanage switches as query parameters', async () => {
+    let compiled = false;
+    const h = harness({
+      raw: { ...DELETE_RAW, bypassStackOutOfSyncError: 'true' },
+      compile: async () => {
+        compiled = true;
+        return { template: TEMPLATE, parameters: PARAMETERS };
+      },
+      routes: [{ match: (u, m) => u.includes('/deploymentStacks/') && m === 'DELETE', reply: () => ({ status: 200 }) }],
+    });
+    const result = await run(h.deps);
+    expect(result.status).toBe('succeeded');
+    expect(compiled).toBe(false);
+    const del = h.requests.find((r) => r.method === 'DELETE');
+    const query = new URL(del!.url).searchParams;
+    expect(query.get('unmanageAction.Resources')).toBe('delete');
+    expect(query.get('unmanageAction.ResourceGroups')).toBe('detach');
+    expect(query.has('unmanageAction.ManagementGroups')).toBe(false);
+    expect(query.get('bypassStackOutOfSyncError')).toBe('true');
+  });
+
+  it('attaches a sidecar and no payload, since ARM returns none', async () => {
+    const h = harness({
+      raw: DELETE_RAW,
+      routes: [{ match: (u, m) => u.includes('/deploymentStacks/') && m === 'DELETE', reply: () => ({ status: 204 }) }],
+    });
+    const result = await run(h.deps);
+    expect(result.payloadAttached).toBe(false);
+    expect(find(h, 'whatif.stack.delete.json')).toBeUndefined();
+    const sidecar = readAttachment(h, 'whatif.stack.delete.sidecar') as Record<string, unknown>;
+    expect(sidecar['operation']).toBe('delete');
+    expect(sidecar['status']).toBe('succeeded');
+    expect(sidecar['deploymentStackId']).toBe(
+      '/subscriptions/sub-1/providers/Microsoft.Resources/deploymentStacks/app-network',
+    );
+  });
+
+  it('follows an accepted delete to the end before reporting success', async () => {
+    const location = 'https://management.azure.com/operationResults/del-1';
+    const h = harness({
+      raw: DELETE_RAW,
+      routes: [
+        {
+          match: (u, m) => u.includes('/deploymentStacks/') && m === 'DELETE',
+          reply: () => ({ status: 202, headers: { location } }),
+        },
+        { match: (u) => u === location, reply: () => ({ status: 204 }) },
+      ],
+    });
+    expect((await run(h.deps)).status).toBe('succeeded');
+    expect(h.requests.some((r) => r.url === location)).toBe(true);
+  });
+
+  it('counts a stack that is already gone as deleted', async () => {
+    const h = harness({
+      raw: DELETE_RAW,
+      routes: [{ match: (u, m) => u.includes('/deploymentStacks/') && m === 'DELETE', reply: () => ({ status: 404, body: {} }) }],
+    });
+    expect((await run(h.deps)).status).toBe('succeeded');
+    expect(h.logs.join('\n')).toContain('nothing to delete');
+  });
+
+  it('fails, with a sidecar carrying the reason, when ARM refuses', async () => {
+    const h = harness({
+      raw: DELETE_RAW,
+      routes: [
+        {
+          match: (u, m) => u.includes('/deploymentStacks/') && m === 'DELETE',
+          reply: () => ({ status: 409, body: { error: { code: 'DeploymentStackInUse', message: 'Busy.' } } }),
+        },
+      ],
+    });
+    const result = await run(h.deps);
+    expect(result.status).toBe('failed');
+    const sidecar = readAttachment(h, 'whatif.stack.delete.sidecar') as Record<string, unknown>;
+    expect(JSON.stringify(sidecar['error'])).toContain('DeploymentStackInUse');
   });
 });
 

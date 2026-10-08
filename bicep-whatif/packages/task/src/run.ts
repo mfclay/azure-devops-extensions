@@ -31,15 +31,22 @@ import {
   type StackScope,
 } from './ids.js';
 import { parseInputs, type RawInputs, type TaskInputs } from './inputs.js';
-import { failureEnvelope, outcomeOf, type RunStatus } from './outcome.js';
+import {
+  failureEnvelope,
+  outcomeOf,
+  validationOutcomeOf,
+  type Outcome,
+  type RunStatus,
+} from './outcome.js';
 import {
   actionOnUnmanageBody,
   buildCreateRequest,
+  buildValidateRequest,
   buildWhatIfRequest,
   effectiveParameters,
   type ActionOnUnmanageBody,
 } from './request.js';
-import { redactPayload, redactText, secureValuesFrom } from './redact.js';
+import { redactPayload, redactText, secretLeaves, secureValuesFrom } from './redact.js';
 import { stackSidecar, whatIfSidecar } from './sidecar.js';
 import { renderSummary, resultLine } from './summary.js';
 import {
@@ -54,8 +61,10 @@ import { ArmClient } from './arm/client.js';
 import {
   createDeploymentStack,
   createWhatIfResult,
+  deleteDeploymentStack,
   deleteWhatIfResult,
   envelopeFor,
+  validateDeploymentStack,
 } from './arm/operations.js';
 import { DEFAULT_BICEP_VERSION } from './bicep/asset.js';
 import {
@@ -77,6 +86,8 @@ export interface RunDeps extends AttachDeps {
   warn: (message: string) => void;
   /** Marks a secret so the agent masks it in the log, belt to redaction's braces. */
   setSecret: (value: string) => void;
+  /** Sets an output variable, `$(<step>.<name>)` to later steps and jobs. */
+  setOutput: (name: string, value: string) => void;
   now: () => Date;
   /** Package version, for the sidecar's `producer` field. */
   version: string;
@@ -125,19 +136,31 @@ export async function run(deps: RunDeps): Promise<RunResult> {
   let client: ArmClient | undefined;
 
   const bicep = deps.bicep ?? { ensure: ensureBicep, compile, version: bicepVersion };
-  const compilerNeeded = needsCompiler(inputs.templateFile, inputs.parametersFile);
+  const compilerNeeded =
+    operation !== 'delete' && needsCompiler(inputs.templateFile, inputs.parametersFile);
 
-  /** Every exit from this function goes through here. */
-  const finish = async (payload: unknown, thrown?: unknown): Promise<RunResult> => {
+  /**
+   * Every exit from this function goes through here. `known` is for the one
+   * success with no payload to judge, a delete; anything else is judged by its
+   * payload, which a run with nothing to show leaves undefined and unattached.
+   */
+  const finish = async (
+    payload: unknown,
+    thrown?: unknown,
+    known?: Outcome,
+  ): Promise<RunResult> => {
     const redacted = redactPayload(payload, secureValues);
-    const outcome = outcomeOf(redacted);
+    const outcome =
+      known ?? (operation === 'validate' ? validationOutcomeOf(redacted) : outcomeOf(redacted));
 
-    const payloadAttached = await writeAndAttach(deps, outputPath, {
-      type: payloadType,
-      name: inputs.stackId,
-      fileName: `${resultName}.json`,
-      content: JSON.stringify(redacted, null, 2),
-    });
+    const payloadAttached =
+      redacted !== undefined &&
+      (await writeAndAttach(deps, outputPath, {
+        type: payloadType,
+        name: inputs.stackId,
+        fileName: `${resultName}.json`,
+        content: JSON.stringify(redacted, null, 2),
+      }));
 
     const sidecar = isWhatIf
       ? whatIfSidecar({
@@ -201,7 +224,7 @@ export async function run(deps: RunDeps): Promise<RunResult> {
           fileName: `${resultName}.md`,
           content:
             `## ${inputs.stackName}\n\n\`${outcome.provisioningState ?? 'succeeded'}\` — ` +
-            'deployment stack updated.\n',
+            `deployment stack ${DONE[operation]}.\n`,
         });
       }
     } else {
@@ -227,8 +250,12 @@ export async function run(deps: RunDeps): Promise<RunResult> {
     // ── Compile, and learn what has to be scrubbed ────────────────────────────
     // A pre-compiled ARM template with a JSON parameters file needs no compiler
     // at all, and downloading 105 MB to read it back would be a poor trade.
+    let template: unknown;
+    let parameters = effectiveParameters({}, {});
     let binary = '';
-    if (compilerNeeded) {
+    if (operation === 'delete') {
+      deps.log('A delete sends no template, so nothing is compiled.');
+    } else if (compilerNeeded) {
       binary = await bicep.ensure(
         inputs.bicepVersion.length > 0 ? inputs.bicepVersion : DEFAULT_BICEP_VERSION,
         deps.log,
@@ -241,23 +268,26 @@ export async function run(deps: RunDeps): Promise<RunResult> {
       );
     }
 
-    const compiled = await bicep.compile(
-      binary,
-      inputs.templateFile,
-      inputs.parametersFile,
-      inputs.parameters,
-    );
-    const parameters = effectiveParameters(compiled.parameters, inputs.parameters);
+    if (operation !== 'delete') {
+      const compiled = await bicep.compile(
+        binary,
+        inputs.templateFile,
+        inputs.parametersFile,
+        inputs.parameters,
+      );
+      template = compiled.template;
+      parameters = effectiveParameters(compiled.parameters, inputs.parameters);
 
-    // Fail closed: not knowing which parameters are secure is not a reason to
-    // publish the payload anyway. Read off exactly what ARM is about to be sent,
-    // inline overrides included.
-    secureValues = secureValuesFrom(compiled.template, parameters);
-    for (const value of secureValues) deps.setSecret(value);
-    deps.log(
-      `${secureValues.length} secure parameter value${secureValues.length === 1 ? '' : 's'} ` +
-        'will be redacted from the payload.',
-    );
+      // Fail closed: not knowing which parameters are secure is not a reason to
+      // publish the payload anyway. Read off exactly what ARM is about to be sent,
+      // inline overrides included.
+      secureValues = secureValuesFrom(template, parameters);
+      for (const value of secureValues) deps.setSecret(value);
+      deps.log(
+        `${secureValues.length} secure parameter value${secureValues.length === 1 ? '' : 's'} ` +
+          'will be redacted from the payload.',
+      );
+    }
 
     // ── Authenticate ──────────────────────────────────────────────────────────
     scope = stackScope(inputs, deps.endpoint);
@@ -284,42 +314,71 @@ export async function run(deps: RunDeps): Promise<RunResult> {
     const unmanage = describeUnmanage(actionOnUnmanageBody(inputs.actionOnUnmanage));
 
     // ── Run it ────────────────────────────────────────────────────────────────
-    if (isWhatIf) {
-      const body = buildWhatIfRequest({
-        inputs,
-        template: compiled.template,
-        parameters,
-        deploymentStackResourceId: stackResourceId,
-      });
-      deps.log(
-        `Stack what-if for ${inputs.stackName} (${unmanage}, deny ` +
-          `${inputs.denySettings.mode}) as ${resultName}, retained ${inputs.retentionInterval}.`,
-      );
-      deleteNeeded = inputs.deleteWhatIfResult;
-      const payload = await createWhatIfResult(client, {
-        scope,
-        name: resultName,
-        body,
-        poll: POLL,
-      });
-      return await finish(payload);
-    }
+    const request = { inputs, template, parameters, deploymentStackResourceId: stackResourceId };
+    switch (operation) {
+      case 'whatIf': {
+        deps.log(
+          `Stack what-if for ${inputs.stackName} (${unmanage}, deny ` +
+            `${inputs.denySettings.mode}) as ${resultName}, retained ${inputs.retentionInterval}.`,
+        );
+        deleteNeeded = inputs.deleteWhatIfResult;
+        const payload = await createWhatIfResult(client, {
+          scope,
+          name: resultName,
+          body: buildWhatIfRequest(request),
+          poll: POLL,
+        });
+        return await finish(payload);
+      }
 
-    const body = buildCreateRequest({
-      inputs,
-      template: compiled.template,
-      parameters,
-      deploymentStackResourceId: stackResourceId,
-    });
-    deps.log(`Deploying stack ${inputs.stackName} (${unmanage}).`);
-    const payload = await createDeploymentStack(client, {
-      scope,
-      name: inputs.stackName,
-      body,
-      poll: POLL,
-      bypassStackOutOfSyncError: inputs.bypassStackOutOfSyncError,
-    });
-    return await finish(payload);
+      case 'create': {
+        deps.log(`Deploying stack ${inputs.stackName} (${unmanage}).`);
+        const payload = await createDeploymentStack(client, {
+          scope,
+          name: inputs.stackName,
+          body: buildCreateRequest(request),
+          poll: POLL,
+          bypassStackOutOfSyncError: inputs.bypassStackOutOfSyncError,
+        });
+        // Before `finish`, so a masked output is redacted from the payload too.
+        if (outcomeOf(payload).status === 'succeeded') publishOutputs(payload);
+        return await finish(payload);
+      }
+
+      case 'validate': {
+        deps.log(`Validating stack ${inputs.stackName} (${unmanage}).`);
+        const payload = await validateDeploymentStack(client, {
+          scope,
+          name: inputs.stackName,
+          body: buildValidateRequest(request),
+          poll: POLL,
+        });
+        return await finish(payload);
+      }
+
+      case 'delete': {
+        deps.log(`Deleting stack ${inputs.stackName} (${unmanage}).`);
+        await deleteDeploymentStack(
+          client,
+          {
+            scope,
+            name: inputs.stackName,
+            actionOnUnmanage: actionOnUnmanageBody(inputs.actionOnUnmanage),
+            bypassStackOutOfSyncError: inputs.bypassStackOutOfSyncError,
+            poll: POLL,
+          },
+          deps.log,
+        );
+        return await finish(undefined, undefined, {
+          status: 'succeeded',
+          error: null,
+          provisioningState: undefined,
+          resourceId: stackResourceId,
+        });
+      }
+    }
+    const unhandled: never = operation;
+    throw new Error(`Operation ${String(unhandled)} has no implementation.`);
   } catch (error) {
     return await finish(envelopeFor(error), error);
   } finally {
@@ -327,6 +386,58 @@ export async function run(deps: RunDeps): Promise<RunResult> {
       await deleteWhatIfResult(client, scope, resultName, deps.log);
     }
   }
+
+  /**
+   * A create's outputs, as output variables named for each output — the way
+   * `BicepDeploy@0` sets them, so `$(<step>.<output>)` works the same. An
+   * object or array output is set as its JSON.
+   *
+   * A name in `maskedOutputs` is marked secret before it is set, so the agent
+   * masks it from then on, and joins the values redaction removes: the
+   * payload attached beside this carries the stack's outputs too.
+   */
+  function publishOutputs(payload: unknown): void {
+    const outputs = outputsOf(payload);
+    const masked = new Set(inputs.maskedOutputs.map((name) => name.toLowerCase()));
+    for (const [name, value] of Object.entries(outputs)) {
+      const text = typeof value === 'string' ? value : (JSON.stringify(value) ?? '');
+      if (masked.has(name.toLowerCase())) {
+        const leaves = secretLeaves(value);
+        for (const leaf of leaves) deps.setSecret(leaf);
+        deps.setSecret(text);
+        secureValues = [...secureValues, ...leaves];
+      }
+      deps.setOutput(name, text);
+    }
+    const names = Object.keys(outputs);
+    if (names.length > 0) {
+      deps.log(`Set ${names.length} output variable(s): ${names.join(', ')}.`);
+    }
+  }
+}
+
+/** Past tense of each operation but `whatIf`, for the build summary. */
+const DONE: Record<string, string> = {
+  create: 'updated',
+  validate: 'validated',
+  delete: 'deleted',
+};
+
+/** `properties.outputs`, name to value; ARM wraps each as `{ type, value }`. */
+function outputsOf(payload: unknown): Record<string, unknown> {
+  if (payload === null || typeof payload !== 'object') return {};
+  const properties = (payload as Record<string, unknown>)['properties'];
+  if (properties === null || typeof properties !== 'object') return {};
+  const outputs = (properties as Record<string, unknown>)['outputs'];
+  if (outputs === null || typeof outputs !== 'object') return {};
+  const values: Record<string, unknown> = {};
+  for (const [name, entry] of Object.entries(outputs as Record<string, unknown>)) {
+    values[name] =
+      entry !== null && typeof entry === 'object' && 'value' in entry
+        ? (entry as Record<string, unknown>)['value']
+        : entry;
+  }
+  return values;
 }
 
 /**

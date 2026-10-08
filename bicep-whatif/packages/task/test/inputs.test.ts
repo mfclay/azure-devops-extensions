@@ -61,7 +61,9 @@ describe('parseInputs', () => {
       expect(problems.length).toBeGreaterThan(4);
       expect(problems.join('\n')).toContain('ConnectedServiceName is required');
       expect(problems.join('\n')).toContain('stackId is required');
-      expect(problems.join('\n')).toContain('operation must be one of whatIf, create');
+      expect(problems.join('\n')).toContain(
+        'operation must be one of whatIf, create, validate, delete',
+      );
       expect(problems.join('\n')).toContain('actionOnUnmanageResources must be one of');
     }
   });
@@ -239,8 +241,56 @@ describe('parseInputs', () => {
       'providerNoRbac',
     );
     expect(() => parseInputs({ ...MINIMAL, validationLevel: 'strict' })).toThrow(
-      /validationLevel must be one of template, provider, providerNoRbac/,
+      /validationLevel must be one of provider, template, providerNoRbac/,
     );
+  });
+
+  it('needs no template, location or deny settings to delete', () => {
+    const inputs = parseInputs({
+      ConnectedServiceName: 'c',
+      operation: 'delete',
+      stackId: 'network',
+      actionOnUnmanageResources: 'delete',
+      actionOnUnmanageResourceGroups: 'delete',
+    });
+    expect(inputs.operation).toBe('delete');
+    expect(inputs.templateFile).toBeUndefined();
+  });
+
+  it('warns about an input the operation does not use', () => {
+    const warnings: string[] = [];
+    parseInputs({ ...MINIMAL, operation: 'delete', parametersFile: 'p.json', tags: '{}' }, warnings);
+    expect(warnings).toEqual([
+      'templateFile is ignored: operation delete does not use it.',
+      'parametersFile is ignored: operation delete does not use it.',
+      'location is ignored: operation delete does not use it.',
+      'denySettingsMode is ignored: operation delete does not use it.',
+      'tags is ignored: operation delete does not use it.',
+    ]);
+  });
+
+  it("does not warn about a value equal to task.json's default, which the agent fills in", () => {
+    // The agent sends retentionInterval: PT3H on every create, set or not.
+    const warnings: string[] = [];
+    parseInputs(
+      {
+        ...MINIMAL,
+        operation: 'create',
+        retentionInterval: 'PT3H',
+        deleteWhatIfResult: 'true',
+        bicepVersion: '0.46.1',
+      },
+      warnings,
+    );
+    expect(warnings).toEqual([]);
+    parseInputs({ ...MINIMAL, operation: 'create', retentionInterval: 'PT1H' }, warnings);
+    expect(warnings).toEqual(['retentionInterval is ignored: operation create does not use it.']);
+  });
+
+  it('reads masked outputs as a comma- or space-separated list', () => {
+    expect(
+      parseInputs({ ...MINIMAL, operation: 'create', maskedOutputs: 'a, b c' }).maskedOutputs,
+    ).toEqual(['a', 'b', 'c']);
   });
 
   it('rejects a stackId that would break the attachment href', () => {

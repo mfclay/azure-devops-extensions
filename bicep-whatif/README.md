@@ -26,7 +26,7 @@ An extension tab is the only way to get JavaScript onto that page.
 | Package | State | What it is |
 |---|---|---|
 | [`packages/core`](packages/core) | **built** | Normalizer and severity model. No UI dependencies. |
-| [`packages/task`](packages/task) | **built** | The pipeline task — one Node task (`Node20_1` and `Node24`), `operation: whatIf \| create`. |
+| [`packages/task`](packages/task) | **built** | The pipeline task — one Node task (`Node20_1` and `Node24`), `operation: whatIf \| create \| validate \| delete`. |
 | [`packages/ui`](packages/ui) | **built** | The build-results tab — a static React 19 SPA. |
 | [`packages/extension`](packages/extension) | **built** | The manifest that binds the two into one VSIX. |
 

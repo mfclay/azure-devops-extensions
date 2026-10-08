@@ -30,7 +30,10 @@ export function attachmentTypesFor(operation: string): { payload: string; sideca
   if (operation === 'whatIf') {
     return { payload: ATTACHMENT_TYPE_PAYLOAD, sidecar: ATTACHMENT_TYPE_SIDECAR };
   }
-  return { payload: `whatif.stack.${operation}.json`, sidecar: `whatif.stack.${operation}.sidecar` };
+  return {
+    payload: `whatif.stack.${operation}.json`,
+    sidecar: `whatif.stack.${operation}.sidecar`,
+  };
 }
 
 /** Renders as markdown on the build's summary page. Azure DevOps owns this name. */

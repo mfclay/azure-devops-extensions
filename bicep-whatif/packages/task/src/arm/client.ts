@@ -61,8 +61,8 @@ function isRetryable(status: number): boolean {
   return status === 429 || status === 408 || (status >= 500 && status <= 599);
 }
 
-function retryAfterMs(response: Response, fallback: number): number {
-  const header = response.headers.get('retry-after');
+function retryAfterMs(headers: Headers, fallback: number): number {
+  const header = headers.get('retry-after');
   if (header === null) return fallback;
   const seconds = Number(header);
   if (Number.isFinite(seconds) && seconds >= 0) return Math.min(seconds * 1000, 60_000);
@@ -190,7 +190,10 @@ export class ArmClient {
       }
 
       if (isRetryable(response.status) && attempt < maxAttempts) {
-        const wait = retryAfterMs(response, Math.min(1000 * 2 ** (attempt - 1), 30_000));
+        const wait = retryAfterMs(
+          response.headers,
+          Math.min(1000 * 2 ** (attempt - 1), 30_000),
+        );
         this.deps.log(
           `ARM returned ${response.status}; retrying in ${Math.round(wait / 1000)}s ` +
             `(attempt ${attempt} of ${maxAttempts}).`,
@@ -254,6 +257,47 @@ export class ArmClient {
         );
       }
       await this.deps.sleep(options.intervalMs);
+    }
+  }
+
+  /**
+   * Follow an accepted long-running operation's `Location` to its end.
+   *
+   * For the operations ARM finishes "via location" — stack validate and stack
+   * delete — there is no resource to watch: a validation produces none, and a
+   * deleted stack is a 404 whether it went or never was. `Location` answers
+   * 202 while the operation runs, then the result: 200 with a body, 204
+   * without, or an error status, which `request` throws as for any call.
+   */
+  async pollOperation(
+    accepted: ArmResponse,
+    options: { intervalMs: number; timeoutMs: number; describe: string },
+  ): Promise<ArmResponse> {
+    const location = accepted.headers.get('location');
+    if (location === null || location.length === 0) {
+      throw new ArmError(
+        `${options.describe} was accepted, but ARM gave no Location to follow.`,
+        accepted.status,
+        'NoLocation',
+        accepted.body,
+      );
+    }
+
+    const started = Date.now();
+    let response = accepted;
+    for (;;) {
+      const elapsed = Date.now() - started;
+      if (elapsed >= options.timeoutMs) {
+        throw new ArmError(
+          `${options.describe} did not finish within ${Math.round(options.timeoutMs / 1000)}s.`,
+          0,
+          'PollTimeout',
+          undefined,
+        );
+      }
+      await this.deps.sleep(retryAfterMs(response.headers, options.intervalMs));
+      response = await this.request({ method: 'GET', url: location });
+      if (response.status !== 202) return response;
     }
   }
 }

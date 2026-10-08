@@ -165,3 +165,14 @@ export function buildCreateRequest(args: BuildRequestArgs): WhatIfRequestBody {
     },
   };
 }
+
+/**
+ * `POST .../deploymentStacks/{name}/validate` takes the body a create would send,
+ * less the out-of-sync bypass, which the validate API does not take.
+ */
+export function buildValidateRequest(args: BuildRequestArgs): WhatIfRequestBody {
+  return buildCreateRequest({
+    ...args,
+    inputs: { ...args.inputs, bypassStackOutOfSyncError: false },
+  });
+}

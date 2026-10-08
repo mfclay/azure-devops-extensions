@@ -87,8 +87,18 @@ explaining here:
   from the file; pass its value from a secret variable.
 - **`tags` go on the what-if result as well as the stack.** The result is a
   resource too, and a policy that requires a tag would deny it otherwise.
-- **`operation` defaults to `whatIf`**, not to `create` as `BicepDeploy@0`'s
-  does: a step that leaves it out never deploys.
+- **`operation` is `whatIf`, `create`, `validate` or `delete`, and defaults to
+  `whatIf`**, not to `create` as `BicepDeploy@0`'s does: a step that leaves it out
+  never deploys. Each attaches a sidecar; `whatIf` files the pair the tab reads,
+  the others `whatif.stack.<operation>.json` and `.sidecar`. A `delete` compiles
+  nothing and attaches no payload, because ARM returns none. An input set for an
+  operation that does not use it is ignored with a warning, unless it holds
+  `task.json`'s default, which the agent fills in whether or not it was set.
+- **A `create` sets every template output as an output variable**, named for the
+  output, as `BicepDeploy@0` does: `$(<step name>.<output>)` in later steps. An
+  object or array output is set as its JSON. Names in `maskedOutputs` are masked
+  in the log and redacted from the attached payload, which carries the outputs
+  too.
 - **`retentionInterval` maxes out at `PT3H`.** The service enforces one to three
   hours and rejects `P1D` at run time. Both Microsoft documents are wrong about
   this, in opposite directions.

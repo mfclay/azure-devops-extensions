@@ -53,6 +53,7 @@ vi.mock('azure-pipelines-task-lib/task.js', () => {
     }),
     warning: vi.fn(),
     setSecret: vi.fn(),
+    setVariable: vi.fn(),
     addAttachment: vi.fn(),
   };
   return { ...h.tl, TaskResult: { Succeeded: 0, Failed: 2 } };
@@ -105,8 +106,11 @@ describe('the task entry point', () => {
     expect(raw['stackId']).toBe('network');
     expect(raw['templateFile']).toBe('main.bicep');
     expect(raw['parametersFile']).toBeUndefined();
-    expect(Object.keys(raw)).toHaveLength(30);
-    expect(Object.keys(raw)).toContain('publishSummary');
+    // Exactly task.json's inputs: one declared but not read is always empty.
+    const manifest = JSON.parse(
+      readFileSync(new URL('../task.json', import.meta.url), 'utf8'),
+    ) as { inputs: { name: string }[] };
+    expect(Object.keys(raw).sort()).toEqual(manifest.inputs.map((i) => i.name).sort());
   });
 
   it('reads a filePath input the agent filled with the sources directory as unset', async () => {
@@ -171,6 +175,7 @@ describe('the task entry point', () => {
     const deps = h.runDeps as {
       warn: (m: string) => void;
       setSecret: (v: string) => void;
+      setOutput: (n: string, v: string) => void;
       addAttachment: (t: string, n: string, p: string) => void;
       now: () => Date;
       sleep: (ms: number) => Promise<void>;
@@ -178,9 +183,12 @@ describe('the task entry point', () => {
     };
     deps.warn('careful');
     deps.setSecret('s3cret');
+    deps.setOutput('vnetId', '/subscriptions/x');
     deps.addAttachment('whatif.stack.json', 'network', '/tmp/x.json');
     expect(h.tl.warning).toHaveBeenCalledWith('careful');
     expect(h.tl.setSecret).toHaveBeenCalledWith('s3cret');
+    // An output variable, not a secret one: as BicepDeploy@0 sets them.
+    expect(h.tl.setVariable).toHaveBeenCalledWith('vnetId', '/subscriptions/x', false, true);
     expect(h.tl.addAttachment).toHaveBeenCalledWith('whatif.stack.json', 'network', '/tmp/x.json');
     expect(deps.now()).toBeInstanceOf(Date);
     await expect(deps.sleep(0)).resolves.toBeUndefined();

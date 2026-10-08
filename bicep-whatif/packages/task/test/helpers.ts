@@ -40,7 +40,8 @@ export function fakeFetch(replies: Reply[]): FakeFetch {
     const reply = replies[Math.min(index, replies.length - 1)] ?? {};
     index += 1;
     if (reply.throws) throw reply.throws;
-    const body = reply.body === undefined ? '' : JSON.stringify(reply.body);
+    // A 204 must have no body at all; `Response` throws on even an empty one.
+    const body = reply.body === undefined ? null : JSON.stringify(reply.body);
     return new Response(body, {
       status: reply.status ?? 200,
       headers: { 'content-type': 'application/json', ...(reply.headers ?? {}) },

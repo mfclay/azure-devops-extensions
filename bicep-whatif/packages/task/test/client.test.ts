@@ -189,3 +189,50 @@ describe('ArmClient.pollUntilTerminal', () => {
     ).rejects.toThrow(/deploying/);
   });
 });
+
+describe('ArmClient.pollOperation', () => {
+  const poll = { intervalMs: 5000, timeoutMs: 60_000 };
+  const LOCATION = `${BASE}/subscriptions/s/providers/Microsoft.Resources/operationResults/op-1?api-version=x`;
+
+  it('follows Location through 202s to the result', async () => {
+    const { client: c, net } = client([
+      { status: 202, headers: { location: LOCATION } },
+      { status: 202 },
+      { status: 200, body: { properties: { validatedResources: [] } } },
+    ]);
+    const accepted = await c.request({ method: 'POST', url: c.url(`${PATH}/validate`) });
+    const done = await c.pollOperation(accepted, { ...poll, describe: 'Validate' });
+    expect(done.status).toBe(200);
+    expect(done.body).toEqual({ properties: { validatedResources: [] } });
+    expect(net.calls.slice(1).map((call) => call.url)).toEqual([LOCATION, LOCATION]);
+  });
+
+  it('honours Retry-After between polls', async () => {
+    const { client: c, clock } = client([
+      { status: 202, headers: { location: LOCATION, 'retry-after': '12' } },
+      { status: 204 },
+    ]);
+    const accepted = await c.request({ method: 'DELETE', url: c.url(PATH) });
+    await c.pollOperation(accepted, { ...poll, describe: 'Delete' });
+    expect(clock.slept).toEqual([12_000]);
+  });
+
+  it('throws an operation that ends in an error, so it becomes the failure envelope', async () => {
+    const { client: c } = client([
+      { status: 202, headers: { location: LOCATION } },
+      { status: 400, body: { error: { code: 'StackValidationFailed', message: 'Nope.' } } },
+    ]);
+    const accepted = await c.request({ method: 'POST', url: c.url(`${PATH}/validate`) });
+    await expect(c.pollOperation(accepted, { ...poll, describe: 'Validate' })).rejects.toThrow(
+      ArmError,
+    );
+  });
+
+  it('refuses an accepted operation with no Location to follow', async () => {
+    const { client: c } = client([{ status: 202 }]);
+    const accepted = await c.request({ method: 'DELETE', url: c.url(PATH) });
+    await expect(c.pollOperation(accepted, { ...poll, describe: 'Delete' })).rejects.toThrow(
+      /no Location to follow/,
+    );
+  });
+});

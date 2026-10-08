@@ -16,12 +16,13 @@ came from. Filter by severity, by stack, or by resource type; click a row for it
 property-level diff; every filter and selection lives in the URL, so a link picks
 out the row you were looking at.
 
-**A pipeline task.** One task, two operations. `whatIf` previews a stack against
-what it currently manages and attaches the result; `create` applies it. Both read
-the same inputs and take the same code path, so a preview cannot disagree with
-the deploy it previews about the unmanage actions or deny settings — a
-difference there makes the preview a lie, most obviously about whether a dropped
-resource is reported as Detach or as Delete.
+**A pipeline task.** One task, with `BicepDeploy@0`'s operations and input
+names. `whatIf` previews a stack against what it currently manages and attaches
+the result; `create` applies it, `validate` checks it, and `delete` removes it.
+What-if, create and validate read the same inputs and take the same code path,
+so a preview cannot disagree with the deploy it previews about the unmanage
+actions or deny settings — a difference there makes the preview a lie, most
+obviously about whether a dropped resource is reported as Detach or as Delete.
 
 ## When Microsoft's Bicep Deploy task is enough
 
@@ -42,8 +43,6 @@ page before relying on this section.*
 - deploy at tenant scope. Deployment stacks do not exist there, so this
   extension's task covers resource group, subscription and management group
   scope only.
-- need template outputs as pipeline variables, or masked outputs. This
-  extension's task has neither.
 - run classic release pipelines. This extension's tab is a build results tab, so
   a release has nowhere to show it.
 

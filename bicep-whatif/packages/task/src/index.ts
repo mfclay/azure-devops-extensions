@@ -42,6 +42,7 @@ const INPUT_NAMES = [
   'bypassStackOutOfSyncError',
   'tags',
   'validationLevel',
+  'maskedOutputs',
   'description',
   'outputPath',
   'publishSummary',
@@ -148,6 +149,8 @@ async function main(): Promise<void> {
     log: (message) => console.log(message),
     warn: (message) => tl.warning(message),
     setSecret: (value) => tl.setSecret(value),
+    // Not secret, and an output: as BicepDeploy@0 sets them. Masking is setSecret's job.
+    setOutput: (name, value) => tl.setVariable(name, value, false, true),
     addAttachment: (type, name, filePath) => tl.addAttachment(type, name, filePath),
     now: () => new Date(),
     version: readVersion(manifestPath),

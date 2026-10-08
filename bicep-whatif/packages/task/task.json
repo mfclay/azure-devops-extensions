@@ -21,8 +21,13 @@
       "label": "Operation",
       "defaultValue": "whatIf",
       "required": true,
-      "options": { "whatIf": "What-if (preview only)", "create": "Create or update the stack" },
-      "helpMarkDown": "Both operations read the same inputs and take the same code path to ARM, so a preview cannot disagree with the deploy it previews. Defaults to `whatIf`: a step that leaves this out never deploys."
+      "options": {
+        "whatIf": "What-if (preview only)",
+        "create": "Create or update the stack",
+        "validate": "Validate the stack without deploying it",
+        "delete": "Delete the stack"
+      },
+      "helpMarkDown": "What-if, create and validate read the same inputs and take the same code path to ARM, so a preview cannot disagree with the deploy it previews. Defaults to `whatIf`: a step that leaves this out never deploys."
     },
     {
       "name": "ConnectedServiceName",
@@ -88,6 +93,7 @@
       "type": "filePath",
       "label": "Template file",
       "required": false,
+      "visibleRule": "operation != delete",
       "helpMarkDown": "A `.bicep` whose `targetScope` matches **Scope**, or a compiled ARM `.json`. Required unless **Parameters file** is a `.bicepparam`, which names its own template with `using`."
     },
     {
@@ -95,6 +101,7 @@
       "type": "filePath",
       "label": "Parameters file",
       "required": false,
+      "visibleRule": "operation != delete",
       "helpMarkDown": "A `.bicepparam` or a JSON parameters file. A `.bicepparam` is compiled in one pass that yields both the template and the parameter values, which is what makes secret redaction reliable."
     },
     {
@@ -102,6 +109,7 @@
       "type": "multiLine",
       "label": "Inline parameters",
       "required": false,
+      "visibleRule": "operation != delete",
       "properties": { "resizable": "true", "rows": "4" },
       "helpMarkDown": "A JSON object of parameter name to value, e.g. `{\"sku\": \"Standard\"}`, laid over **Parameters file**. A `@secure()` parameter set here is redacted from the payload like one set in the file; pass its value from a secret variable."
     },
@@ -110,7 +118,7 @@
       "type": "string",
       "label": "Location",
       "required": true,
-      "visibleRule": "scope != resourceGroup",
+      "visibleRule": "scope != resourceGroup && operation != delete",
       "helpMarkDown": "Where the stack — and, for a what-if, the transient result resource — lives. Not used at resource-group scope, where both take the group's location."
     },
     {
@@ -147,6 +155,7 @@
       "type": "pickList",
       "label": "Deny settings mode",
       "required": true,
+      "visibleRule": "operation != delete",
       "groupName": "protection",
       "options": {
         "none": "none",
@@ -160,6 +169,7 @@
       "label": "Apply deny settings to child scopes",
       "defaultValue": "false",
       "required": false,
+      "visibleRule": "operation != delete",
       "groupName": "protection"
     },
     {
@@ -167,6 +177,7 @@
       "type": "string",
       "label": "Excluded actions",
       "required": false,
+      "visibleRule": "operation != delete",
       "groupName": "protection",
       "helpMarkDown": "Space-, comma- or newline-separated management operations excluded from the lock."
     },
@@ -175,6 +186,7 @@
       "type": "string",
       "label": "Excluded principals",
       "required": false,
+      "visibleRule": "operation != delete",
       "groupName": "protection",
       "helpMarkDown": "Up to five Entra principal object ids excluded from the lock."
     },
@@ -205,7 +217,7 @@
       "defaultValue": "false",
       "required": false,
       "groupName": "advanced",
-      "visibleRule": "operation = create"
+      "visibleRule": "operation = create || operation = delete"
     },
     {
       "name": "bicepVersion",
@@ -213,6 +225,7 @@
       "label": "Bicep version",
       "defaultValue": "0.46.1",
       "required": false,
+      "visibleRule": "operation != delete",
       "groupName": "advanced",
       "helpMarkDown": "Pinned on purpose. Compiler output changes across versions, and every consumer's what-if should compile identically. A `bicep` already on PATH is deliberately ignored."
     },
@@ -238,6 +251,7 @@
       "type": "multiLine",
       "label": "Tags",
       "required": false,
+      "visibleRule": "operation != delete",
       "groupName": "advanced",
       "properties": { "resizable": "true", "rows": "3" },
       "helpMarkDown": "A JSON object of tag name to string value, set on the stack and on the transient what-if result, which a tag policy would otherwise deny."
@@ -247,19 +261,30 @@
       "type": "pickList",
       "label": "Validation level",
       "required": false,
+      "visibleRule": "operation != delete",
       "groupName": "advanced",
       "options": {
-        "template": "Template — static analysis only",
         "provider": "Provider — the resource providers validate, with RBAC checks",
+        "template": "Template — static analysis only",
         "providerNoRbac": "Provider, without RBAC checks"
       },
       "helpMarkDown": "Leave unset for the service's default."
+    },
+    {
+      "name": "maskedOutputs",
+      "type": "string",
+      "label": "Masked outputs",
+      "required": false,
+      "groupName": "advanced",
+      "visibleRule": "operation = create",
+      "helpMarkDown": "Comma-separated output names. Every output of a create is set as an output variable of the same name; these are also masked in the log and redacted from the attached payload."
     },
     {
       "name": "description",
       "type": "string",
       "label": "Description",
       "required": false,
+      "visibleRule": "operation != delete",
       "groupName": "advanced"
     },
     {
@@ -280,11 +305,6 @@
       "helpMarkDown": "Also attach a `Distributedtask.Core.Summary` roll-up, which renders on the build summary page without this extension's tab."
     }
   ],
-  "restrictions": {
-    "settableVariables": {
-      "allowed": []
-    }
-  },
   "execution": {
     "Node20_1": {
       "target": "index.js"
