@@ -126,8 +126,10 @@ every consumer's what-if should compile identically.
     denySettingsMode: none
 ```
 
-Name the stage `WhatIf_<Something>` and repeat the step per stack, one stage
-each. Full documentation, including why the fan-out belongs in your YAML rather
+Repeat the step per stack, in one stage or several. Name a stage
+`WhatIf_<Something>` and the tab shows it even when it never ran, as *not
+evaluated*; a stage named otherwise appears once a what-if attaches to it. Full
+documentation, including why the fan-out belongs in your YAML rather
 than inside the task, is in the
 [repository](https://github.com/mfclay/azure-devops-extensions/tree/main/bicep-whatif).
 

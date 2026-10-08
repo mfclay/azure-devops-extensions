@@ -72,8 +72,9 @@ ninth was never evaluated.
 
 So the tab reconciles against the build Timeline API rather than against the
 attachments: every `WhatIf_*` stage in the run gets a row, and attachments join
-onto it. A stage with no attachment renders as a loud *not evaluated*, ranked above
-*no changes*. `core` carries the same rule inward — anything it could not parse
+onto it, one per stack. A stage with no attachment renders as a loud *not
+evaluated*, ranked above *no changes*. A stage named otherwise shows only when a
+what-if attached to it, because a stage that never ran leaves nothing to find. `core` carries the same rule inward — anything it could not parse
 ranks `unevaluated`, above `noChange`, so a default filter cannot bury it.
 
 Everything else in this design is convenience. This is correctness.

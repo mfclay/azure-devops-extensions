@@ -159,6 +159,6 @@ describe('createAdoSource', () => {
     });
     const result = await createAdoSource().load();
     expect(result.stages).toEqual([]);
-    expect(result.notes.join(' ')).toMatch(/No WhatIf_\* stages were found/);
+    expect(result.notes.join(' ')).toMatch(/No what-if stages were found in this build/);
   });
 });

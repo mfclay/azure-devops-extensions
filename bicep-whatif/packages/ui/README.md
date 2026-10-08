@@ -28,9 +28,10 @@ attachments it received would show eight clean stacks as a safe deploy while the
 ninth was never evaluated at all.
 
 So the data layer reconciles against the build **Timeline API**, not against the
-attachment list. Every `WhatIf_*` stage in the run gets a row; attachments join
-onto it, one stack per stack id when a stage runs several. A stage with no
-attachment becomes a row ranked `unevaluated` — the rung
+attachment list. Every `WhatIf_*` stage in the run gets a row, and so does any
+other stage a what-if attachment traces to; attachments join onto it, one stack
+per stack id when a stage runs several. A stage with no attachment becomes a row
+ranked `unevaluated` — the rung
 `core` reserves for exactly this, which sits above `noChange` so the default
 filter cannot bury it — plus a banner at the top of the page that does not
 dismiss.

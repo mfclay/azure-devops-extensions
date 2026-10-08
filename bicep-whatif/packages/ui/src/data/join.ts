@@ -129,6 +129,7 @@ export function stageIdFromStackId(stackId: string): string {
   return `WhatIf_${pascal}`;
 }
 
+/** Whether a stage record is named as a what-if stage: `WhatIf_` (any case). */
 export function isWhatIfStage(record: TimelineRecordLike): boolean {
   if (record.type !== 'Stage') return false;
   const id = record.identifier ?? record.name ?? '';
@@ -152,8 +153,24 @@ export interface JoinInput {
 type StackHit = { payload?: { payload: unknown; error?: string | undefined }; sidecar?: Sidecar };
 
 /**
- * Every `WhatIf_*` stage in the run becomes at least one `StageResult`, whether
- * or not it attached anything. That is the entire point.
+ * A sidecar from a what-if. The task writes `operation` on every sidecar and
+ * files other operations' under other attachment types, so this one should
+ * always pass; older producers write no `operation` at all.
+ */
+function isWhatIfSidecar(sidecar: Sidecar): boolean {
+  const operation = sidecar.operation;
+  return operation === undefined || operation === null || String(operation).toLowerCase() === 'whatif';
+}
+
+/**
+ * Every what-if stage in the run becomes at least one `StageResult`, whether or
+ * not it attached anything. That is the entire point.
+ *
+ * A stage is a what-if stage if it is named `WhatIf_*`, or if a what-if
+ * attachment traces to it through the timeline. The name is what makes a stage
+ * that never ran visible, since a skipped stage leaves nothing to trace; the
+ * attachment lets a pipeline name its stages as it likes. A stage that is
+ * neither, such as a `create` stage skipped on this build, is not shown.
  *
  * A stage that ran several stacks gives one result per stack, keyed by the
  * stack id each attachment is filed under; a stage that attached nothing gives
@@ -163,8 +180,6 @@ type StackHit = { payload?: { payload: unknown; error?: string | undefined }; si
 export function joinStages(input: JoinInput): StageResult[] {
   const byId = new Map<string, TimelineRecordLike>();
   for (const r of input.records) byId.set(r.id, r);
-
-  const stages = input.records.filter(isWhatIfStage);
 
   // Stage record id → stack id → what that stack attached there.
   const hitsByStage = new Map<string, Map<string, StackHit>>();
@@ -185,10 +200,16 @@ export function joinStages(input: JoinInput): StageResult[] {
 
   const sidecarByStackId = new Map<string, Sidecar>();
   for (const s of input.sidecars) {
+    if (!isWhatIfSidecar(s.sidecar)) continue;
     sidecarByStackId.set(s.ref.name, s.sidecar);
     const stage = stageRecordFor(s.ref.recordId, byId);
     if (stage) hitFor(stage.id, s.ref.name).sidecar = s.sidecar;
   }
+
+  // In timeline order, so a stage named otherwise keeps its place among the rest.
+  const stages = input.records.filter(
+    (r) => isWhatIfStage(r) || (r.type === 'Stage' && hitsByStage.has(r.id)),
+  );
 
   // Structural join failed for these — fall back to the stage-id naming rule so
   // the payload is still shown, and say so in the notes.

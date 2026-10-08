@@ -116,8 +116,9 @@ export function createAdoSource(): WhatIfSource {
 
       if (stages.length === 0) {
         notes.push(
-          'No WhatIf_* stages were found in this build timeline. This tab shows results ' +
-            'for builds that run the stack what-if stages.',
+          'No what-if stages were found in this build: none is named WhatIf_*, and no ' +
+            'what-if result is attached to any other. This tab shows results for builds ' +
+            'that run a stack what-if.',
         );
       }
 

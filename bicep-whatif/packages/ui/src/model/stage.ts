@@ -1,5 +1,5 @@
 /**
- * A `WhatIf_*` pipeline stage, paired with the attachment one of its stacks
+ * A what-if pipeline stage, paired with the attachment one of its stacks
  * produced — or with the fact that it produced none.
  *
  * This type is the boundary the correctness rule rests on (design §03, decision
@@ -32,6 +32,11 @@ export interface Sidecar {
   whatIfResultName?: string | undefined;
   whatIfResultId?: string | undefined;
   azCliVersion?: string | undefined;
+  /**
+   * `whatIf` on every sidecar this tab reads; the task files other operations'
+   * sidecars under other attachment types. Absent from older producers'.
+   */
+  operation?: string | undefined;
   /** `succeeded` | `failed`, lowercase. Written even when the what-if fails — that is the point. */
   status?: string | undefined;
   /**

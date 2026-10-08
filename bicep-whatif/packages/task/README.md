@@ -141,8 +141,10 @@ stage per stack:
   # …the same block, with stack 2's values.
 ```
 
-Name the stages `WhatIf_*`; the tab reads that prefix off the build timeline to
-decide which stages it is responsible for. It does **not** join attachments to
+Name the stages `WhatIf_*` so the tab shows them even when they never ran: it
+reads that prefix off the build timeline, and a skipped stage leaves nothing else
+to find. A stage named otherwise is shown when a what-if attaches to it, and a
+stage may run several stacks. The tab does **not** join attachments to
 stages by matching the stage id against the stack id — it walks the timeline's
 parent chain — so the two naming schemes are free to disagree, which is just as
 well because they are maintained by hand in separate files.

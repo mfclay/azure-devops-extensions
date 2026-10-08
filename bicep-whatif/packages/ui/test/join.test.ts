@@ -176,6 +176,71 @@ describe('joinStages', () => {
     });
   });
 
+  // Hybrid detection: the WhatIf_ prefix, or a what-if attachment traced to the stage.
+  describe('a stage not named WhatIf_', () => {
+    const payload = (recordId: string, name: string) => ({
+      ref: { timelineId: 'tl', recordId, type: 'whatif.stack.json', name },
+      payload: { ok: 1 },
+    });
+    const sidecar = (recordId: string, name: string, extra: Record<string, unknown>) => ({
+      ref: { timelineId: 'tl', recordId, type: 'whatif.stack.sidecar', name },
+      sidecar: { stackId: name, ...extra },
+    });
+
+    it('counts when a what-if attached to it', () => {
+      const stages = joinStages({
+        records: chain('Preview_Network', ['s1', 'j1', 't1']),
+        payloads: [payload('t1', 'network')],
+        sidecars: [],
+      });
+      expect(stages.map((s) => [s.stageId, s.stackId, s.payload])).toEqual([
+        ['Preview_Network', 'network', { ok: 1 }],
+      ]);
+    });
+
+    it('counts when its what-if failed and left only a sidecar', () => {
+      const stages = joinStages({
+        records: chain('Preview_Network', ['s1', 'j1', 't1']),
+        payloads: [],
+        sidecars: [sidecar('t1', 'network', { status: 'failed', operation: 'whatIf' })],
+      });
+      expect(stages).toHaveLength(1);
+      expect(stages[0]?.payload).toBeUndefined();
+      expect(stages[0]?.sidecar?.status).toBe('failed');
+    });
+
+    it('is left out when it attached nothing, as a create stage skipped on this build is', () => {
+      const stages = joinStages({
+        records: [...chain('WhatIf_Network', ['s1', 'j1', 't1']), ...chain('Deploy_Network', ['s2', 'j2', 't2'])],
+        payloads: [],
+        sidecars: [],
+      });
+      expect(stages.map((s) => s.stageId)).toEqual(['WhatIf_Network']);
+    });
+
+    it('is left out on a sidecar that names another operation', () => {
+      const stages = joinStages({
+        records: chain('Deploy_Network', ['s1', 'j1', 't1']),
+        payloads: [],
+        sidecars: [sidecar('t1', 'network', { status: 'succeeded', operation: 'create' })],
+      });
+      expect(stages).toEqual([]);
+    });
+
+    it('keeps its place in timeline order among WhatIf_ stages', () => {
+      const stages = joinStages({
+        records: [
+          ...chain('WhatIf_Network', ['s1', 'j1', 't1']),
+          ...chain('Preview_Shared', ['s2', 'j2', 't2']),
+          ...chain('WhatIf_Workload', ['s3', 'j3', 't3']),
+        ],
+        payloads: [payload('t2', 'shared-infra')],
+        sidecars: [],
+      });
+      expect(stages.map((s) => s.stageId)).toEqual(['WhatIf_Network', 'Preview_Shared', 'WhatIf_Workload']);
+    });
+  });
+
   it('takes the stack id off the sidecar when only the sidecar attached', () => {
     const records = chain('WhatIf_PlatformProd', ['s1', 'j1', 't1']);
     const stages = joinStages({

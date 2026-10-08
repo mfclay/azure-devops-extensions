@@ -179,8 +179,9 @@ describe('notes about the whole build', () => {
 
   it('explains a build with no what-if stages instead of showing an empty page', async () => {
     const note =
-      'No WhatIf_* stages were found in this build timeline. This tab shows results ' +
-      'for builds that run the stack what-if stages.';
+      'No what-if stages were found in this build: none is named WhatIf_*, and no ' +
+      'what-if result is attached to any other. This tab shows results for builds ' +
+      'that run a stack what-if.';
     renderApp([], [note]);
     const notes = await screen.findByRole('note', { name: 'Notes about this build' });
     expect(within(notes).getByText(note)).toBeTruthy();
