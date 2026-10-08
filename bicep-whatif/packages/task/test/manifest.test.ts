@@ -17,6 +17,7 @@ import {
   OPERATIONS,
   SCOPES,
   UNMANAGE_ACTIONS,
+  VALIDATION_LEVELS,
   parseInputs,
 } from '../src/inputs.js';
 import { DEFAULT_BICEP_VERSION } from '../src/bicep/asset.js';
@@ -100,6 +101,9 @@ describe('task.json — agreement with the code', () => {
       'stackName',
       'templateFile',
       'parametersFile',
+      'parameters',
+      'tags',
+      'validationLevel',
       'location',
       'actionOnUnmanageResources',
       'actionOnUnmanageResourceGroups',
@@ -144,6 +148,9 @@ describe('task.json — agreement with the code', () => {
       expect(Object.keys(inputByName(name)!['options'])).toEqual([...UNMANAGE_ACTIONS]);
       expect(inputByName(name)).not.toHaveProperty('defaultValue');
     }
+    expect(Object.keys(inputByName('validationLevel')!['options'])).toEqual([
+      ...VALIDATION_LEVELS,
+    ]);
     expect(Object.keys(inputByName('denySettingsMode')!['options'])).toEqual([
       ...DENY_SETTINGS_MODES,
     ]);

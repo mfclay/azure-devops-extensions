@@ -42,8 +42,8 @@ page before relying on this section.*
 - deploy at tenant scope. Deployment stacks do not exist there, so this
   extension's task covers resource group, subscription and management group
   scope only.
-- need template outputs as pipeline variables, inline parameter overrides, stack
-  tags or masked outputs. This extension's task has none of these.
+- need template outputs as pipeline variables, or masked outputs. This
+  extension's task has neither.
 - run classic release pipelines. This extension's tab is a build results tab, so
   a release has nowhere to show it.
 

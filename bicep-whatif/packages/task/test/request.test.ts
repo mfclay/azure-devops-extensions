@@ -5,6 +5,7 @@ import {
   buildCreateRequest,
   buildWhatIfRequest,
   denySettingsBody,
+  effectiveParameters,
   unwrapParameters,
 } from '../src/request.js';
 
@@ -104,6 +105,25 @@ describe('unwrapParameters', () => {
   });
 });
 
+describe('effectiveParameters', () => {
+  it('lays inline values over the compiled ones, wrapped as ARM wants them', () => {
+    const compiled = { parameters: { sku: { value: 'Basic' }, region: { value: 'centralus' } } };
+    expect(effectiveParameters(compiled, { sku: 'Standard', extra: { a: 1 } })).toEqual({
+      parameters: {
+        sku: { value: 'Standard' },
+        region: { value: 'centralus' },
+        extra: { value: { a: 1 } },
+      },
+    });
+  });
+
+  it('passes the compiled parameters through when nothing is inline', () => {
+    expect(effectiveParameters({ parameters: { a: { value: 1 } } }, {})).toEqual({
+      parameters: { a: { value: 1 } },
+    });
+  });
+});
+
 describe('the two request bodies', () => {
   const args = {
     inputs: parseInputs(RAW),
@@ -140,6 +160,23 @@ describe('the two request bodies', () => {
     const deploy = buildCreateRequest(args);
     expect(deploy.properties).not.toHaveProperty('retentionInterval');
     expect(deploy.properties).not.toHaveProperty('deploymentStackResourceId');
+  });
+
+  it('sends tags and the validation level on both, in ARM spelling', () => {
+    const tagged = {
+      ...args,
+      inputs: parseInputs({ ...RAW, tags: '{"env": "prod"}', validationLevel: 'providerNoRbac' }),
+    };
+    for (const body of [buildWhatIfRequest(tagged), buildCreateRequest(tagged)]) {
+      expect(body.tags).toEqual({ env: 'prod' });
+      expect(body.properties['validationLevel']).toBe('ProviderNoRbac');
+    }
+  });
+
+  it('sends neither tags nor a validation level that was not set', () => {
+    const body = buildWhatIfRequest(args);
+    expect(body).not.toHaveProperty('tags');
+    expect(body.properties).not.toHaveProperty('validationLevel');
   });
 
   it('omits bypassStackOutOfSyncError unless it was asked for', () => {

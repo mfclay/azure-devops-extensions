@@ -37,6 +37,10 @@ export interface ActionOnUnmanageInput {
   managementGroups: UnmanageAction | undefined;
 }
 
+/** `BicepDeploy@0`'s spellings; `request.ts` sends ARM's capitalised ones. */
+export const VALIDATION_LEVELS = ['template', 'provider', 'providerNoRbac'] as const;
+export type ValidationLevel = (typeof VALIDATION_LEVELS)[number];
+
 export const DENY_SETTINGS_MODES = ['none', 'denyDelete', 'denyWriteAndDelete'] as const;
 export type DenySettingsMode = (typeof DENY_SETTINGS_MODES)[number];
 
@@ -68,6 +72,15 @@ export interface TaskInputs {
   parametersFile: string | undefined;
   /** Undefined at resource-group scope, where the stack takes its group's location. */
   location: string | undefined;
+  /**
+   * Inline parameter values, name to plain value, laid over the parameters
+   * file's. Empty when unset. May hold secrets: never quote it in a message.
+   */
+  parameters: Record<string, unknown>;
+  /** Tags for the stack, and for the what-if result that stands in for it. Empty when unset. */
+  tags: Record<string, string>;
+  /** Undefined leaves the service's own default. */
+  validationLevel: ValidationLevel | undefined;
   actionOnUnmanage: ActionOnUnmanageInput;
   denySettings: DenySettingsInput;
   /** ISO 8601 duration. What-if only; the service caps it at PT3H. */
@@ -259,6 +272,14 @@ export function parseInputs(raw: RawInputs, warnings: string[] = []): TaskInputs
 
   const actionOnUnmanage = parseActionOnUnmanage(raw, scope, problems, warnings);
 
+  const parameters = jsonObject(raw, 'parameters', problems);
+  const tags = jsonObject(raw, 'tags', problems);
+  for (const [name, value] of Object.entries(tags)) {
+    if (typeof value !== 'string') {
+      problems.push(`tags must map each name to a string; "${name}" is not one.`);
+    }
+  }
+
   const inputs: TaskInputs = {
     operation,
     connectedService,
@@ -268,6 +289,9 @@ export function parseInputs(raw: RawInputs, warnings: string[] = []): TaskInputs
     ...where,
     templateFile,
     parametersFile,
+    parameters,
+    tags: tags as Record<string, string>,
+    validationLevel: optionalOneOf(raw, 'validationLevel', VALIDATION_LEVELS, problems),
     actionOnUnmanage,
     denySettings,
     retentionInterval,
@@ -283,6 +307,29 @@ export function parseInputs(raw: RawInputs, warnings: string[] = []): TaskInputs
 
   if (problems.length > 0) throw new InputError(problems);
   return inputs;
+}
+
+/**
+ * A JSON object input, as `BicepDeploy@0` takes `parameters` and `tags`.
+ *
+ * The parse error is deliberately not quoted: V8 includes a slice of the text
+ * in it, and `parameters` can carry secrets that nothing has masked yet.
+ */
+function jsonObject(raw: RawInputs, name: string, problems: string[]): Record<string, unknown> {
+  const value = trimmed(raw, name);
+  if (value === undefined) return {};
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(value);
+  } catch {
+    problems.push(`${name} is not valid JSON. It takes an object, e.g. {"name": "value"}.`);
+    return {};
+  }
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    problems.push(`${name} must be a JSON object, e.g. {"name": "value"}.`);
+    return {};
+  }
+  return parsed as Record<string, unknown>;
 }
 
 function isBicepParamFile(file: string | undefined): boolean {

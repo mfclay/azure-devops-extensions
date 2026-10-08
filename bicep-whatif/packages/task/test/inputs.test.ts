@@ -209,6 +209,40 @@ describe('parseInputs', () => {
     expect(() => parseInputs(rest)).toThrow(/templateFile is required/);
   });
 
+  it('reads inline parameters as a JSON object of plain values', () => {
+    const inputs = parseInputs({ ...MINIMAL, parameters: '{"sku": "Standard", "count": 2}' });
+    expect(inputs.parameters).toEqual({ sku: 'Standard', count: 2 });
+    expect(parseInputs(MINIMAL).parameters).toEqual({});
+  });
+
+  it('never quotes inline parameters it cannot parse, since they can hold a secret', () => {
+    // V8 puts a slice of the text in a JSON parse error; the task must not.
+    const secret = 'hunter2-inline-secret';
+    try {
+      parseInputs({ ...MINIMAL, parameters: `{"adminPassword": ${secret}}` });
+      expect.unreachable('should have thrown');
+    } catch (error) {
+      expect((error as Error).message).toContain('parameters is not valid JSON');
+      expect((error as Error).message).not.toContain(secret);
+    }
+    expect(() => parseInputs({ ...MINIMAL, parameters: '["a"]' })).toThrow(/must be a JSON object/);
+  });
+
+  it('takes tags as a JSON object of strings', () => {
+    expect(parseInputs({ ...MINIMAL, tags: '{"env": "prod"}' }).tags).toEqual({ env: 'prod' });
+    expect(() => parseInputs({ ...MINIMAL, tags: '{"cost": 5}' })).toThrow(/"cost" is not one/);
+  });
+
+  it('takes a validation level in BicepDeploy@0 spelling, or none', () => {
+    expect(parseInputs(MINIMAL).validationLevel).toBeUndefined();
+    expect(parseInputs({ ...MINIMAL, validationLevel: 'ProviderNoRbac' }).validationLevel).toBe(
+      'providerNoRbac',
+    );
+    expect(() => parseInputs({ ...MINIMAL, validationLevel: 'strict' })).toThrow(
+      /validationLevel must be one of template, provider, providerNoRbac/,
+    );
+  });
+
   it('rejects a stackId that would break the attachment href', () => {
     // The tab recovers the stack id by parsing `_links.self.href`; a slash in
     // the name puts an extra segment in that URL and the parse silently fails.

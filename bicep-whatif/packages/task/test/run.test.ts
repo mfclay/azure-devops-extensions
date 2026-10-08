@@ -252,6 +252,32 @@ describe('run — redaction', () => {
     expect(h.secrets).toContain(SECRET);
   });
 
+  it('redacts a secure parameter given inline, and sends ARM the inline value', async () => {
+    // The inline input is laid over the file after compiling, so redaction has
+    // to read the merged values: the file's value is not the one ARM echoes.
+    const inline = 'inline-secret-7c41e2';
+    const echo = JSON.parse(JSON.stringify(WHATIF_PAYLOAD).split(SECRET).join(inline)) as unknown;
+    const h = harness({
+      raw: { ...RAW, parameters: JSON.stringify({ postgresAdminPassword: inline }) },
+      routes: [
+        {
+          match: (u, m) => u.includes('WhatIfResults') && m === 'PUT',
+          reply: () => ({ body: echo }),
+        },
+      ],
+    });
+    await run(h.deps);
+    const put = h.requests.find((r) => r.method === 'PUT' && r.url.includes('WhatIfResults'));
+    const sent = (put?.body as { properties: { parameters: Record<string, unknown> } }).properties;
+    expect(sent.parameters['postgresAdminPassword']).toEqual({ value: inline });
+    expect(sent.parameters['location']).toEqual({ value: 'centralus' });
+
+    const raw = readFileSync(find(h, ATTACHMENT_TYPE_PAYLOAD)!.path, 'utf8');
+    expect(raw).not.toContain(inline);
+    expect(raw).toContain(REDACTION_PLACEHOLDER);
+    expect(h.secrets).toContain(inline);
+  });
+
   it('fails closed when it cannot tell which parameters are secure', async () => {
     // Not knowing is not a reason to publish the payload anyway — and the run
     // must stop before ARM is ever called, while there is nothing to leak.

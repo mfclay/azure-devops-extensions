@@ -155,6 +155,20 @@ describe('compile', () => {
     expect(JSON.parse(readFileSync(out, 'utf8'))).toEqual(['build-params', 'main.bicepparam', '--stdout']);
   });
 
+  it('hands inline parameters to build-params through BICEP_PARAMETERS_OVERRIDES', async () => {
+    // As BicepDeploy@0 does: a parameter the file derives from an overridden one
+    // is then derived from the override, which merging afterwards cannot do.
+    const out = join(dir, 'env.json');
+    const bicep = fakeBicep(
+      `require('node:fs').writeFileSync(${JSON.stringify(out)}, JSON.stringify(process.env.BICEP_PARAMETERS_OVERRIDES ?? null));\n` +
+        `process.stdout.write(JSON.stringify({ templateJson: '{}' }));`,
+    );
+    await compile(bicep, undefined, 'main.bicepparam', { sku: 'Standard' });
+    expect(JSON.parse(readFileSync(out, 'utf8'))).toBe('{"sku":"Standard"}');
+    await compile(bicep, undefined, 'main.bicepparam');
+    expect(JSON.parse(readFileSync(out, 'utf8'))).toBeNull();
+  });
+
   it('refuses a .bicepparam that compiles to no template', async () => {
     const bicep = fakeBicep(`process.stdout.write(JSON.stringify({ parametersJson: '{}' }));`);
     await expect(compile(bicep, 'main.bicep', 'main.bicepparam')).rejects.toThrow(/template spec is not supported/);

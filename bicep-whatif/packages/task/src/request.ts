@@ -12,6 +12,7 @@ import type {
   DenySettingsInput,
   TaskInputs,
   UnmanageAction,
+  ValidationLevel,
 } from './inputs.js';
 
 /**
@@ -70,9 +71,53 @@ export function unwrapParameters(compiled: unknown): Record<string, unknown> {
   return outer;
 }
 
+/**
+ * The parameter values ARM is sent: the compiled ones, with the inline
+ * `parameters` input laid over them, each wrapped as ARM wants it.
+ *
+ * Built once, and handed both to the request and to `secureValuesFrom`, so the
+ * values redaction looks for are exactly the values that went to ARM. An
+ * inline override of a `@secure()` parameter is therefore redacted like one
+ * from a file.
+ */
+export function effectiveParameters(
+  compiled: unknown,
+  overrides: Readonly<Record<string, unknown>>,
+): { parameters: Record<string, unknown> } {
+  const merged: Record<string, unknown> = { ...unwrapParameters(compiled) };
+  for (const [name, value] of Object.entries(overrides)) merged[name] = { value };
+  return { parameters: merged };
+}
+
+/** ARM capitalises these; `BicepDeploy@0`'s input does not. */
+const VALIDATION_LEVEL_BODY: Record<ValidationLevel, string> = {
+  template: 'Template',
+  provider: 'Provider',
+  providerNoRbac: 'ProviderNoRbac',
+};
+
+/**
+ * The resource's own fields, beside `properties`. Tags go on the what-if result
+ * as well as the stack: a policy that requires a tag denies any resource
+ * without it, and the result is a resource.
+ */
+function topLevel(inputs: TaskInputs): { location?: string; tags?: Record<string, string> } {
+  return {
+    ...(inputs.location !== undefined ? { location: inputs.location } : {}),
+    ...(Object.keys(inputs.tags).length > 0 ? { tags: inputs.tags } : {}),
+  };
+}
+
+function validationLevel(inputs: TaskInputs): { validationLevel?: string } {
+  return inputs.validationLevel !== undefined
+    ? { validationLevel: VALIDATION_LEVEL_BODY[inputs.validationLevel] }
+    : {};
+}
+
 export interface WhatIfRequestBody {
   /** Absent at resource-group scope, where ARM takes the group's location. */
   location?: string;
+  tags?: Record<string, string>;
   properties: Record<string, unknown>;
 }
 
@@ -80,7 +125,7 @@ export interface BuildRequestArgs {
   inputs: TaskInputs;
   /** The compiled ARM template, as an object. */
   template: unknown;
-  /** Whatever the parameters compiled to; unwrapped here. */
+  /** `effectiveParameters`' result, or whatever the parameters compiled to; unwrapped here. */
   parameters: unknown;
   /** Fully qualified `<scope>/providers/Microsoft.Resources/deploymentStacks/{name}`. */
   deploymentStackResourceId: string;
@@ -90,7 +135,7 @@ export interface BuildRequestArgs {
 export function buildWhatIfRequest(args: BuildRequestArgs): WhatIfRequestBody {
   const { inputs } = args;
   return {
-    ...(inputs.location !== undefined ? { location: inputs.location } : {}),
+    ...topLevel(inputs),
     properties: {
       template: args.template,
       parameters: unwrapParameters(args.parameters),
@@ -98,6 +143,7 @@ export function buildWhatIfRequest(args: BuildRequestArgs): WhatIfRequestBody {
       denySettings: denySettingsBody(inputs.denySettings),
       deploymentStackResourceId: args.deploymentStackResourceId,
       retentionInterval: inputs.retentionInterval,
+      ...validationLevel(inputs),
       ...(inputs.description !== undefined ? { description: inputs.description } : {}),
     },
   };
@@ -107,13 +153,14 @@ export function buildWhatIfRequest(args: BuildRequestArgs): WhatIfRequestBody {
 export function buildCreateRequest(args: BuildRequestArgs): WhatIfRequestBody {
   const { inputs } = args;
   return {
-    ...(inputs.location !== undefined ? { location: inputs.location } : {}),
+    ...topLevel(inputs),
     properties: {
       template: args.template,
       parameters: unwrapParameters(args.parameters),
       actionOnUnmanage: actionOnUnmanageBody(inputs.actionOnUnmanage),
       denySettings: denySettingsBody(inputs.denySettings),
       ...(inputs.bypassStackOutOfSyncError ? { bypassStackOutOfSyncError: true } : {}),
+      ...validationLevel(inputs),
       ...(inputs.description !== undefined ? { description: inputs.description } : {}),
     },
   };

@@ -98,6 +98,14 @@
       "helpMarkDown": "A `.bicepparam` or a JSON parameters file. A `.bicepparam` is compiled in one pass that yields both the template and the parameter values, which is what makes secret redaction reliable."
     },
     {
+      "name": "parameters",
+      "type": "multiLine",
+      "label": "Inline parameters",
+      "required": false,
+      "properties": { "resizable": "true", "rows": "4" },
+      "helpMarkDown": "A JSON object of parameter name to value, e.g. `{\"sku\": \"Standard\"}`, laid over **Parameters file**. A `@secure()` parameter set here is redacted from the payload like one set in the file; pass its value from a secret variable."
+    },
+    {
       "name": "location",
       "type": "string",
       "label": "Location",
@@ -224,6 +232,28 @@
       "groupName": "advanced",
       "visibleRule": "operation = whatIf",
       "helpMarkDown": "Defaults to `whatif-<stackId>-<Build.BuildId>`, which is what keeps two concurrent builds from colliding on the same resource."
+    },
+    {
+      "name": "tags",
+      "type": "multiLine",
+      "label": "Tags",
+      "required": false,
+      "groupName": "advanced",
+      "properties": { "resizable": "true", "rows": "3" },
+      "helpMarkDown": "A JSON object of tag name to string value, set on the stack and on the transient what-if result, which a tag policy would otherwise deny."
+    },
+    {
+      "name": "validationLevel",
+      "type": "pickList",
+      "label": "Validation level",
+      "required": false,
+      "groupName": "advanced",
+      "options": {
+        "template": "Template — static analysis only",
+        "provider": "Provider — the resource providers validate, with RBAC checks",
+        "providerNoRbac": "Provider, without RBAC checks"
+      },
+      "helpMarkDown": "Leave unset for the service's default."
     },
     {
       "name": "description",

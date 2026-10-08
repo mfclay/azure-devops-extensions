@@ -36,6 +36,7 @@ import {
   actionOnUnmanageBody,
   buildCreateRequest,
   buildWhatIfRequest,
+  effectiveParameters,
   type ActionOnUnmanageBody,
 } from './request.js';
 import { redactPayload, redactText, secureValuesFrom } from './redact.js';
@@ -240,11 +241,18 @@ export async function run(deps: RunDeps): Promise<RunResult> {
       );
     }
 
-    const compiled = await bicep.compile(binary, inputs.templateFile, inputs.parametersFile);
+    const compiled = await bicep.compile(
+      binary,
+      inputs.templateFile,
+      inputs.parametersFile,
+      inputs.parameters,
+    );
+    const parameters = effectiveParameters(compiled.parameters, inputs.parameters);
 
     // Fail closed: not knowing which parameters are secure is not a reason to
-    // publish the payload anyway.
-    secureValues = secureValuesFrom(compiled.template, compiled.parameters);
+    // publish the payload anyway. Read off exactly what ARM is about to be sent,
+    // inline overrides included.
+    secureValues = secureValuesFrom(compiled.template, parameters);
     for (const value of secureValues) deps.setSecret(value);
     deps.log(
       `${secureValues.length} secure parameter value${secureValues.length === 1 ? '' : 's'} ` +
@@ -280,7 +288,7 @@ export async function run(deps: RunDeps): Promise<RunResult> {
       const body = buildWhatIfRequest({
         inputs,
         template: compiled.template,
-        parameters: compiled.parameters,
+        parameters,
         deploymentStackResourceId: stackResourceId,
       });
       deps.log(
@@ -300,7 +308,7 @@ export async function run(deps: RunDeps): Promise<RunResult> {
     const body = buildCreateRequest({
       inputs,
       template: compiled.template,
-      parameters: compiled.parameters,
+      parameters,
       deploymentStackResourceId: stackResourceId,
     });
     deps.log(`Deploying stack ${inputs.stackName} (${unmanage}).`);

@@ -80,6 +80,13 @@ explaining here:
   `actionOnUnmanageManagementGroups` at management-group scope.
 - **`templateFile` can be left out when `parametersFile` is a `.bicepparam`**,
   whose `using` names the template.
+- **`parameters` takes inline values as a JSON object**, name to plain value, laid
+  over the parameters file's. A `.bicepparam` receives them while it compiles, as
+  `BicepDeploy@0` passes them, so a value the file derives from an overridden one
+  follows the override. A `@secure()` parameter set inline is redacted like one
+  from the file; pass its value from a secret variable.
+- **`tags` go on the what-if result as well as the stack.** The result is a
+  resource too, and a policy that requires a tag would deny it otherwise.
 - **`operation` defaults to `whatIf`**, not to `create` as `BicepDeploy@0`'s
   does: a step that leaves it out never deploys.
 - **`retentionInterval` maxes out at `PT3H`.** The service enforces one to three

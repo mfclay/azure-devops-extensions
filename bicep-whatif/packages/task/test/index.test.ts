@@ -105,7 +105,7 @@ describe('the task entry point', () => {
     expect(raw['stackId']).toBe('network');
     expect(raw['templateFile']).toBe('main.bicep');
     expect(raw['parametersFile']).toBeUndefined();
-    expect(Object.keys(raw)).toHaveLength(27);
+    expect(Object.keys(raw)).toHaveLength(30);
     expect(Object.keys(raw)).toContain('publishSummary');
   });
 
