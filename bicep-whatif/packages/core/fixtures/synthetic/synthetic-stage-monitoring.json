@@ -1,0 +1,120 @@
+{
+  "_synthetic": {
+    "warning": "SYNTHETIC — NOT A CAPTURED PAYLOAD. Hand-authored against the deploymentStacks/stable/2025-07-01 swagger.",
+    "why": "The harness needs a what-if stage not named WhatIf_ (stage detection by attachment, slice 7), and every existing fixture is already some other stage's stack.",
+    "shapeSource": "Field names, casing and nesting copied from synthetic-destructive-and-protection-loss.json, itself copied from the real build 7700017 captures in ../real/.",
+    "doNotTreatAsEvidence": "Nothing here proves how ARM behaves. It gives the harness a stack whose stack name and resource ids no other fixture uses, so the tab cannot merge it with another stage's rows."
+  },
+  "id": "/subscriptions/00000000-0000-4000-8000-000000000001/providers/Microsoft.Resources/deploymentStacks/monitoring",
+  "location": "centralus",
+  "name": "monitoring",
+  "type": "Microsoft.Resources/deploymentStacks/deploymentStackWhatIfResults",
+  "tags": {},
+  "systemData": null,
+  "properties": {
+    "actionOnUnmanage": {
+      "managementGroups": "detach",
+      "resourceGroups": "detach",
+      "resources": "detach",
+      "resourcesWithoutDeleteSupport": "fail"
+    },
+    "correlationId": "00000000-0000-4000-8000-000000000004",
+    "debugSetting": null,
+    "denySettings": {
+      "applyToChildScopes": false,
+      "excludedActions": [],
+      "excludedPrincipals": [],
+      "mode": "denyWriteAndDelete"
+    },
+    "deploymentScope": null,
+    "deploymentStackLastModified": null,
+    "deploymentStackResourceId": "/subscriptions/00000000-0000-4000-8000-000000000001/providers/Microsoft.Resources/deploymentStacks/monitoring",
+    "description": null,
+    "diagnostics": [],
+    "error": null,
+    "extensionConfigs": null,
+    "externalInputDefinitions": null,
+    "externalInputs": null,
+    "parameters": {},
+    "parametersLink": null,
+    "provisioningState": "succeeded",
+    "retentionInterval": "3:00:00",
+    "template": null,
+    "templateLink": null,
+    "validationLevel": "Provider",
+    "changes": {
+      "denySettingsChange": null,
+      "deploymentScopeChange": null,
+      "resourceChanges": [
+        {
+          "apiVersion": "2025-02-01",
+          "changeCertainty": "definite",
+          "changeType": "modify",
+          "denyStatusChange": {
+            "before": "denyWriteAndDelete",
+            "after": "denyWriteAndDelete"
+          },
+          "deploymentId": null,
+          "extension": null,
+          "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/synthetic-monitoring-rg/providers/Microsoft.OperationalInsights/workspaces/synthetic-logs",
+          "identifiers": null,
+          "managementStatusChange": {
+            "before": "managed",
+            "after": "managed"
+          },
+          "resourceConfigurationChanges": {
+            "before": {
+              "properties": {
+                "retentionInDays": 30
+              }
+            },
+            "after": {
+              "properties": {
+                "retentionInDays": 90
+              }
+            },
+            "delta": [
+              {
+                "after": 90,
+                "before": 30,
+                "changeType": "modify",
+                "children": [],
+                "path": "properties.retentionInDays"
+              }
+            ]
+          },
+          "resourceGroup": "synthetic-monitoring-rg",
+          "symbolicName": "logWorkspace",
+          "type": "Microsoft.OperationalInsights/workspaces",
+          "unsupportedReason": null
+        },
+        {
+          "apiVersion": "2023-01-01",
+          "changeCertainty": "definite",
+          "changeType": "noChange",
+          "denyStatusChange": {
+            "before": "denyWriteAndDelete",
+            "after": "denyWriteAndDelete"
+          },
+          "deploymentId": null,
+          "extension": null,
+          "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/synthetic-monitoring-rg/providers/Microsoft.Insights/actionGroups/synthetic-oncall",
+          "identifiers": null,
+          "managementStatusChange": {
+            "before": "managed",
+            "after": "managed"
+          },
+          "resourceConfigurationChanges": {
+            "before": {},
+            "after": {},
+            "delta": []
+          },
+          "resourceGroup": "synthetic-monitoring-rg",
+          "symbolicName": "onCallGroup",
+          "type": "Microsoft.Insights/actionGroups",
+          "unsupportedReason": null
+        }
+      ]
+    }
+  }
+}

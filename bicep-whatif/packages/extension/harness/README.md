@@ -74,8 +74,9 @@ In an Azure DevOps organisation you control:
    Pipelines YAML file** → branch `main`, path
    `/bicep-whatif/packages/extension/harness/azure-pipelines.yml`.
 
-5. **Run it.** Six stages, all green in about a minute. Open the build's
-   **What-If** tab.
+5. **Run it.** Ten stages in about a minute: eight green and two skipped
+   (`Deploy_Network` on any branch but `main`, `WhatIf_Skipped` always). Open
+   the build's **What-If** tab.
 
 Nothing else needs configuring — no variables, and no service connection beyond
 the placeholder in step 2. The pipeline is `trigger: none` and `pr: none`, so
@@ -149,7 +150,7 @@ up" — it is done once per organisation and then never thought about again.
 
 ## What you should see
 
-Six stacks, spanning the cases that matter:
+Ten stacks from nine stages, spanning the cases that matter:
 
 | Stage | Shows |
 |---|---|
@@ -159,8 +160,16 @@ Six stacks, spanning the cases that matter:
 | `WhatIf_SchemaDrift` | Change types and a `delta` the parser has never seen |
 | `WhatIf_Failed` | A sidecar with `status: failed` and **no payload** |
 | `WhatIf_NeverEvaluated` | **Nothing attached at all** |
+| `WhatIf_Application` | **Two stacks**, `app-frontend` and `app-backend`, each with its own sidecar |
+| `Preview_Monitoring` | A what-if stage **not named `WhatIf_`**, found by its attachment and shown in timeline order |
+| `WhatIf_Skipped` | A stage **skipped outright**, so *not evaluated* |
 
-The last two are the point of the whole design, and they must not look alike:
+`Deploy_Network` is the tenth stage and must **not** appear: a `create` stage, skipped
+off `main`, that attaches nothing and is not named `WhatIf_`. Its `StackWhatIfDev@1`
+step has `condition: false` too, so a run from `main` attaches nothing either.
+
+`WhatIf_Failed` and `WhatIf_NeverEvaluated` are the point of the whole design, and
+they must not look alike:
 
 - **`WhatIf_Failed`** attached a sidecar, so the tab knows the stack was looked
   at and could not be evaluated. It must not read as "no changes".
@@ -170,8 +179,9 @@ The last two are the point of the whole design, and they must not look alike:
   prevent — eight clean stacks reading as a safe deploy while the ninth was never
   looked at.
 
-**Both hold.** Verified 2026-08-26 against a real installed extension: the tab
-reported *"6 stacks · 2 without results · 23 resources"* and named both
+**Both hold.** Verified 2026-08-26, before the last four stages were added,
+against a real installed extension: the tab reported *"6 stacks · 2 without
+results · 23 resources"* and named both
 result-less stacks in a banner reading *"2 stacks were not evaluated. They
 produced no what-if result, so nothing is known about them — treat that as
 unknown, not as unchanged."* Six stages in the timeline, four payloads, five
@@ -209,12 +219,14 @@ Two other things worth checking before digging deeper:
 
 ## Adding a stack
 
-Name the stage `WhatIf_*` — the tab finds its stages by that prefix off the
-timeline — and call the script:
+Call the script from any stage. The tab shows a stage that is named `WhatIf_*` or
+that a what-if attachment traces to through the timeline; the prefix is what keeps a
+stage that never ran on screen. Use a fixture no other stage attaches: the grid keys
+rows by resource id and labels a stack by its payload's name. For example:
 
 ```yaml
 - stage: WhatIf_Example
-  displayName: 'Stack 7 — Example'
+  displayName: 'Stack 11 — Example'
   dependsOn: []
   jobs:
   - job: WhatIf

@@ -141,6 +141,12 @@ carries a `_synthetic` block at the top saying so; the normalizer ignores it.
 |---|---|
 | `synthetic-destructive-and-protection-loss.json` | `delete`, `detach`, `create`, `unsupported`, plus the two axes that carry no change type — a `noChange` resource going `notManaged`, and a `modify` whose deny mode weakens |
 | `synthetic-schema-drift.json` | An unrecognised resource `changeType`, an unrecognised property `changeType`, an unrecognised deny status, a resource with no id, a resource with no change type, and a `delta` that is not an array |
+| `synthetic-stage-app-frontend.json`, `synthetic-stage-app-backend.json` | Two small, unremarkable stacks for the harness stage that attaches two stacks |
+| `synthetic-stage-monitoring.json` | One small stack for the harness stage not named `WhatIf_` |
+
+The three `synthetic-stage-*` files exist for the harness pipeline, not the normalizer.
+Their stack names and resource ids appear in no other fixture, so the tab cannot merge
+them with another stage's rows.
 
 These prove how the **normalizer** behaves when ARM says these things. They prove
 nothing about whether ARM says them.

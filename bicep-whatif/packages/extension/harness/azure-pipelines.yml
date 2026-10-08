@@ -163,3 +163,79 @@ stages:
     steps:
     - script: echo "Attaching nothing on purpose — this stage must still reach the tab."
       displayName: 'Attach nothing'
+
+# ── Round B: what the tab must do with stages it did not used to handle ──────
+# Several stacks in one stage, a what-if stage named otherwise, a deploy stage
+# skipped on this build, and a `WhatIf_` stage skipped outright. The first two
+# need payloads no other stage uses: the grid keys rows by resource id and labels
+# a stack by its payload's name, so a reused fixture would merge with its stage.
+
+# Two `StackWhatIf` steps in one stage. Each must show as its own stack, with
+# its own sidecar; keying by stage alone let the second replace the first.
+- stage: WhatIf_Application
+  displayName: 'Stacks 7 and 8 — Application, two stacks in one stage'
+  dependsOn: []
+  jobs:
+  - job: WhatIf
+    pool: ${{ parameters.pool }}
+    steps:
+    - script: node bicep-whatif/packages/extension/harness/attach-fixture.mjs --stack app-frontend --layer 3 --payload $(SYNTH)/synthetic-stage-app-frontend.json
+      displayName: 'Attach: first of two stacks in this stage'
+    - script: node bicep-whatif/packages/extension/harness/attach-fixture.mjs --stack app-backend --layer 3 --payload $(SYNTH)/synthetic-stage-app-backend.json
+      displayName: 'Attach: second of two stacks in this stage'
+
+# A what-if stage not named `WhatIf_`. It is shown because a what-if attachment
+# traces to it through the timeline, and in timeline order among the rest.
+- stage: Preview_Monitoring
+  displayName: 'Stack 9 — Monitoring, a what-if stage named otherwise'
+  dependsOn: []
+  jobs:
+  - job: Preview
+    pool: ${{ parameters.pool }}
+    steps:
+    - script: node bicep-whatif/packages/extension/harness/attach-fixture.mjs --stack monitoring --layer 2 --payload $(SYNTH)/synthetic-stage-monitoring.json
+      displayName: 'Attach: a stage the prefix would not have found'
+
+# A deploy stage, skipped on any build not from `main`: the shape a real
+# pipeline gives its `create`. It carries the same task as a what-if, attaches
+# nothing and is not named `WhatIf_`, so the tab must not show it.
+#
+# The step has `condition: false` as well, so a run from `main` does not try a
+# real create through the placeholder connection. Its inputs are validated at
+# queue time all the same, which is why it names the placeholder connection and
+# every input `create` requires at subscription scope.
+- stage: Deploy_Network
+  displayName: 'Deploy — Network (main only; must not show)'
+  dependsOn: WhatIf_Network
+  condition: eq(variables['Build.SourceBranch'], 'refs/heads/main')
+  jobs:
+  - job: Deploy
+    pool: ${{ parameters.pool }}
+    steps:
+    - task: StackWhatIfDev@1
+      displayName: 'StackWhatIfDev create (never runs)'
+      condition: false
+      inputs:
+        operation: create
+        ConnectedServiceName: 'harness-placeholder-connection'
+        stackId: network
+        templateFile: '$(Build.SourcesDirectory)/does-not-exist.json'
+        location: CentralUS
+        actionOnUnmanageResources: detach
+        actionOnUnmanageResourceGroups: detach
+        denySettingsMode: none
+
+# A `WhatIf_` stage that never runs at all. Only its name can bring it to the
+# tab, as *not evaluated*, and only if the timeline carries a `Stage` record for
+# a stage skipped outright. If it ever runs, its step files a failure that says
+# so, which cannot be mistaken for *not evaluated*.
+- stage: WhatIf_Skipped
+  displayName: 'Stack 10 — Skipped outright'
+  dependsOn: []
+  condition: false
+  jobs:
+  - job: WhatIf
+    pool: ${{ parameters.pool }}
+    steps:
+    - script: "node bicep-whatif/packages/extension/harness/attach-fixture.mjs --stack skipped --layer 5 --status failed --error 'Harness: WhatIf_Skipped ran; its condition should have skipped it'"
+      displayName: 'Attach: never runs'
