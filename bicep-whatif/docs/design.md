@@ -367,11 +367,21 @@ frame, and banners, a chip strip and a toolbar took most of it before the grid b
   loss, or when its own deny settings weaken. Grouping moves the stack, not the rung: a potential
   change keeps the rank a definite one would have.
 - A **row opens beneath itself**, property changes first as a Property / Before / After table.
-  Several can be open at once, and an open row is shown whatever the filters say.
+  Several can be open at once, and an open row is shown whatever the filters say. Where three or
+  more leaves under one element share a change type, they sit under one group row. Groups start
+  open, because a folded group would hide the before values of changed lines.
+- The **flat list** is banded: will, might, unknown, new, modified, unchanged. Unknown sits above
+  new and modified for the reason not-evaluated stacks do. Every row that passes the filters is
+  listed.
+- A stack nobody evaluated **opens on what that means**, then why, the error, the stage's result
+  and a link to its log. The link opens Azure DevOps's own build page in a new tab through the
+  host: it adds no scope and no egress (`F2`).
+- The tab draws its rung marks as **icons**. `core`'s text glyphs stay the source for the log and
+  the summary, and each icon's tooltip names its glyph.
 - Filters, layout, open stacks and open rows all live in the URL hash, so a link reproduces the view.
 
-The UX decisions and why three of them changed are in
-[`packages/ui/README.md`](../packages/ui/README.md).
+The UX decisions, why three of them changed, and the second review's observations behind the rest
+are in [`packages/ui/README.md`](../packages/ui/README.md).
 
 ### F · Distribution and security
 

@@ -47,7 +47,9 @@ default view, without touching a filter).
 
 These are settled; **do not re-ask them**, and change them only deliberately.
 Decisions 1, 2 and 5 were revised before 1.0, after the tab was reviewed in a
-real organisation; the reasons are below the table.
+real organisation; the reasons are below the table. A second review of that
+layout raised ten observations, cited below as *obs. n*. Decision 6 was revised for
+it, and 7 to 15 were added.
 
 | | Question | Answer |
 |---|---|---|
@@ -56,7 +58,16 @@ real organisation; the reasons are below the table.
 | 3 | Where do filters live? | **A toolbar**, pinned while the page scrolls. |
 | 4 | Do rows deep-link? | **Yes** — filters, the layout, open stacks *and* open resources live in the URL hash. An open row is shown whatever the filters say. |
 | 5 | What does the tab open on? | **A headline sentence, then one line per stack, worst first**, with that stack's counts in one column per rung. "All resources" switches to the flat list ranked by severity across every stack. Both hide `noChange` by default; `unevaluated` is shown by construction. |
-| 6 | How does the stack filter behave at thirty? | **Searchable multi-select, grouped by layer**, each row showing that stack's worst rung. |
+| 6 | How does the stack filter behave at thirty? | **Searchable multi-select, grouped by outcome** in the first screen's four groups, with quick picks *All*, *Needs a look* (will, might and not evaluated) and *None*. Search matches the stack or its stage. Grouping by name prefix is offered only when two or more prefixes exist; otherwise it shows a lone "Other". (obs. 9) |
+| 7 | How are stacks that might delete told from stacks that will? | **Two groups.** *Will* when a stack has a definite delete or protection loss, or its own deny settings weaken; *might* when every such change in it is potential. The headline counts both. Grouping moves the stack; `core`'s ladder is untouched. (obs. 1) |
+| 8 | Can the totals be read as stacks? | **No: they say RESOURCES**, and the stack list's head reads "Stack · resources per stack →". The headline counts stacks. (obs. 2) |
+| 9 | What is a resource Azure couldn't predict called? | **"Not predicted."** "Not evaluated" is said only of a stack with no result. The totals count resources only, and a stage's stand-in row ignores the severity filter, so hiding *not predicted* never hides a stack nobody evaluated. (obs. 3) |
+| 10 | How are Azure's warnings said? | **In a plain sentence**, on the closed stack line, with a warning icon. Where Azure couldn't rule out deletes, the sentence says so. Opened, the stack leads with what the warning means for it, and Azure's own text, which shouts, sits behind a disclosure under that. An unknown code falls back to Azure's first sentence. (obs. 4) |
+| 11 | Two stack lines with one name? | **The stage becomes a chip**, and a line says whether it is the same stack in another stage (the stack resource ids match) or another stack with that name. (obs. 8) |
+| 12 | A long run of property lines under one element? | **One group row** when three or more leaves share a change type: "del ×7", the path, "All 7 properties become absent". Groups start **open** and fold on request; a search match opens one. *absent* is drawn only for a removed line's after or an added line's before; elsewhere `null` is a value. Naming role assignments by role and principal was dropped: Azure sends only GUIDs, and resolving them needs a scope F2 rules out. (obs. 7, obs. 6) |
+| 13 | How is the flat list ordered? | **In bands:** will, might, unknown (not predicted or not evaluated), new, modified, unchanged. Unknown sits above new and modified because it can hide a delete. Every row that passes the filters is listed. The type keeps its provider, `Network/virtualNetworks`. (obs. 5, obs. 10) |
+| 14 | What does a stack nobody evaluated say when opened? | **"Nothing in this stack was evaluated"**, then why, Azure's error code and message, the stage's result, and a link to the stage's log. It states the result and claims no cause: the tab can't see the pipeline's YAML. |
+| 15 | Text glyphs or icons? | **Icons, in the tab only.** `core`'s glyphs stay in the log and summary, and each icon's tooltip names its glyph ("Destructive (-)"). A legend under the stack list explains the icons and the rails' dashes and hatching. |
 
 **Why 1, 2 and 5 changed.** The host gives the tab a fixed-height frame (632px
 in a typical window). The banners, the chip strip and the toolbar took about
@@ -83,9 +94,13 @@ one click away for anyone who wants E2's original view.
 | `src/data/mock.ts` | The fixtures, plus two stages that attached nothing. |
 | `src/model/estate.ts` | `StageResult[]` → grid rows, via `core`'s normalizer. |
 | `src/model/view.ts` | Filter state, the default view, open rows and stacks, and the sort. Pure. |
-| `src/model/summary.ts` | The headline, and how stacks group and order. Pure. |
+| `src/model/summary.ts` | The headline, how stacks group and order, and the stack filter's picks. Pure. |
+| `src/model/diagnostics.ts` | Azure's warnings as plain sentences, and the opened stack's callout. Pure. |
+| `src/model/propertyLines.ts` | A resource's property delta as table lines and groups, and its header count. Pure. |
+| `src/model/notEvaluated.ts` | What an opened, never-evaluated stack says, and its log link. Pure. |
+| `src/model/layers.ts` | Grouping stacks by name prefix, and whether that helps. Pure. |
 | `src/model/urlState.ts` | View state ⇄ URL hash. Pure, round-trip tested. |
-| `src/nav/navigation.ts` | The host's hash, with a `window` fallback. |
+| `src/nav/navigation.ts` | The host's hash and opening a page of Azure DevOps, with `window` fallbacks. |
 | `src/components/` | Headline, totals, toolbar, stack menu, stack list, resource rows, a row or stack opened, property changes, notes about the build. |
 
 Sorting, filtering, grouping and the headline are **pure functions** — they are
