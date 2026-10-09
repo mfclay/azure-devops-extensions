@@ -134,6 +134,19 @@ stages:
     - script: node bicep-whatif/packages/extension/harness/attach-fixture.mjs --stack schema-drift --layer 4 --payload $(SYNTH)/synthetic-schema-drift.json
       displayName: 'Attach: change types and a delta the parser has never seen'
 
+# Azure's own word that a result is incomplete: a module short-circuited out of
+# the result, a role assignment whose name could not be worked out, both named
+# only in `properties.diagnostics`. The tab must say so above the grid.
+- stage: WhatIf_ShortCircuit
+  displayName: 'Stack 11 — Short-circuited (synthetic)'
+  dependsOn: []
+  jobs:
+  - job: WhatIf
+    pool: ${{ parameters.pool }}
+    steps:
+    - script: node bicep-whatif/packages/extension/harness/attach-fixture.mjs --stack identity --layer 3 --payload $(SYNTH)/synthetic-short-circuit.json
+      displayName: 'Attach: diagnostics, an unsupported row and a potential change'
+
 # ── The two ways a stack can produce no result ──────────────────────────────
 # These are the point of the whole design, so they are worth seeing rendered.
 

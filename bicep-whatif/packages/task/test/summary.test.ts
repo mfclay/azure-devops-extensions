@@ -124,3 +124,37 @@ describe('renderSummary edge cases', () => {
     }
   });
 });
+
+describe('renderSummary with Azure diagnostics', () => {
+  const summary = renderSummary(load('synthetic/synthetic-short-circuit.json'), CONTEXT);
+
+  it('lists every diagnostic in the log, before the rows', () => {
+    const lines = summary.log.split('\n');
+    const head = lines.indexOf('Azure diagnostics (3):');
+    expect(head).toBeGreaterThan(-1);
+    expect(lines[head + 1]).toMatch(/^ {2}! warning NestedDeploymentShortCircuited: The nested deployment/);
+    expect(lines[head + 3]).toMatch(/^ {2}i info SyntheticInformational: /);
+    const firstRow = lines.findIndex((l) => /^\s{2}[-/+~?]\s/.test(l));
+    expect(firstRow).toBeGreaterThan(head);
+  });
+
+  it('calls out only the warnings in the markdown', () => {
+    expect(summary.markdown).toMatch(/> \*\*Azure reported 2 warnings on this what-if\.\*\*/);
+    expect(summary.markdown).toMatch(/> - `ResourceNameNotEvaluated`: /);
+    expect(summary.markdown).not.toMatch(/SyntheticInformational/);
+  });
+
+  it('returns the warnings for the pipeline to raise', () => {
+    expect(summary.diagnostics).toEqual([
+      expect.stringMatching(/^NestedDeploymentShortCircuited: /),
+      expect.stringMatching(/^ResourceNameNotEvaluated: /),
+    ]);
+  });
+
+  it('says nothing about diagnostics when there are none', () => {
+    const clean = renderSummary(load('real/build-7700017-app-network.json'), CONTEXT);
+    expect(clean.log).not.toMatch(/Azure diagnostics/);
+    expect(clean.markdown).not.toMatch(/Azure reported/);
+    expect(clean.diagnostics).toEqual([]);
+  });
+});

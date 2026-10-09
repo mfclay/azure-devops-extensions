@@ -77,6 +77,11 @@ Two rules, and they pull in opposite directions on purpose:
    warnings means a genuinely clean stack; zero rows plus a warning means something
    else, and the caller must be able to tell the difference.
 
+Azure's own `properties.diagnostics` come back whole, as `diagnostics`, and change
+no row's rank. They matter for the same rule: a module whose id cannot be worked
+out before the deploy is short-circuited, left out of `resourceChanges`, and named
+only there. Anything but an `info` needs a consumer to say so.
+
 Enum matching is case-insensitive, which is required rather than decorative: one
 real capture disagrees with itself, carrying `denySettings.mode: "none"` and
 `changes.denySettingsChange.before.mode: "None"` in the same file.
@@ -90,6 +95,7 @@ real capture disagrees with itself, carrying `denySettings.mode: "none"` and
 | `severityOf(input)` | The four-axis collapse, with reasons |
 | `compareBySeverityDesc(a, b)` | Sort comparator, most dangerous first |
 | `flattenPropertyChanges(tree)` | Delta tree → dotted paths, for search |
+| `needsAttention(diagnostic)` / `diagnosticsFor(diagnostics, row)` | Which of Azure's diagnostics to raise, and which name a row |
 | `isManagementLost` / `isDenyWeakened` | The two protection-loss predicates |
 | `parse*` / `denyStrength` | Case-insensitive enum readers |
 | `SEVERITY_RANK` / `SEVERITY_GLYPH` / `SEVERITY_TONE` | Presentation-neutral metadata |

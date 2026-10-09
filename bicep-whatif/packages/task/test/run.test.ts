@@ -741,3 +741,28 @@ describe('run — the sidecar content', () => {
     expect(sidecar['layer']).toBe(1);
   });
 });
+
+describe('run — Azure diagnostics on a what-if', () => {
+  it('raises each warning as a pipeline warning, and leaves info in the log', async () => {
+    const payload = {
+      ...WHATIF_PAYLOAD,
+      properties: {
+        ...WHATIF_PAYLOAD.properties,
+        diagnostics: [
+          { level: 'warning', code: 'NestedDeploymentShortCircuited', message: 'Module skipped.' },
+          { level: 'info', code: 'Quiet', message: 'Nothing to see.' },
+        ],
+      },
+    };
+    const h = harness({
+      routes: [
+        { match: (u, m) => u.includes('deploymentStacksWhatIfResults') && m === 'PUT', reply: () => ({ body: payload }) },
+      ],
+    });
+    const result = await run(h.deps);
+
+    expect(result.status).toBe('succeeded');
+    expect(h.warnings).toEqual([expect.stringMatching(/: Azure reported NestedDeploymentShortCircuited: Module skipped\.$/)]);
+    expect(h.logs.join('\n')).toMatch(/i info Quiet: Nothing to see\./);
+  });
+});

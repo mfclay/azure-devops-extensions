@@ -30,6 +30,7 @@ import type {
   PropertyChange,
   ResourceRow,
   StatusTransition,
+  WhatIfDiagnostic,
 } from './model.js';
 import type { RawResourceChange, RawStackWhatIfResult } from './raw.js';
 import {
@@ -211,6 +212,66 @@ function normalizeDenySettings(raw: unknown): DenySettings | undefined {
   };
 }
 
+const DIAGNOSTIC_LEVELS: ReadonlySet<string> = new Set(['info', 'warning', 'error']);
+
+/**
+ * `properties.diagnostics`, kept whole and in order. An entry that is not an
+ * object is skipped with a warning; an unknown level is kept as itself.
+ */
+function normalizeDiagnostics(raw: unknown, warnings: ParseWarning[]): WhatIfDiagnostic[] {
+  if (raw === undefined || raw === null) return [];
+  if (!Array.isArray(raw)) {
+    warnings.push({ code: 'diagnosticsNotArray', message: '`properties.diagnostics` was not an array.' });
+    return [];
+  }
+  const out: WhatIfDiagnostic[] = [];
+  for (const d of raw) {
+    if (!isObject(d)) {
+      warnings.push({ code: 'diagnosticNotObject', message: 'Skipped a non-object diagnostic.' });
+      continue;
+    }
+    const level = asString(d['level']) ?? '';
+    const levelKnown = DIAGNOSTIC_LEVELS.has(level.toLowerCase());
+    if (!levelKnown) {
+      warnings.push({
+        code: 'unknownDiagnosticLevel',
+        message: `Unrecognised diagnostic level "${level}". Shown as needing attention.`,
+      });
+    }
+    const code = asString(d['code']);
+    out.push({
+      level: levelKnown ? level.toLowerCase() : level,
+      levelKnown,
+      code,
+      message: asString(d['message']) ?? code ?? 'Azure attached a diagnostic with no message.',
+      target: asString(d['target']),
+    });
+  }
+  return out;
+}
+
+/**
+ * Whether a diagnostic says the result may be incomplete or wrong: a warning, an
+ * error, or a level this build does not know. Only `info` is safe to leave quiet.
+ */
+export function needsAttention(diagnostic: WhatIfDiagnostic): boolean {
+  return diagnostic.level !== 'info';
+}
+
+/**
+ * The diagnostics whose target is this resource, matched on its id without
+ * regard to case. Nothing documents what a target holds, so a diagnostic that
+ * matches no row stays with the stack rather than being guessed onto one.
+ */
+export function diagnosticsFor(
+  diagnostics: readonly WhatIfDiagnostic[],
+  row: Pick<ResourceRow, 'resourceId'>,
+): WhatIfDiagnostic[] {
+  if (row.resourceId.length === 0) return [];
+  const id = row.resourceId.toLowerCase();
+  return diagnostics.filter((d) => d.target?.toLowerCase() === id);
+}
+
 /**
  * Normalize one stack's what-if payload.
  *
@@ -268,6 +329,8 @@ export function normalizeStackWhatIf(payload: RawStackWhatIfResult | unknown): N
   const counts = emptyCounts();
   for (const r of rows) counts[r.severity] += 1;
 
+  const diagnostics = normalizeDiagnostics(props?.['diagnostics'], warnings);
+
   // The stack-scoped deny change, which is not any one resource's deny status.
   const denyChange = changes && isObject(changes['denySettingsChange']) ? changes['denySettingsChange'] : undefined;
   const denyBefore = isObject(denyChange?.['before']) ? parseDenyStatus(denyChange['before']['mode']) : undefined;
@@ -298,6 +361,7 @@ export function normalizeStackWhatIf(payload: RawStackWhatIfResult | unknown): N
     counts,
     total: rows.length,
     highestSeverity: highestOf(counts),
+    diagnostics,
     warnings,
   };
 }

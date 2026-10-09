@@ -1,0 +1,194 @@
+{
+  "_synthetic": {
+    "warning": "SYNTHETIC — NOT A CAPTURED PAYLOAD. Hand-authored against the deploymentStacks/stable/2025-07-01 swagger.",
+    "why": "Models a stack whose role-assignment names depend on a principal id known only at deploy time: what-if cannot work out the new names, so the old assignments read as detached and the new ones as unsupported, and a module is short-circuited out of the result. Azure explains this only in properties.diagnostics and unsupportedReason.",
+    "shapeSource": "DeploymentStacksDiagnostic (level, code, message, target) from the 2025-07-01 swagger; everything else copied from synthetic-destructive-and-protection-loss.json.",
+    "doNotTreatAsEvidence": "The codes, messages, targets and unsupportedReason text are invented, except NestedDeploymentShortCircuited, a code named in a public Azure/arm-template-whatif issue. Replace with a captured payload once one exists."
+  },
+  "id": "/subscriptions/00000000-0000-4000-8000-000000000001/providers/Microsoft.Resources/deploymentStacks/app-identity",
+  "location": "centralus",
+  "name": "app-identity",
+  "type": "Microsoft.Resources/deploymentStacks/deploymentStackWhatIfResults",
+  "tags": {},
+  "systemData": null,
+  "properties": {
+    "actionOnUnmanage": {
+      "managementGroups": "detach",
+      "resourceGroups": "detach",
+      "resources": "detach",
+      "resourcesWithoutDeleteSupport": "fail"
+    },
+    "correlationId": "00000000-0000-4000-8000-000000000004",
+    "debugSetting": null,
+    "denySettings": {
+      "applyToChildScopes": false,
+      "excludedActions": [],
+      "excludedPrincipals": [],
+      "mode": "denyWriteAndDelete"
+    },
+    "deploymentScope": null,
+    "deploymentStackLastModified": null,
+    "deploymentStackResourceId": "/subscriptions/00000000-0000-4000-8000-000000000001/providers/Microsoft.Resources/deploymentStacks/app-identity",
+    "description": null,
+    "diagnostics": [
+      {
+        "level": "warning",
+        "code": "NestedDeploymentShortCircuited",
+        "message": "The nested deployment 'workload' was not evaluated because its parameters depend on values known only during deployment. Resources it deploys are not in this result.",
+        "target": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/synthetic-identity-rg/providers/Microsoft.Resources/deployments/workload"
+      },
+      {
+        "level": "warning",
+        "code": "ResourceNameNotEvaluated",
+        "message": "The name of this role assignment depends on a value known only during deployment, so its change could not be predicted.",
+        "target": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/synthetic-identity-rg/providers/Microsoft.Authorization/roleAssignments/[guid(resourceGroup().id, reference('workloadIdentity').principalId)]"
+      },
+      {
+        "level": "info",
+        "code": "SyntheticInformational",
+        "message": "An informational message, present to show that info-level diagnostics stay quiet."
+      }
+    ],
+    "error": null,
+    "extensionConfigs": null,
+    "externalInputDefinitions": null,
+    "externalInputs": null,
+    "parameters": {},
+    "parametersLink": null,
+    "provisioningState": "succeeded",
+    "retentionInterval": "3:00:00",
+    "template": null,
+    "templateLink": null,
+    "validationLevel": "Provider",
+    "changes": {
+      "denySettingsChange": null,
+      "deploymentScopeChange": null,
+      "resourceChanges": [
+        {
+          "apiVersion": "2022-04-01",
+          "changeCertainty": "definite",
+          "changeType": "detach",
+          "denyStatusChange": {
+            "before": "denyWriteAndDelete",
+            "after": "removedBySystem"
+          },
+          "deploymentId": null,
+          "extension": null,
+          "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/synthetic-identity-rg/providers/Microsoft.Authorization/roleAssignments/00000000-0000-4000-8000-000000000301",
+          "identifiers": null,
+          "managementStatusChange": {
+            "before": "managed",
+            "after": "notManaged"
+          },
+          "resourceConfigurationChanges": {
+            "before": {
+              "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/synthetic-identity-rg/providers/Microsoft.Authorization/roleAssignments/00000000-0000-4000-8000-000000000301",
+              "name": "00000000-0000-4000-8000-000000000301",
+              "type": "Microsoft.Authorization/roleAssignments"
+            },
+            "after": null,
+            "delta": []
+          },
+          "resourceGroup": "synthetic-identity-rg",
+          "symbolicName": "workloadReader",
+          "type": "Microsoft.Authorization/roleAssignments",
+          "unsupportedReason": null
+        },
+        {
+          "apiVersion": null,
+          "changeCertainty": "potential",
+          "changeType": "unsupported",
+          "denyStatusChange": {
+            "before": "none",
+            "after": "none"
+          },
+          "deploymentId": null,
+          "extension": null,
+          "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/synthetic-identity-rg/providers/Microsoft.Authorization/roleAssignments/[guid(resourceGroup().id, reference('workloadIdentity').principalId)]",
+          "identifiers": null,
+          "managementStatusChange": {
+            "before": "notManaged",
+            "after": "managed"
+          },
+          "resourceConfigurationChanges": {
+            "before": null,
+            "after": null,
+            "delta": []
+          },
+          "resourceGroup": "synthetic-identity-rg",
+          "symbolicName": "workloadReader",
+          "type": "Microsoft.Authorization/roleAssignments",
+          "unsupportedReason": "The resource name could not be evaluated before deployment."
+        },
+        {
+          "apiVersion": "2023-01-31",
+          "changeCertainty": "definite",
+          "changeType": "noChange",
+          "denyStatusChange": {
+            "before": "denyWriteAndDelete",
+            "after": "denyWriteAndDelete"
+          },
+          "deploymentId": null,
+          "extension": null,
+          "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/synthetic-identity-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/synthetic-workload-id",
+          "identifiers": null,
+          "managementStatusChange": {
+            "before": "managed",
+            "after": "managed"
+          },
+          "resourceConfigurationChanges": {
+            "before": {},
+            "after": {},
+            "delta": []
+          },
+          "resourceGroup": "synthetic-identity-rg",
+          "symbolicName": "workloadIdentity",
+          "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+          "unsupportedReason": null
+        },
+        {
+          "apiVersion": "2024-11-01",
+          "changeCertainty": "potential",
+          "changeType": "modify",
+          "denyStatusChange": {
+            "before": "denyWriteAndDelete",
+            "after": "denyWriteAndDelete"
+          },
+          "deploymentId": null,
+          "extension": null,
+          "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/synthetic-identity-rg/providers/Microsoft.KeyVault/vaults/synthetic-identity-kv",
+          "identifiers": null,
+          "managementStatusChange": {
+            "before": "managed",
+            "after": "managed"
+          },
+          "resourceConfigurationChanges": {
+            "before": {
+              "properties": {
+                "enableRbacAuthorization": false
+              }
+            },
+            "after": {
+              "properties": {
+                "enableRbacAuthorization": true
+              }
+            },
+            "delta": [
+              {
+                "after": true,
+                "before": false,
+                "changeType": "modify",
+                "children": [],
+                "path": "properties.enableRbacAuthorization"
+              }
+            ]
+          },
+          "resourceGroup": "synthetic-identity-rg",
+          "symbolicName": "identityVault",
+          "type": "Microsoft.KeyVault/vaults",
+          "unsupportedReason": null
+        }
+      ]
+    }
+  }
+}

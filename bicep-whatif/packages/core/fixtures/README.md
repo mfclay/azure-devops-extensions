@@ -141,6 +141,7 @@ carries a `_synthetic` block at the top saying so; the normalizer ignores it.
 |---|---|
 | `synthetic-destructive-and-protection-loss.json` | `delete`, `detach`, `create`, `unsupported`, plus the two axes that carry no change type — a `noChange` resource going `notManaged`, and a `modify` whose deny mode weakens |
 | `synthetic-schema-drift.json` | An unrecognised resource `changeType`, an unrecognised property `changeType`, an unrecognised deny status, a resource with no id, a resource with no change type, and a `delta` that is not an array |
+| `synthetic-short-circuit.json` | Azure `diagnostics` (two warnings and an info), an `unsupported` role assignment with its `unsupportedReason`, the old assignment it replaces going `detach`, and a `potential` modify. The codes and messages are invented, bar one; see its `_synthetic` block |
 | `synthetic-stage-app-frontend.json`, `synthetic-stage-app-backend.json` | Two small, unremarkable stacks for the harness stage that attaches two stacks |
 | `synthetic-stage-monitoring.json` | One small stack for the harness stage not named `WhatIf_` |
 

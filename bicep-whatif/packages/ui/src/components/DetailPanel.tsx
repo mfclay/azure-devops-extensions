@@ -1,4 +1,4 @@
-import { SEVERITY_TONE, type Severity } from '@bicep-whatif/core';
+import { diagnosticsFor, SEVERITY_TONE, type Severity, type WhatIfDiagnostic } from '@bicep-whatif/core';
 import type { GridRow, StackView } from '../model/estate.js';
 import { Glyph, SEVERITY_LABEL } from './Glyph.js';
 import { PropertyDeltaTree } from './PropertyDeltaTree.js';
@@ -15,10 +15,29 @@ function statusText(before: string | undefined, after: string | undefined): stri
   return `${before ?? '—'} → ${after ?? '—'}`;
 }
 
+function DiagnosticList({ diagnostics }: { diagnostics: readonly WhatIfDiagnostic[] }): React.ReactElement {
+  return (
+    <ul className="notes">
+      {diagnostics.map((d, i) => (
+        <li key={`${d.code ?? ''}:${String(i)}`}>
+          <strong>{d.level}</strong>
+          {d.code !== undefined && <span className="muted"> {d.code}</span>} — {d.message}
+          {d.target !== undefined && <span className="muted"> — {d.target}</span>}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export function DetailPanel(props: DetailPanelProps): React.ReactElement {
   const { row, stack } = props;
   const resource = row.resource;
   const severity: Severity = row.severity;
+  // Azure's messages about this what-if: the ones naming this resource first,
+  // then the rest of the stack's, which may explain this row just as well.
+  const stackDiagnostics = stack?.stack?.diagnostics ?? [];
+  const ownDiagnostics = row.isStagePlaceholder ? [] : diagnosticsFor(stackDiagnostics, row);
+  const otherDiagnostics = stackDiagnostics.filter((d) => !ownDiagnostics.includes(d));
 
   return (
     <aside className="detail" aria-label={`Details for ${row.name}`}>
@@ -76,6 +95,23 @@ export function DetailPanel(props: DetailPanelProps): React.ReactElement {
                   {row.changeType}
                   {!row.changeTypeKnown && <span className="muted"> (not recognised)</span>}
                 </dd>
+                {resource?.changeCertainty !== undefined && resource.changeCertainty !== 'definite' && (
+                  <>
+                    <dt>Certainty</dt>
+                    <dd>
+                      {resource.changeCertainty}
+                      {resource.changeCertainty === 'potential' && (
+                        <span className="muted"> — may or may not happen, depending on the deploy</span>
+                      )}
+                    </dd>
+                  </>
+                )}
+                {resource?.unsupportedReason !== undefined && (
+                  <>
+                    <dt>Not predicted</dt>
+                    <dd>{resource.unsupportedReason}</dd>
+                  </>
+                )}
                 <dt>Management</dt>
                 <dd>
                   {statusText(
@@ -105,6 +141,24 @@ export function DetailPanel(props: DetailPanelProps): React.ReactElement {
               )}
             </section>
           </>
+        )}
+
+        {stackDiagnostics.length > 0 && (
+          <section className="section">
+            <h3 className="section__head">Azure diagnostics</h3>
+            {ownDiagnostics.length > 0 && (
+              <>
+                <p className="muted">About this resource</p>
+                <DiagnosticList diagnostics={ownDiagnostics} />
+              </>
+            )}
+            {otherDiagnostics.length > 0 && (
+              <>
+                <p className="muted">About this stack&rsquo;s what-if</p>
+                <DiagnosticList diagnostics={otherDiagnostics} />
+              </>
+            )}
+          </section>
         )}
 
         {/*

@@ -14,3 +14,5 @@ export const REAL_SHARED_INFRA = () => load('real/build-7700017-app-shared-infra
 /** Hand-authored. No live stack produces a Detach or a Delete. */
 export const SYNTH_SEVERITY = () => load('synthetic/synthetic-destructive-and-protection-loss.json');
 export const SYNTH_DRIFT = () => load('synthetic/synthetic-schema-drift.json');
+/** Hand-authored. Diagnostics and a short-circuit, as no captured payload here shows them. */
+export const SYNTH_SHORT_CIRCUIT = () => load('synthetic/synthetic-short-circuit.json');

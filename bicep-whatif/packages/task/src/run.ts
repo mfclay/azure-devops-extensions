@@ -206,6 +206,7 @@ export async function run(deps: RunDeps): Promise<RunResult> {
       deps.log('');
       deps.log(summary.log);
       deps.log('');
+      for (const d of summary.diagnostics) deps.warn(`${inputs.stackName}: Azure reported ${d}`);
       if (inputs.publishSummary) {
         await writeAndAttach(deps, outputPath, {
           type: ATTACHMENT_TYPE_BUILD_SUMMARY,

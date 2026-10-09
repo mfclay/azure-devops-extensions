@@ -74,7 +74,7 @@ In an Azure DevOps organisation you control:
    Pipelines YAML file** → branch `main`, path
    `/bicep-whatif/packages/extension/harness/azure-pipelines.yml`.
 
-5. **Run it.** Ten stages in about a minute: eight green and two skipped
+5. **Run it.** Eleven stages in about a minute: nine green and two skipped
    (`Deploy_Network` on any branch but `main`, `WhatIf_Skipped` always). Open
    the build's **What-If** tab.
 
@@ -150,7 +150,7 @@ up" — it is done once per organisation and then never thought about again.
 
 ## What you should see
 
-Ten stacks from nine stages, spanning the cases that matter:
+Eleven stacks from ten stages, spanning the cases that matter:
 
 | Stage | Shows |
 |---|---|
@@ -158,13 +158,14 @@ Ten stacks from nine stages, spanning the cases that matter:
 | `WhatIf_SharedInfra` | A real capture — 4 resource changes, layer 2 |
 | `WhatIf_Destructive` | `delete` and `detach`, plus a weakened deny mode — the severe rungs no real capture in this repo contains |
 | `WhatIf_SchemaDrift` | Change types and a `delta` the parser has never seen |
+| `WhatIf_ShortCircuit` | Azure **diagnostics**: a banner naming two warnings, a row Azure could not predict with its reason, and a `potential` change |
 | `WhatIf_Failed` | A sidecar with `status: failed` and **no payload** |
 | `WhatIf_NeverEvaluated` | **Nothing attached at all** |
 | `WhatIf_Application` | **Two stacks**, `app-frontend` and `app-backend`, each with its own sidecar |
 | `Preview_Monitoring` | A what-if stage **not named `WhatIf_`**, found by its attachment and shown in timeline order |
 | `WhatIf_Skipped` | A stage **skipped outright**, so *not evaluated* |
 
-`Deploy_Network` is the tenth stage and must **not** appear: a `create` stage, skipped
+`Deploy_Network` is the eleventh stage and must **not** appear: a `create` stage, skipped
 off `main`, that attaches nothing and is not named `WhatIf_`. Its `StackWhatIfDev@1`
 step has `condition: false` too, so a run from `main` attaches nothing either.
 
@@ -179,7 +180,7 @@ they must not look alike:
   prevent — eight clean stacks reading as a safe deploy while the ninth was never
   looked at.
 
-**Both hold.** Verified 2026-08-26, before the last four stages were added,
+**Both hold.** Verified 2026-08-26, before the last five stages were added,
 against a real installed extension: the tab reported *"6 stacks · 2 without
 results · 23 resources"* and named both
 result-less stacks in a banner reading *"2 stacks were not evaluated. They
@@ -226,7 +227,7 @@ rows by resource id and labels a stack by its payload's name. For example:
 
 ```yaml
 - stage: WhatIf_Example
-  displayName: 'Stack 11 — Example'
+  displayName: 'Stack 12 — Example'
   dependsOn: []
   jobs:
   - job: WhatIf

@@ -20,10 +20,31 @@ export interface ParseWarning {
     | 'unknownPropertyChangeType'
     | 'unknownManagementStatus'
     | 'unknownDenyStatus'
-    | 'deltaNotArray';
+    | 'deltaNotArray'
+    | 'diagnosticsNotArray'
+    | 'diagnosticNotObject'
+    | 'unknownDiagnosticLevel';
   message: string;
   /** Where it happened — resource id or a JSON-ish path. */
   at?: string;
+}
+
+/**
+ * A message Azure attached to the what-if as a whole, from `properties.diagnostics`.
+ *
+ * These are how Azure says the result is incomplete: a module or resource whose id
+ * could not be worked out before the deploy is short-circuited, left out of
+ * `resourceChanges` entirely, and reported only here. A UI that drops them shows a
+ * partial result as a whole one.
+ */
+export interface WhatIfDiagnostic {
+  /** `info`, `warning` or `error`, or the raw string when unrecognised. */
+  level: string;
+  levelKnown: boolean;
+  code: string | undefined;
+  message: string;
+  /** What the message is about, when Azure names something. Its form is not documented. */
+  target: string | undefined;
 }
 
 /** One node of the property-delta tree, normalized. `children` mirrors ARM's nesting. */
@@ -120,6 +141,9 @@ export interface NormalizedStackWhatIf {
   total: number;
   /** Highest rung present. `undefined` only when there are no rows at all. */
   highestSeverity: Severity | undefined;
+
+  /** Azure's own messages about this what-if, in the order it sent them. */
+  diagnostics: WhatIfDiagnostic[];
 
   /** Everything the parser coped with. Empty on a clean payload. */
   warnings: ParseWarning[];
