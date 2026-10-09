@@ -60,6 +60,8 @@ of the table beside two hundred benign no-ops. At a deploy gate the question is
 *what will hurt me*, not *what happened in stack 3*.
 
 Details, including why `unevaluated` has to exist: [`packages/core/README.md`](packages/core/README.md).
+The whole design, and every decision id the code cites, is in
+[`docs/design.md`](docs/design.md).
 
 ## The one correctness rule
 

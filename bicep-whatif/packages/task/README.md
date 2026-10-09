@@ -194,8 +194,9 @@ none has been tried.
    logging commands and `addattachment` is not among them — it would silently
    disable the mechanism this entire design rests on, with the task still
    reporting success. `test/manifest.test.ts` asserts it is unset.
-   Constraining `settableVariables` is still worth doing and keeps most of the
-   posture; that is set to an empty allowlist.
+   `settableVariables` is not restricted either: a `create` sets one output
+   variable per template output, named for the output, so no allowlist could
+   name them in advance. The same test asserts that.
 
 2. **Never bundle the Bicep binary.** `bicep-linux-x64` is ~105 MB against a
    50 MB VSIX limit — measured against the releases API, not estimated. It is

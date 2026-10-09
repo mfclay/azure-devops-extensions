@@ -19,8 +19,8 @@ from a data problem.
 
 ## The one thing this package must get right
 
-**Absence of data must never render as absence of change** (design §03, decision
-**E3**).
+**Absence of data must never render as absence of change** ([design §03](../../docs/design.md#03--severity-and-the-correctness-rule),
+decision **E3**).
 
 What-if stages run `continueOnError: true`, so a stage that fails lands on
 `SucceededWithIssues` and attaches *nothing*. A tab that rendered only the
