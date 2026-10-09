@@ -264,6 +264,7 @@ export function App(props: AppProps): React.ReactElement {
               openStacks={openStacks}
               openRows={state.open}
               hideNoise={state.hideNoise}
+              query={state.query}
               unchangedHidden={!state.severities.has('noChange')}
               onToggleStack={onToggleStack}
               onToggleRow={onToggleRow}
@@ -298,6 +299,7 @@ export function App(props: AppProps): React.ReactElement {
                     open={state.open}
                     stacks={stacksByKey}
                     hideNoise={state.hideNoise}
+                    query={state.query}
                     withStack
                     onToggle={onToggleRow}
                   />

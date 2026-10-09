@@ -6,10 +6,11 @@
  * goes missing behind "hide noise" is the failure that loses a reviewer's trust,
  * so most of what follows is about what must *stay* on screen.
  */
-import type { PropertyChange } from '@bicep-whatif/core';
-import { cleanup, render, screen } from '@testing-library/react';
+import { normalizeStackWhatIf, type PropertyChange } from '@bicep-whatif/core';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { PropertyChanges } from '../src/components/PropertyChanges.js';
+import { fixture } from './fixtures.js';
 
 function change(over: Partial<PropertyChange> & Pick<PropertyChange, 'path'>): PropertyChange {
   return {
@@ -176,6 +177,69 @@ describe('PropertyChanges', () => {
         <PropertyChanges changes={[change({ path: 'x', changeType: 'noEffect' })]} hideNoise />,
       );
       expect(container.innerHTML).toBe('');
+    });
+  });
+
+  describe('the app-cus-vnet capture, grouped', () => {
+    const VNET = (() => {
+      const stack = normalizeStackWhatIf(fixture('real/build-7700017-app-network.json'));
+      const row = stack.rows.find((r) => r.name === 'app-cus-vnet');
+      if (!row) throw new Error('app-cus-vnet not in the capture');
+      return row.propertyChanges;
+    })();
+
+    function groups(): HTMLElement[] {
+      return screen.getAllByRole('button', { expanded: true }).concat(screen.queryAllByRole('button', { expanded: false }));
+    }
+
+    it('counts the lines in its header, the ignored ones apart', () => {
+      render(<PropertyChanges changes={VNET} hideNoise={false} />);
+      expect(document.querySelector('.delta__tally')?.textContent).toBe(
+        '15 property changes: 1 added, 14 removed · 2 ignored by the provider',
+      );
+    });
+
+    it('draws the two removed peerings as two open groups, of 6 and 7', () => {
+      render(<PropertyChanges changes={VNET} hideNoise={false} />);
+      const rows = groups();
+      expect(rows.map((b) => b.querySelector('.delta__mark')?.textContent)).toEqual(['del ×6', 'del ×7']);
+      for (const b of rows) {
+        expect(b.getAttribute('aria-expanded')).toBe('true');
+        // Never "removed": the element stays, its properties go.
+        expect(b.textContent).toMatch(/All \d properties become absent/);
+        expect(b.querySelector('button')).toBeNull();
+      }
+      // Open, the lines show their values, the after side as absent.
+      expect(document.querySelectorAll('.delta__path')).not.toHaveLength(0);
+      expect(screen.getAllByText('absent').length).toBeGreaterThanOrEqual(13);
+    });
+
+    it('folds a group to its row, saying how many it holds, and opens it again', () => {
+      render(<PropertyChanges changes={VNET} hideNoise={false} />);
+      const before = document.querySelectorAll('tbody tr').length;
+      const seven = groups()[1]!;
+      fireEvent.click(seven);
+      expect(seven.getAttribute('aria-expanded')).toBe('false');
+      expect(seven.textContent).toMatch(/Show 7$/);
+      expect(document.querySelectorAll('tbody tr')).toHaveLength(before - 7);
+      fireEvent.click(seven);
+      expect(document.querySelectorAll('tbody tr')).toHaveLength(before);
+    });
+
+    it('opens a folded group when the search finds a line inside it', () => {
+      const { rerender } = render(<PropertyChanges changes={VNET} hideNoise={false} query="" />);
+      const seven = groups()[1]!;
+      fireEvent.click(seven);
+      expect(seven.getAttribute('aria-expanded')).toBe('false');
+      rerender(<PropertyChanges changes={VNET} hideNoise={false} query="peerings.1.properties.peeringSyncLevel" />);
+      expect(groups()[1]!.getAttribute('aria-expanded')).toBe('true');
+    });
+
+    it('folds the lines the provider ignores into one', () => {
+      render(<PropertyChanges changes={VNET} hideNoise={false} />);
+      const ignored = document.querySelector<HTMLElement>('.delta__ignored')!;
+      expect(ignored.querySelector('.delta__mark')?.textContent).toBe('noop ×2');
+      expect(ignored.textContent).toMatch(/the provider will ignore these\.$/);
     });
   });
 });

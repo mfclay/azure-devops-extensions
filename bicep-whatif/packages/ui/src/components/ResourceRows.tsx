@@ -48,6 +48,8 @@ export interface ResourceRowsProps {
   hideNoise: boolean;
   /** The flat list names each row's stack; a stack's own rows do not need to. */
   withStack: boolean;
+  /** The tab's search, passed down to the property table. */
+  query?: string | undefined;
   onToggle: (key: string) => void;
 }
 
@@ -123,6 +125,7 @@ export function ResourceRows(props: ResourceRowsProps): React.ReactElement {
                 stack={props.stacks.get(row.stackKey)}
                 hideNoise={props.hideNoise}
                 withStack={props.withStack}
+                query={props.query}
               />
             )}
           </div>

@@ -20,6 +20,8 @@ export interface StackListProps {
   openStacks: ReadonlySet<string>;
   openRows: ReadonlySet<string>;
   hideNoise: boolean;
+  /** The tab's search, passed down to the property table. */
+  query?: string | undefined;
   /** Whether unchanged rows are filtered out, so a stack can offer to show them. */
   unchangedHidden: boolean;
   onToggleStack: (key: string) => void;
@@ -153,6 +155,7 @@ function StackLine(props: StackListProps & { stack: StackView; twin: string | un
               open={props.openRows}
               stacks={props.stacks}
               hideNoise={props.hideNoise}
+              query={props.query}
               withStack={false}
               onToggle={props.onToggleRow}
             />

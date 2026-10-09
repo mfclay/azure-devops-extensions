@@ -14,6 +14,8 @@ export interface RowDetailProps {
    * is no stack line to open; off under a stack line, which already says it.
    */
   withStack: boolean;
+  /** The tab's search, so a property group holding a match opens. */
+  query?: string | undefined;
 }
 
 function statusText(before: string | undefined, after: string | undefined): string {
@@ -60,7 +62,11 @@ export function RowDetail(props: RowDetailProps): React.ReactElement {
           {resource === undefined || resource.propertyChanges.length === 0 ? (
             <p className="muted">No property-level changes reported.</p>
           ) : hasPropertyLines(resource.propertyChanges, props.hideNoise) ? (
-            <PropertyChanges changes={resource.propertyChanges} hideNoise={props.hideNoise} />
+            <PropertyChanges
+              changes={resource.propertyChanges}
+              hideNoise={props.hideNoise}
+              query={props.query ?? ''}
+            />
           ) : (
             <p className="muted">
               Every property change here is noise. Clear &ldquo;Hide unchanged properties&rdquo; to see them.

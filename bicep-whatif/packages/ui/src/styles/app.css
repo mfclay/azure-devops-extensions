@@ -1123,7 +1123,7 @@
  * its own marks; borrowing the resource glyphs here would render wrong.
  */
 .delta__col-mark {
-  width: 48px;
+  width: 72px;
 }
 
 .delta__col-path {
@@ -1146,6 +1146,68 @@
 }
 
 
+/* The header: how many lines change, and how, counted from the lines drawn. */
+.delta__tally {
+  margin: 0 0 6px;
+  color: var(--w-text-2);
+  font-size: 12px;
+}
+
+.delta__grouprow > td {
+  padding: 0;
+  background: var(--w-surface-3);
+}
+
+/* One button for the whole group row: mark, path, what the lines share, and "Show n" when folded. */
+.delta__group {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  align-items: baseline;
+  width: 100%;
+  padding: 5px 0;
+  background: none;
+  border: 0;
+  color: var(--w-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.delta__group:hover {
+  background: var(--w-row-hover);
+}
+
+.delta__group > .delta__mark {
+  padding: 0 8px;
+}
+
+.delta__grouphead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
+  min-width: 0;
+  padding-right: 8px;
+}
+
+.delta__grouphead .chev {
+  margin-right: -4px;
+}
+
+.delta__grouppath {
+  overflow-wrap: anywhere;
+}
+
+.delta__groupsummary {
+  font-family: var(--w-font);
+  color: var(--w-text-2);
+}
+
+.delta__show {
+  font-family: var(--w-font);
+  color: var(--w-accent-fg);
+}
+
 .val {
   padding: 0 4px;
   border-radius: var(--w-radius);
@@ -1164,6 +1226,11 @@
 .val--empty {
   color: var(--w-text-3);
   font-style: italic;
+}
+
+/* "absent" is not a value, so it gets no before/after wash. */
+.val:has(> .val--empty) {
+  background: none;
 }
 
 .delta__note {
