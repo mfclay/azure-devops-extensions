@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { groupKeyFor, groupStacks } from '../src/model/layers.js';
+import { groupKeyFor, groupStacks, prefixGroupingHelps } from '../src/model/layers.js';
 
 describe('groupKeyFor', () => {
   it('groups the client fan-out by client', () => {
@@ -48,5 +48,18 @@ describe('groupStacks', () => {
   it('scales to thirty without dropping anything', () => {
     const ids = Array.from({ length: 30 }, (_, i) => `workload-alpha${String(i % 7)}-app-${String(i)}`);
     expect(groupStacks(ids).flatMap((g) => g.stackIds)).toHaveLength(30);
+  });
+});
+
+describe('prefixGroupingHelps', () => {
+  it('offers grouping by prefix when it finds two groups', () => {
+    expect(
+      prefixGroupingHelps(['network', 'workload-alpha-regx-dev', 'workload-alpha-regx-prod', 'workload-beta-regx-dev', 'workload-beta-regx-prod']),
+    ).toBe(true);
+  });
+
+  it('does not when it would show one group and a lone "Other"', () => {
+    expect(prefixGroupingHelps(['network', 'shared-infra', 'workload-alpha-regx-dev', 'workload-alpha-regx-prod'])).toBe(false);
+    expect(prefixGroupingHelps(['network', 'monitoring', 'identity'])).toBe(false);
   });
 });

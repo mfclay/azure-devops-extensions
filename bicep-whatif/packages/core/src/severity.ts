@@ -167,7 +167,7 @@ const BASE_DETAIL: Readonly<Record<ResourceChangeType, string>> = Object.freeze(
   detach: 'The resource leaves the stack but stays in Azure — it will no longer be governed.',
   create: 'A new resource enters the stack.',
   modify: 'Properties change on an existing resource.',
-  unsupported: 'The provider could not predict this resource. Treat it as unevaluated, not as safe.',
+  unsupported: 'The provider could not predict this resource. Treat it as unknown, not as safe.',
   noChange: 'No change.',
 });
 

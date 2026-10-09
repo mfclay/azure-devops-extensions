@@ -113,7 +113,7 @@ describe('PropertyChanges', () => {
     expect(screen.getByText(/the provider will ignore this property/i)).toBeTruthy();
   });
 
-  it('flattens nested children, three levels deep, to dotted paths', () => {
+  it('flattens nested children, three levels deep, to one path, indexes in brackets', () => {
     render(
       <PropertyChanges
         changes={[
@@ -132,7 +132,7 @@ describe('PropertyChanges', () => {
       />,
     );
     // The containers hold only children, so their children's paths name them.
-    expect(paths()).toEqual(['properties.virtualNetworkPeerings.0.properties.allowGatewayTransit']);
+    expect(paths()).toEqual(['properties.virtualNetworkPeerings[0].properties.allowGatewayTransit']);
   });
 
   describe('with hide noise on', () => {
@@ -162,13 +162,13 @@ describe('PropertyChanges', () => {
 
     it('keeps every real change, with its full path', () => {
       render(<PropertyChanges changes={tree} hideNoise />);
-      expect(paths()).toEqual(['properties.peerings.1.enabled', 'properties.sku']);
+      expect(paths()).toEqual(['properties.peerings[1].enabled', 'properties.sku']);
     });
 
     it('hides nothing when it is off', () => {
       render(<PropertyChanges changes={tree} hideNoise={false} />);
       expect(paths()).toContain('properties.type');
-      expect(paths()).toContain('properties.subnets.0');
+      expect(paths()).toContain('properties.subnets[0]');
     });
 
     it('renders nothing when the whole list is noise', () => {

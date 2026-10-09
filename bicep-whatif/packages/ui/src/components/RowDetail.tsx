@@ -1,7 +1,8 @@
 import { diagnosticsFor } from '@bicep-whatif/core';
 import type { GridRow, StackView } from '../model/estate.js';
 import { Glyph } from './Glyph.js';
-import { hasPropertyLines, PropertyChanges } from './PropertyChanges.js';
+import { hasPropertyLines } from '../model/propertyLines.js';
+import { PropertyChanges } from './PropertyChanges.js';
 import { DiagnosticList, Fact, StackDetail } from './StackDetail.js';
 
 export interface RowDetailProps {

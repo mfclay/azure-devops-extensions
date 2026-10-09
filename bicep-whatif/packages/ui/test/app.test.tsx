@@ -81,7 +81,7 @@ describe('a stage that produced no what-if result', () => {
   it('says plainly that it is unknown rather than unchanged', async () => {
     renderApp([REAL_STAGE, MISSING_STAGE]);
     await summary();
-    expect(screen.getByRole('heading', { name: /treat these as unknown, not as unchanged/i })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: /treat as unknown, not as unchanged/i })).toBeTruthy();
   });
 
   it('ranks above a stack that only modifies', async () => {

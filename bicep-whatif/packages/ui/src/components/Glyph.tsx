@@ -14,6 +14,8 @@ export const SEVERITY_LABEL: Readonly<Record<Severity, string>> = Object.freeze(
   protectionLoss: 'protection loss',
   create: 'new',
   modify: 'modified',
-  unevaluated: 'not evaluated',
+  // Resources Azure could not predict. A stack that never ran is "not evaluated";
+  // that is said of stacks, never of a resource count.
+  unevaluated: 'not predicted',
   noChange: 'unchanged',
 });

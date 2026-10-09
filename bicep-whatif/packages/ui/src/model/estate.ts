@@ -85,6 +85,8 @@ export interface StackView {
   /** Undefined when the stage produced no payload. */
   stack?: NormalizedStackWhatIf | undefined;
   counts: Record<Severity, number>;
+  /** How many of each rung's rows Azure marked potential. All zero on a stage that never ran. */
+  potentialCounts: Record<Severity, number>;
   highestSeverity?: Severity | undefined;
   warnings: ParseWarning[];
   /** Set only when `evaluated` is false. */
@@ -150,8 +152,10 @@ function certaintyNoteFor(stack: NormalizedStackWhatIf): string {
 function haystackFor(stackLabel: string, row: ResourceRow): string {
   const parts = [stackLabel, row.name, row.resourceType, row.resourceId, String(row.changeType)];
   if (isPotential(row)) parts.push('potential');
+  if (row.severity === 'unevaluated') parts.push('not predicted');
   for (const p of flattenPropertyChanges(row.propertyChanges)) {
-    parts.push(p.path);
+    // `core` joins with dots; the table draws indexes in brackets. Either finds it.
+    parts.push(p.path, p.path.replace(/\.(\d+)(?=\.|$)/g, '[$1]'));
     if (typeof p.before === 'string') parts.push(p.before);
     if (typeof p.after === 'string') parts.push(p.after);
   }
@@ -230,6 +234,7 @@ export function buildEstateView(stages: readonly StageResult[]): EstateView {
         stageDisplayName: stage.displayName,
         evaluated: false,
         counts: stackCounts,
+        potentialCounts: emptyCounts(),
         highestSeverity: 'unevaluated',
         warnings: [],
         notEvaluatedDetail: row.reasons[0]?.detail,
@@ -243,8 +248,10 @@ export function buildEstateView(stages: readonly StageResult[]): EstateView {
     // payload's own `name` is the transient what-if result resource and changes
     // every run. Prefer it, then the attachment's stack id, then the stage.
     const label = normalized.stackName ?? stage.stackId ?? stage.displayName;
+    const potentialCounts = emptyCounts();
 
     for (const [i, r] of normalized.rows.entries()) {
+      if (isPotential(r)) potentialCounts[r.severity] += 1;
       rows.push({
         key: rowKey(stackKey, r, i),
         stackKey,
@@ -274,6 +281,7 @@ export function buildEstateView(stages: readonly StageResult[]): EstateView {
       evaluated: true,
       stack: normalized,
       counts: normalized.counts,
+      potentialCounts,
       highestSeverity: normalized.highestSeverity,
       warnings: normalized.warnings,
       notes: stage.notes,

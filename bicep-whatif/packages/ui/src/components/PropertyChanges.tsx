@@ -1,4 +1,5 @@
 import type { PropertyChange } from '@bicep-whatif/core';
+import { hasValues, propertyLines } from '../model/propertyLines.js';
 
 /**
  * A resource's property changes, as one table: property, before, after.
@@ -11,7 +12,7 @@ import type { PropertyChange } from '@bicep-whatif/core';
  *    these with the resource severity glyphs would render wrong, so they get
  *    their own short word marks and no `SEVERITY_GLYPH` appears anywhere below.
  *  - `children` nests, three levels deep in the real captures. The table
- *    flattens it to dotted paths (`properties.subnets.0.name`), so a nested
+ *    flattens it to one path per line (`properties.subnets[0].name`), so a nested
  *    change reads the same as a top-level one and the columns stay aligned.
  */
 
@@ -35,30 +36,6 @@ function renderValue(value: unknown): React.ReactElement {
   return <>{json.length > 160 ? `${json.slice(0, 157)}…` : json}</>;
 }
 
-/**
- * Whether there is a before/after pair worth drawing.
- *
- * Container nodes — an `array` node, or an index node holding children — carry
- * `null` on both sides, and rendering `null → null` under every one of them is
- * pure noise. Suppressed only when the two sides are identical, so a real
- * difference is never the thing that goes missing.
- */
-function hasValues(change: PropertyChange): boolean {
-  if (change.before === change.after) return false;
-  return change.before !== undefined || change.after !== undefined;
-}
-
-/**
- * `hideNoise` is decision C4's thin client-side toggle. It hides lines that
- * carry no before/after difference — never a line that actually changed.
- * Hiding a real change is the one failure that destroys trust, so this filter
- * can only ever remove lines that say nothing.
- */
-function isSilent(change: PropertyChange): boolean {
-  if (change.changeType === 'noEffect') return true;
-  return !hasValues(change);
-}
-
 /** A dotted path that wraps after a dot rather than mid-name. */
 function breakable(path: string): React.ReactNode {
   const parts = path.split('.');
@@ -74,37 +51,6 @@ function breakable(path: string): React.ReactNode {
   ));
 }
 
-interface Line {
-  path: string;
-  change: PropertyChange;
-}
-
-/**
- * One line per node that says something on its own: a node with values, a
- * leaf, or a node whose type the reader should see (`noEffect`, or a type this
- * build does not know). A container that only holds children is named by its
- * children's paths instead.
- */
-function linesOf(changes: readonly PropertyChange[], prefix: string, hideNoise: boolean): Line[] {
-  const out: Line[] = [];
-  for (const change of changes) {
-    const path = prefix && change.path ? `${prefix}.${change.path}` : prefix || change.path;
-    const speaks =
-      hasValues(change) ||
-      change.children.length === 0 ||
-      change.changeType === 'noEffect' ||
-      !change.changeTypeKnown;
-    if (speaks && !(hideNoise && isSilent(change))) out.push({ path, change });
-    out.push(...linesOf(change.children, path, hideNoise));
-  }
-  return out;
-}
-
-/** Whether the table would draw anything at all with this noise setting. */
-export function hasPropertyLines(changes: readonly PropertyChange[], hideNoise: boolean): boolean {
-  return linesOf(changes, '', hideNoise).length > 0;
-}
-
 export function PropertyChanges({
   changes,
   hideNoise,
@@ -112,7 +58,7 @@ export function PropertyChanges({
   changes: readonly PropertyChange[];
   hideNoise: boolean;
 }): React.ReactElement | null {
-  const lines = linesOf(changes, '', hideNoise);
+  const lines = propertyLines(changes, hideNoise);
   if (lines.length === 0) return null;
 
   return (

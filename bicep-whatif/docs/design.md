@@ -354,11 +354,18 @@ a data problem. It proves nothing about the SDK handshake; only an installed bui
 real organisation found the first layout overwhelming. The host gives the tab a fixed-height
 frame, and banners, a chip strip and a toolbar took most of it before the grid began. Now:
 
-- A **headline sentence** says how many stacks would delete or stop protecting resources, how many
-  were not evaluated, and whether Azure warned a result may be incomplete. No filter changes it.
-- A **totals line** in plain words is also the severity filter. Colour sits on the number only.
-- **Stacks that were not evaluated** get their own group, under the risky stacks and above every
-  stack that only modifies.
+- A **headline sentence** says how many stacks will delete or stop protecting resources, how many
+  more might, how many were not evaluated, and whether Azure warned a result may be incomplete. No
+  filter changes it.
+- A **totals line** in plain words is also the severity filter. Colour sits on the number only. It
+  counts resources: the `unevaluated` rung reads *not predicted* there, and a stage that never ran
+  is not counted in it. That stage's row ignores the severity filter, so hiding resources Azure
+  could not predict never hides a stack nobody evaluated.
+- Stacks group in four, in this order. Stacks that **will** delete or stop protecting something.
+  Stacks that **might**, because every such change in them is potential. Stacks that were **not
+  evaluated**. Then the rest. A stack goes in *will* when it has a definite delete or protection
+  loss, or when its own deny settings weaken. Grouping moves the stack, not the rung: a potential
+  change keeps the rank a definite one would have.
 - A **row opens beneath itself**, property changes first as a Property / Before / After table.
   Several can be open at once, and an open row is shown whatever the filters say.
 - Filters, layout, open stacks and open rows all live in the URL hash, so a link reproduces the view.
