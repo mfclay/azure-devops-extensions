@@ -61,12 +61,23 @@ function highestOf(counts: Record<Severity, number>): Severity | undefined {
   return best;
 }
 
+/**
+ * What a short-circuited resource is called. Its `id` is the template expression
+ * Azure could not evaluate before the deploy, such as
+ * `[resourceId(..., format('nsg-{0}', reference(...).principalId))]`, so no name
+ * can be read out of it; splitting it on `/` yields a fragment of the expression.
+ */
+export const NAME_UNKNOWN_UNTIL_DEPLOY = '(name known only during the deploy)';
+
 /** Pull subscription / resource group / name out of an ARM id without a regex zoo. */
 function dissectResourceId(id: string): {
   name: string;
   subscriptionId: string | undefined;
   resourceGroup: string | undefined;
 } {
+  if (id.startsWith('[')) {
+    return { name: NAME_UNKNOWN_UNTIL_DEPLOY, subscriptionId: undefined, resourceGroup: undefined };
+  }
   const segments = id.split('/').filter(Boolean);
   const at = (key: string): string | undefined => {
     const i = segments.findIndex((s) => s.toLowerCase() === key);

@@ -43,10 +43,10 @@ describe('the diagnostics banner', () => {
   it('names each warning and its stack, and leaves info out', () => {
     render(<DiagnosticsBanner stacks={view.stacks} />);
     const banner = screen.getByRole('status', { name: 'Azure diagnostics' });
-    expect(within(banner).getByText(/Azure reported 2 warnings on 1 stack/)).toBeTruthy();
+    expect(within(banner).getByText(/Azure reported 1 warning on 1 stack/)).toBeTruthy();
     const items = within(banner).getAllByRole('listitem').map((li) => li.textContent);
-    expect(items).toHaveLength(2);
-    expect(items[0]).toMatch(/app-identity · NestedDeploymentShortCircuited: The nested deployment 'workload'/);
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatch(/app-identity · ShortCircuitedResourceId: RESULT NON-DETERMINISTIC!/);
     expect(items.join(' ')).not.toMatch(/SyntheticInformational/);
   });
 
@@ -57,17 +57,33 @@ describe('the diagnostics banner', () => {
 });
 
 describe('the detail panel', () => {
-  it('says why a row was not predicted, and puts its own diagnostic first', () => {
+  it('says why a row was not predicted, and shows the stack-wide diagnostics with it', () => {
     const panel = panelFor('unsupported');
-    expect(within(panel).getByText('Not predicted').nextElementSibling?.textContent).toBe(
-      'The resource name could not be evaluated before deployment.',
+    expect(within(panel).getByText('Not predicted').nextElementSibling?.textContent).toMatch(
+      /cannot be calculated until the deployment is under way/,
     );
-    expect(within(panel).getByText('Certainty').nextElementSibling?.textContent).toMatch(/^potential — may or may not/);
+    expect(within(panel).getByRole('heading', { name: '(name known only during the deploy)' })).toBeTruthy();
+    // No target, as Azure sends it: nothing is about this resource alone.
+    expect(within(panel).queryByText('About this resource')).toBeNull();
     const section = within(panel).getByRole('heading', { name: 'Azure diagnostics' }).closest('section')!;
+    expect(section.textContent).toMatch(/ShortCircuitedResourceId/);
+    expect(section.textContent).toMatch(/SyntheticInformational/);
+  });
+
+  it('marks a potential change', () => {
+    const panel = panelFor('detach');
+    expect(within(panel).getByText('Certainty').nextElementSibling?.textContent).toMatch(/^potential — may or may not/);
+  });
+
+  it('puts a diagnostic that names this resource first', () => {
+    const row = view.rows.find((r) => r.stackKey === 'identity' && r.changeType === 'noChange')!;
+    const own = { level: 'warning', levelKnown: true, code: 'Mine', message: 'about me', target: row.resourceId };
+    const stack = { ...identity, stack: { ...identity.stack!, diagnostics: [...identity.stack!.diagnostics, own] } };
+    render(<DetailPanel row={row} stack={stack} hideNoise={false} onClose={vi.fn()} />);
+    const section = screen.getByRole('heading', { name: 'Azure diagnostics' }).closest('section')!;
     const lists = section.querySelectorAll('ul');
-    expect(lists[0]?.textContent).toMatch(/ResourceNameNotEvaluated/);
-    expect(lists[1]?.textContent).toMatch(/NestedDeploymentShortCircuited/);
-    expect(lists[1]?.textContent).toMatch(/SyntheticInformational/);
+    expect(lists[0]?.textContent).toMatch(/Mine/);
+    expect(lists[1]?.textContent).toMatch(/ShortCircuitedResourceId/);
   });
 
   it('shows a stack diagnostic on every row of that stack, and no certainty when definite', () => {

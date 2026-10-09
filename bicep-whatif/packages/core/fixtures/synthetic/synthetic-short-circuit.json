@@ -1,9 +1,10 @@
 {
   "_synthetic": {
-    "warning": "SYNTHETIC — NOT A CAPTURED PAYLOAD. Hand-authored against the deploymentStacks/stable/2025-07-01 swagger.",
-    "why": "Models a stack whose role-assignment names depend on a principal id known only at deploy time: what-if cannot work out the new names, so the old assignments read as detached and the new ones as unsupported, and a module is short-circuited out of the result. Azure explains this only in properties.diagnostics and unsupportedReason.",
-    "shapeSource": "DeploymentStacksDiagnostic (level, code, message, target) from the 2025-07-01 swagger; everything else copied from synthetic-destructive-and-protection-loss.json.",
-    "doNotTreatAsEvidence": "The codes, messages, targets and unsupportedReason text are invented, except NestedDeploymentShortCircuited, a code named in a public Azure/arm-template-whatif issue. Replace with a captured payload once one exists."
+    "warning": "SYNTHETIC — NOT A CAPTURED PAYLOAD, though shaped on one: a stack what-if that short-circuited, run against Azure in a personal test subscription on 2026-10-08.",
+    "why": "Models a stack whose role-assignment names depend on a principal id known only at deploy time. What-if cannot work out the new names, so each new assignment is an unsupported row whose id is the unevaluated expression, and Azure warns that resources with no definite entry may be marked as potentially deleted.",
+    "fromTheCapture": "The diagnostic's level, code and message (no target, empty additionalInfo); the unsupported row's shape: an expression for its id, unsupportedReason, managementStatusChange notManaged -> unknown, and no resourceGroup, symbolicName or denyStatusChange.",
+    "invented": "The role-assignment names and resource types, the detach row marked potential (what the diagnostic's message says happens to an existing stack's resources; not yet seen), the potential modify, and the info diagnostic.",
+    "doNotTreatAsEvidence": "Nothing here proves how ARM behaves beyond the fields listed under fromTheCapture."
   },
   "id": "/subscriptions/00000000-0000-4000-8000-000000000001/providers/Microsoft.Resources/deploymentStacks/app-identity",
   "location": "centralus",
@@ -33,15 +34,9 @@
     "diagnostics": [
       {
         "level": "warning",
-        "code": "NestedDeploymentShortCircuited",
-        "message": "The nested deployment 'workload' was not evaluated because its parameters depend on values known only during deployment. Resources it deploys are not in this result.",
-        "target": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/synthetic-identity-rg/providers/Microsoft.Resources/deployments/workload"
-      },
-      {
-        "level": "warning",
-        "code": "ResourceNameNotEvaluated",
-        "message": "The name of this role assignment depends on a value known only during deployment, so its change could not be predicted.",
-        "target": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/synthetic-identity-rg/providers/Microsoft.Authorization/roleAssignments/[guid(resourceGroup().id, reference('workloadIdentity').principalId)]"
+        "code": "ShortCircuitedResourceId",
+        "message": "RESULT NON-DETERMINISTIC! UNMARKED RESOURCES COULD BE DELETED. One or more resource ids short-circuited, leading to the result not being deterministic. If the corresponding existing deployment stack contains resources that do not have a definite change entry, every such resource will be marked as potentially deleted as non-determinism does not allow definite predictions of unmanaged resources.",
+        "additionalInfo": []
       },
       {
         "level": "info",
@@ -66,7 +61,7 @@
       "resourceChanges": [
         {
           "apiVersion": "2022-04-01",
-          "changeCertainty": "definite",
+          "changeCertainty": "potential",
           "changeType": "detach",
           "denyStatusChange": {
             "before": "denyWriteAndDelete",
@@ -95,30 +90,15 @@
           "unsupportedReason": null
         },
         {
-          "apiVersion": null,
-          "changeCertainty": "potential",
-          "changeType": "unsupported",
-          "denyStatusChange": {
-            "before": "none",
-            "after": "none"
-          },
-          "deploymentId": null,
-          "extension": null,
-          "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/synthetic-identity-rg/providers/Microsoft.Authorization/roleAssignments/[guid(resourceGroup().id, reference('workloadIdentity').principalId)]",
-          "identifiers": null,
+          "id": "[resourceId('00000000-0000-4000-8000-000000000001', 'synthetic-identity-rg', 'Microsoft.Authorization/roleAssignments', guid(resourceGroup().id, reference('/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/synthetic-identity-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/synthetic-workload-id', '2023-01-31').principalId))]",
+          "type": "Microsoft.Authorization/roleAssignments",
+          "unsupportedReason": "Changes to the resource declared at 'properties.template.resources[1].properties.template.resources[0]' on line 1 and column 2790 cannot be analyzed because its resource ID or API version cannot be calculated until the deployment is under way. Please see https://aka.ms/WhatIfUnidentifiableResource for more guidance.",
           "managementStatusChange": {
             "before": "notManaged",
-            "after": "managed"
+            "after": "unknown"
           },
-          "resourceConfigurationChanges": {
-            "before": null,
-            "after": null,
-            "delta": []
-          },
-          "resourceGroup": "synthetic-identity-rg",
-          "symbolicName": "workloadReader",
-          "type": "Microsoft.Authorization/roleAssignments",
-          "unsupportedReason": "The resource name could not be evaluated before deployment."
+          "changeType": "unsupported",
+          "changeCertainty": "definite"
         },
         {
           "apiVersion": "2023-01-31",

@@ -5,7 +5,7 @@
  * only here, so dropping these would show a partial result as a whole one.
  */
 import { describe, expect, it } from 'vitest';
-import { diagnosticsFor, needsAttention, normalizeStackWhatIf } from '../src/index.js';
+import { diagnosticsFor, NAME_UNKNOWN_UNTIL_DEPLOY, needsAttention, normalizeStackWhatIf } from '../src/index.js';
 import { REAL_NETWORK, SYNTH_SHORT_CIRCUIT } from './fixtures.js';
 
 const withDiagnostics = (diagnostics: unknown) =>
@@ -15,11 +15,12 @@ describe('diagnostics', () => {
   it('are kept whole and in order', () => {
     const r = normalizeStackWhatIf(SYNTH_SHORT_CIRCUIT());
     expect(r.diagnostics.map((d) => [d.level, d.code])).toEqual([
-      ['warning', 'NestedDeploymentShortCircuited'],
-      ['warning', 'ResourceNameNotEvaluated'],
+      ['warning', 'ShortCircuitedResourceId'],
       ['info', 'SyntheticInformational'],
     ]);
-    expect(r.diagnostics[0]?.target).toMatch(/\/deployments\/workload$/);
+    // As Azure sent it: no target, so it belongs to the stack, not to a row.
+    expect(r.diagnostics[0]?.target).toBeUndefined();
+    expect(r.diagnostics[0]?.message).toMatch(/^RESULT NON-DETERMINISTIC!/);
     expect(r.warnings).toEqual([]);
   });
 
@@ -58,19 +59,44 @@ describe('diagnostics', () => {
   });
 
   it('attach to a row only when the target is its id', () => {
-    const r = normalizeStackWhatIf(SYNTH_SHORT_CIRCUIT());
-    const unsupported = r.rows.find((x) => x.changeType === 'unsupported')!;
-    expect(diagnosticsFor(r.diagnostics, unsupported).map((d) => d.code)).toEqual(['ResourceNameNotEvaluated']);
-    const shouty = { resourceId: unsupported.resourceId.toUpperCase() };
-    expect(diagnosticsFor(r.diagnostics, shouty)).toHaveLength(1);
-    for (const row of r.rows.filter((x) => x !== unsupported)) {
-      expect(diagnosticsFor(r.diagnostics, row)).toEqual([]);
-    }
-    expect(diagnosticsFor(r.diagnostics, { resourceId: '' })).toEqual([]);
+    const id = '/subscriptions/s/resourceGroups/rg/providers/Microsoft.Network/networkSecurityGroups/nsg';
+    const { diagnostics } = withDiagnostics([
+      { level: 'warning', code: 'mine', message: 'm', target: id },
+      { level: 'warning', code: 'stack-wide', message: 'm' },
+    ]);
+    expect(diagnosticsFor(diagnostics, { resourceId: id }).map((d) => d.code)).toEqual(['mine']);
+    expect(diagnosticsFor(diagnostics, { resourceId: id.toUpperCase() })).toHaveLength(1);
+    expect(diagnosticsFor(diagnostics, { resourceId: `${id}-other` })).toEqual([]);
+    expect(diagnosticsFor(diagnostics, { resourceId: '' })).toEqual([]);
   });
 
   it('leave the rows ranked as before', () => {
     const r = normalizeStackWhatIf(SYNTH_SHORT_CIRCUIT());
     expect(r.counts).toMatchObject({ protectionLoss: 1, unevaluated: 1, modify: 1, noChange: 1 });
+  });
+});
+
+describe('a short-circuited resource', () => {
+  // Shaped on a real stack what-if: its id is the expression Azure could not
+  // evaluate, and it carries no resource group, symbolic name or deny status.
+  const r = () => normalizeStackWhatIf(SYNTH_SHORT_CIRCUIT());
+  const row = () => r().rows.find((x) => x.changeType === 'unsupported')!;
+
+  it('is named as unknown, not after a fragment of the expression', () => {
+    expect(row().resourceId).toMatch(/^\[resourceId\(/);
+    expect(row().name).toBe(NAME_UNKNOWN_UNTIL_DEPLOY);
+    expect(row().subscriptionId).toBeUndefined();
+    expect(row().resourceGroup).toBeUndefined();
+  });
+
+  it('keeps the reason Azure gave, and ranks unevaluated', () => {
+    expect(row().unsupportedReason).toMatch(/cannot be calculated until the deployment is under way/);
+    expect(row().severity).toBe('unevaluated');
+  });
+
+  it('reads an unknown management status without a warning', () => {
+    expect(row().managementStatus.after).toEqual({ value: 'unknown', known: true });
+    expect(row().managementLost).toBe(false);
+    expect(r().warnings).toEqual([]);
   });
 });

@@ -122,7 +122,8 @@ export function isManagementLost(
   before: Parsed<ManagementStatus> | undefined,
   after: Parsed<ManagementStatus> | undefined,
 ): boolean {
-  return after?.known === true && after.value === 'notManaged' && before?.value !== 'notManaged';
+  const letGo = (v: string | undefined): boolean => v === 'notManaged' || v === 'unmanaged';
+  return after?.known === true && letGo(after.value) && !letGo(before?.value);
 }
 
 /**

@@ -20,6 +20,7 @@ export {
   flattenPropertyChanges,
   diagnosticsFor,
   needsAttention,
+  NAME_UNKNOWN_UNTIL_DEPLOY,
 } from './normalize.js';
 
 export {
