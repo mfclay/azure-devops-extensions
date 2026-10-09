@@ -15,5 +15,5 @@ export const SEVERITY_LABEL: Readonly<Record<Severity, string>> = Object.freeze(
   create: 'new',
   modify: 'modified',
   unevaluated: 'not evaluated',
-  noChange: 'no change',
+  noChange: 'unchanged',
 });

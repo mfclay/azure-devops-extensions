@@ -1,30 +1,31 @@
 /* ---------- shell ---------- */
-.app {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  min-height: 0;
-}
-
-.app__body {
-  display: flex;
-  flex: 1 1 auto;
-  min-height: 0;
-  border-top: 1px solid var(--w-line);
-}
-
-.app__grid {
-  flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-/* ---------- the not-evaluated banner ---------- */
 /*
- * The one correctness rule, stated at the top of the page. It is not a toast and
- * it does not dismiss: a stage that never ran is a fact about the run, and it
- * stays visible for as long as it is true.
+ * The whole tab scrolls as one page inside the host's fixed-height frame, with
+ * the toolbar pinned. A second scroll box inside the frame (the old grid and its
+ * side panel) left each of them a fraction of an already short window.
+ */
+.app {
+  height: 100%;
+  overflow-y: auto;
+}
+
+.app__main {
+  padding: 0 16px 24px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ---------- notes about the build ---------- */
+/*
+ * What the tab coped with while reading the build. It is not a toast and it does
+ * not dismiss: these are facts about the run.
  */
 .banner {
   display: flex;
@@ -83,104 +84,74 @@
   overflow-wrap: anywhere;
 }
 
-/* ---------- summary strip ---------- */
-.strip {
-  padding: 12px 16px 10px;
-  background: var(--w-surface);
+
+/* ---------- headline and totals ---------- */
+.summary {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px 10px;
 }
 
-.strip__meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 10px;
-  align-items: baseline;
+.headline__lead {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.35;
+  text-wrap: balance;
+}
+
+.headline__detail {
+  margin: 2px 0 0;
   color: var(--w-text-2);
   font-size: 12px;
-  margin-bottom: 9px;
-}
-
-.strip__meta b {
-  color: var(--w-text);
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
-.strip__sep {
-  color: var(--w-text-3);
-}
-
-.strip__chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
 }
 
 /*
- * Chips are the severity filter, not a separate readout of it. Filled means
- * shown, outlined means filtered out — one control, so the count and the filter
- * can never disagree.
+ * The totals are the severity filter. Shown means normal text; filtered out
+ * means dimmed, the number included. Colour sits on the number only.
  */
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 3px 10px 3px 8px;
-  border: 1px solid var(--w-line-strong);
-  border-radius: 11px;
-  background: transparent;
+.totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 6px;
+  margin-left: -6px;
+}
+
+.total {
+  padding: 1px 6px;
+  border: 0;
+  border-radius: var(--w-radius);
+  background: none;
   color: var(--w-text-2);
-  cursor: pointer;
-  transition: background-color 100ms ease, color 100ms ease;
-}
-
-.chip:hover {
-  background: var(--w-row-hover);
-}
-
-.chip__glyph {
-  font-family: var(--w-mono);
-  font-weight: 700;
   font-size: 13px;
-  line-height: 1;
-  width: 9px;
-  text-align: center;
-}
-
-.chip__count {
   font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.total:hover {
+  background: var(--w-row-hover);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.total__count {
   font-weight: 600;
+  color: var(--w-text);
 }
 
-.chip__label {
-  font-size: 12px;
-}
+.total__count[data-tone='critical'] { color: var(--w-critical); }
+.total__count[data-tone='warning'] { color: var(--w-warning); }
+.total__count[data-tone='positive'] { color: var(--w-positive); }
 
-.chip__sub {
-  font-size: 11px;
+.total__sub {
   color: var(--w-text-2);
 }
 
-.chip[data-on='true'] {
-  color: var(--w-text);
-  background: var(--w-surface-3);
-  border-color: var(--w-line-strong);
-}
-
-.chip[data-on='true'][data-tone='critical'] {
-  color: var(--w-critical);
-  border-color: currentColor;
-}
-.chip[data-on='true'][data-tone='warning'] {
-  color: var(--w-warning);
-  border-color: currentColor;
-}
-.chip[data-on='true'][data-tone='positive'] {
-  color: var(--w-positive);
-  border-color: currentColor;
-}
-
-.chip[data-empty='true'] {
-  opacity: 0.5;
+.total[data-on='false'],
+.total[data-on='false'] .total__count,
+.total[data-on='false'] .total__sub {
+  color: var(--w-text-3);
 }
 
 /* ---------- toolbar ---------- */
@@ -243,6 +214,43 @@
   color: var(--w-text-2);
   cursor: pointer;
   user-select: none;
+}
+
+
+/* The toolbar stays in reach while the page scrolls. */
+.toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  border-bottom: 1px solid var(--w-line);
+}
+
+.seg {
+  display: inline-flex;
+  border: 1px solid var(--w-line-strong);
+  border-radius: var(--w-radius);
+  overflow: hidden;
+}
+
+.seg button {
+  padding: 4px 10px;
+  background: var(--w-bg);
+  border: 0;
+  cursor: pointer;
+}
+
+.seg button + button {
+  border-left: 1px solid var(--w-line-strong);
+}
+
+.seg button[aria-pressed='true'] {
+  background: var(--w-row-selected);
+  color: var(--w-accent-fg);
+  font-weight: 600;
+}
+
+.linkbtn--bar {
+  font-size: 13px;
 }
 
 /* ---------- stack filter menu ---------- */
@@ -362,59 +370,233 @@
   color: var(--w-text-2);
 }
 
-/* ---------- grid ---------- */
-.grid {
-  flex: 1 1 auto;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
+
+/* ---------- stack list ---------- */
+/*
+ * One line per stack, one column per rung. The columns name each rung once, in
+ * the header, so a line carries only numbers: a dot for zero, colour only on
+ * the rungs people look for.
+ */
+.stacks,
+.flat {
+  margin-top: 12px;
+  background: var(--w-surface);
+  border-radius: 4px;
+  box-shadow: 0 1px 3px var(--callout-shadow-color, rgba(0, 0, 0, 0.12)), 0 0 1px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
 }
 
-.grid__head,
-.grid__row {
+.stacks__head,
+.stack {
   display: grid;
-  grid-template-columns: 20px 26px minmax(180px, 2.4fr) minmax(120px, 1.4fr) minmax(120px, 1.2fr) 92px;
+  grid-template-columns: 14px 18px minmax(0, 1fr) repeat(6, 64px);
+  gap: 0 10px;
   align-items: center;
-  gap: 10px;
   padding-right: 14px;
 }
 
-.grid__head {
+.stacks__head {
+  padding-top: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--w-line-strong);
+  color: var(--w-text-2);
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.stack__colhead {
+  text-align: right;
+}
+
+.stacks__title {
+  margin: 0;
+  padding: 10px 14px 4px 42px;
+  color: var(--w-text-2);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--w-line);
+}
+
+.stacks__group + .stacks__group .stacks__title {
+  border-top: 1px solid var(--w-line-strong);
+}
+
+.stack {
+  min-height: 44px;
+  border-bottom: 1px solid var(--w-row-line);
+  cursor: pointer;
+}
+
+.stack:hover {
+  background: var(--w-row-hover);
+}
+
+.stack[data-open='true'] {
+  background: var(--w-surface-2);
+}
+
+.stack__who {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px 0;
+}
+
+.stack__title {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.stack__name {
+  flex: 0 0 auto;
+  max-width: 100%;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stack__stage {
+  flex: 1 1 0;
+  min-width: 0;
+  color: var(--w-text-2);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stack__note {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--w-text-2);
+  font-size: 12px;
+  padding-left: 18px;
+}
+
+.stack__note[data-tone='warning'] {
+  color: var(--w-warning);
+}
+
+.stack__bang {
+  font-family: var(--w-mono);
+  font-weight: 700;
+  margin-right: 6px;
+}
+
+.stack__count {
+  text-align: right;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.stack__count[data-zero='true'] {
+  color: var(--w-text-3);
+}
+
+.stack__count[data-tone='critical'] { color: var(--w-critical); font-weight: 600; }
+.stack__count[data-tone='warning'] { color: var(--w-warning); font-weight: 600; }
+.stack__count[data-tone='positive'] { color: var(--w-positive); font-weight: 600; }
+
+/* Some of these are only potential: said with a dotted underline and the title. */
+.stack__count[data-potential='true'] {
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+}
+
+.stack__noresult {
+  justify-self: end;
+  color: var(--w-text-2);
+  font-size: 12px;
+  font-style: italic;
+}
+
+.chev {
+  display: inline-block;
+  width: 12px;
+  margin-right: 6px;
+  color: var(--w-text-3);
+  font-size: 10px;
+}
+
+.stack__title .chev {
+  margin-right: 0;
+}
+
+.stack__body {
+  border-bottom: 1px solid var(--w-line-strong);
+}
+
+.stack__hidden {
+  margin: 0;
+  padding: 8px 14px 10px 64px;
+  color: var(--w-text-2);
+  font-size: 12px;
+}
+
+.stack__hidden .linkbtn {
+  font-size: 12px;
+}
+
+/* ---------- resource rows ---------- */
+.row,
+.flat__head {
+  display: grid;
+  grid-template-columns: 14px 18px minmax(160px, 2.4fr) minmax(110px, 1.2fr) 92px;
+  gap: 0 10px;
+  align-items: center;
+  padding-right: 14px;
+}
+
+.rows[data-with-stack='true'] .row,
+.flat__head {
+  grid-template-columns: 14px 18px minmax(160px, 2.4fr) minmax(110px, 1.3fr) minmax(110px, 1.2fr) 92px;
+}
+
+.flat__head {
   padding-top: 7px;
   padding-bottom: 7px;
   border-bottom: 1px solid var(--w-line-strong);
-  background: var(--w-surface);
   color: var(--w-text-2);
   font-size: 11px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
-.grid__scroll {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow: auto;
-  contain: strict;
+/* Under a stack line, rows sit one step in, so the two never read as peers. */
+.stack__body .row {
+  padding-left: 24px;
+  background: var(--w-surface);
 }
 
-.grid__row {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: var(--w-row-h);
+.row {
+  min-height: var(--w-row-h);
   border-bottom: 1px solid var(--w-row-line);
-  background: none;
-  text-align: left;
   cursor: pointer;
 }
 
-.grid__row:hover {
+.row:hover {
   background: var(--w-row-hover);
 }
 
-.grid__row[data-selected='true'] {
+.row[data-open='true'] {
   background: var(--w-row-selected);
+}
+
+.empty {
+  padding: 40px 16px;
+  text-align: center;
+  color: var(--w-text-2);
+}
+
+.empty p {
+  margin: 0 0 12px;
 }
 
 /*
@@ -561,84 +743,39 @@
   font-style: italic;
 }
 
-.grid__empty {
-  padding: 40px 16px;
-  text-align: center;
-  color: var(--w-text-2);
-}
 
-.grid__empty p {
-  margin: 0 0 12px;
-}
-
-/* ---------- detail panel ---------- */
-.detail {
-  flex: 0 0 420px;
+/* ---------- a row or stack, opened ---------- */
+.rowdetail,
+.stackdetail {
   display: flex;
   flex-direction: column;
-  min-height: 0;
-  border-left: 1px solid var(--w-line-strong);
-  background: var(--w-surface);
-  animation: detail-in 120ms ease-out;
-}
-
-@keyframes detail-in {
-  from {
-    transform: translateX(8px);
-    opacity: 0;
-  }
-}
-
-.detail__head {
-  display: flex;
-  align-items: flex-start;
   gap: 10px;
-  padding: 12px 12px 10px 14px;
+}
+
+.rowdetail {
+  padding: 10px 14px 14px 64px;
+  background: var(--w-surface-2);
   border-bottom: 1px solid var(--w-line);
 }
 
-.detail__title {
-  flex: 1 1 auto;
-  min-width: 0;
+.stack__body > .stackdetail {
+  padding: 10px 14px 12px 42px;
+  background: var(--w-surface-2);
+  border-bottom: 1px solid var(--w-line);
 }
 
-.detail__name {
+.stack__body .rowdetail {
+  padding-left: 88px;
+}
+
+.stackdetail__lead,
+.rowdetail > p {
   margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-  overflow-wrap: anywhere;
 }
 
-.detail__sub {
-  margin: 2px 0 0;
-  color: var(--w-text-2);
-  font-family: var(--w-mono);
-  font-size: 11px;
-  overflow-wrap: anywhere;
-}
-
-.detail__close {
-  flex: 0 0 auto;
-  padding: 2px 7px;
-  background: none;
-  border: 1px solid transparent;
-  border-radius: var(--w-radius);
-  color: var(--w-text-2);
-  cursor: pointer;
-  font-size: 15px;
-  line-height: 1.2;
-}
-
-.detail__close:hover {
-  background: var(--w-row-hover);
-  border-color: var(--w-line-strong);
-}
-
-.detail__body {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-  padding: 12px 14px 24px;
+.rowdetail .section,
+.stackdetail .section {
+  margin: 0;
 }
 
 .section {
@@ -674,46 +811,71 @@
   overflow-wrap: anywhere;
 }
 
+
+/* Facts wrap as label–value pairs on as few lines as they need. */
 .facts {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 4px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 20px;
   margin: 0;
+}
+
+.fact {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .facts dt {
   color: var(--w-text-2);
   font-size: 12px;
+  white-space: nowrap;
 }
 
 .facts dd {
   margin: 0;
+  min-width: 0;
   font-family: var(--w-mono);
   font-size: 12px;
   overflow-wrap: anywhere;
 }
 
-/* ---------- property delta tree ---------- */
+/* ---------- property changes ---------- */
 .delta {
-  margin: 0;
-  padding: 0;
-  list-style: none;
+  overflow-x: auto;
 }
 
-.delta--nested {
-  margin-left: 9px;
-  padding-left: 9px;
-  border-left: 1px solid var(--w-line);
+.delta__table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  font-family: var(--w-mono);
+  font-size: 12px;
 }
 
-.delta__node {
-  padding: 3px 0;
+.delta__table th {
+  text-align: left;
+  font-family: var(--w-font);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--w-text-2);
+  padding: 3px 8px;
+  border-bottom: 1px solid var(--w-line);
 }
 
-.delta__head {
-  display: flex;
-  gap: 7px;
-  align-items: baseline;
+.delta__table td {
+  padding: 3px 8px;
+  border-bottom: 1px solid var(--w-row-line);
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.delta__table tr:last-child td {
+  border-bottom: 0;
 }
 
 /*
@@ -721,12 +883,18 @@
  * one — it adds `array` and `noEffect` and drops `detach` and `noChange`. It gets
  * its own marks; borrowing the resource glyphs here would render wrong.
  */
+.delta__col-mark {
+  width: 48px;
+}
+
+.delta__col-path {
+  width: 40%;
+}
+
 .delta__mark {
-  flex: 0 0 auto;
-  font-family: var(--w-mono);
+  white-space: nowrap;
   font-size: 11px;
   font-weight: 700;
-  min-width: 34px;
   color: var(--w-text-2);
 }
 
@@ -738,21 +906,6 @@
   font-style: italic;
 }
 
-.delta__path {
-  font-family: var(--w-mono);
-  font-size: 12px;
-  overflow-wrap: anywhere;
-}
-
-.delta__values {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 8px;
-  align-items: baseline;
-  margin: 2px 0 0 41px;
-  font-family: var(--w-mono);
-  font-size: 11.5px;
-}
 
 .val {
   padding: 0 4px;
@@ -772,10 +925,6 @@
 .val--empty {
   color: var(--w-text-3);
   font-style: italic;
-}
-
-.delta__arrow {
-  color: var(--w-text-3);
 }
 
 .delta__note {
@@ -798,6 +947,7 @@
   margin-bottom: 4px;
   overflow-wrap: anywhere;
 }
+
 
 /* ---------- load / error ---------- */
 .center {
@@ -824,13 +974,22 @@
   font-size: 12px;
 }
 
-@media (max-width: 860px) {
-  .detail {
-    flex-basis: 320px;
+/* The host frame can be narrow; the least-read columns fold away first. */
+@media (max-width: 760px) {
+  .stacks__head,
+  .stack {
+    grid-template-columns: 14px 18px minmax(0, 1fr) repeat(5, 56px) 0;
   }
-  .grid__head,
-  .grid__row {
-    grid-template-columns: 20px 26px minmax(140px, 2.4fr) minmax(90px, 1.2fr) 0 78px;
+  .stack__count[data-rung='noChange'],
+  .stack__colhead[data-rung='noChange'] {
+    visibility: hidden;
+  }
+  .row {
+    grid-template-columns: 14px 18px minmax(140px, 2.4fr) 0 78px;
+  }
+  .rows[data-with-stack='true'] .row,
+  .flat__head {
+    grid-template-columns: 14px 18px minmax(140px, 2.4fr) minmax(90px, 1.2fr) 0 78px;
   }
   .cell--type {
     display: none;

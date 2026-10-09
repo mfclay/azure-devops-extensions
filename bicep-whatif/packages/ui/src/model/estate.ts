@@ -98,7 +98,7 @@ export interface EstateView {
   counts: Record<Severity, number>;
   total: number;
   highestSeverity?: Severity | undefined;
-  /** True when any stage failed to produce a payload. Drives the banner. */
+  /** True when any stage failed to produce a payload. */
   hasUnevaluatedStages: boolean;
 }
 

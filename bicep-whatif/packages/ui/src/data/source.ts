@@ -18,7 +18,7 @@ export const WHATIF_STAGE_PREFIX = 'whatif_';
 
 export interface LoadResult {
   stages: StageResult[];
-  /** Human label for the run, shown in the summary strip. */
+  /** Human label for the run, shown under the headline. */
   buildLabel: string;
   /** Things the source coped with. Shown, never swallowed. */
   notes: string[];

@@ -8,7 +8,7 @@ describe('encodeViewState', () => {
   });
 
   it('carries only what the sender actually changed', () => {
-    const state = { ...defaultViewState(), selected: '/subscriptions/x/kv-platform-prod' };
+    const state = { ...defaultViewState(), open: new Set(['/subscriptions/x/kv-platform-prod']) };
     expect(encodeViewState(state)).toBe('sel=%2Fsubscriptions%2Fx%2Fkv-platform-prod');
   });
 
@@ -26,20 +26,34 @@ describe('round trip', () => {
       stacks: new Set(['network', 'client-01']),
       query: 'key vault',
       hideNoise: true,
-      selected: '/subscriptions/x/kv',
+      open: new Set(['/subscriptions/x/kv', '/subscriptions/x/pe']),
+      openStacks: new Set(['network']),
+      layout: 'resources' as const,
     };
     const back = decodeViewState(encodeViewState(state));
     expect([...back.severities].sort()).toEqual(['destructive', 'modify']);
     expect([...(back.stacks ?? [])].sort()).toEqual(['client-01', 'network']);
     expect(back.query).toBe('key vault');
     expect(back.hideNoise).toBe(true);
-    expect(back.selected).toBe('/subscriptions/x/kv');
+    expect([...back.open].sort()).toEqual(['/subscriptions/x/kv', '/subscriptions/x/pe']);
+    expect([...back.openStacks]).toEqual(['network']);
+    expect(back.layout).toBe('resources');
   });
 
   it('round-trips a resource id containing separators', () => {
     const id = '/subscriptions/a&b/resourceGroups/rg=1/providers/x,y';
-    const back = decodeViewState(encodeViewState({ ...defaultViewState(), selected: id }));
-    expect(back.selected).toBe(id);
+    const back = decodeViewState(encodeViewState({ ...defaultViewState(), open: new Set([id, 'b']) }));
+    expect([...back.open].sort()).toEqual([id, 'b'].sort());
+  });
+
+  it('still opens the one resource a link from before rows opened in place names', () => {
+    expect([...decodeViewState('sel=%2Fsubscriptions%2Fx%2Fkv').open]).toEqual(['/subscriptions/x/kv']);
+  });
+
+  it('opens on the stack layout unless the link asks for the flat list', () => {
+    expect(decodeViewState('').layout).toBe('stacks');
+    expect(decodeViewState('view=all').layout).toBe('resources');
+    expect(decodeViewState('view=nonsense').layout).toBe('stacks');
   });
 });
 

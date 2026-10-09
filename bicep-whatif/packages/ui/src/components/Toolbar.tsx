@@ -1,4 +1,5 @@
 import type { StackView } from '../model/estate.js';
+import type { Layout } from '../model/view.js';
 import { StackFilterMenu } from './StackFilterMenu.js';
 
 export interface ToolbarProps {
@@ -8,6 +9,11 @@ export interface ToolbarProps {
   hideNoise: boolean;
   shown: number;
   total: number;
+  layout: Layout;
+  /** Whether any stack is open, which turns "Expand all" into "Collapse all". */
+  anyOpen: boolean;
+  onLayout: (layout: Layout) => void;
+  onExpandAll: (expand: boolean) => void;
   onQuery: (q: string) => void;
   onStacks: (keys: string[]) => void;
   onHideNoise: (value: boolean) => void;
@@ -28,6 +34,27 @@ export function Toolbar(props: ToolbarProps): React.ReactElement {
         }}
       />
 
+      <div className="seg" role="group" aria-label="Layout">
+        <button
+          type="button"
+          aria-pressed={props.layout === 'stacks'}
+          onClick={() => {
+            props.onLayout('stacks');
+          }}
+        >
+          By stack
+        </button>
+        <button
+          type="button"
+          aria-pressed={props.layout === 'resources'}
+          onClick={() => {
+            props.onLayout('resources');
+          }}
+        >
+          All resources
+        </button>
+      </div>
+
       <StackFilterMenu stacks={props.stacks} selected={props.selectedStacks} onChange={props.onStacks} />
 
       {/*
@@ -47,6 +74,18 @@ export function Toolbar(props: ToolbarProps): React.ReactElement {
       </label>
 
       <span className="toolbar__spacer" />
+
+      {props.layout === 'stacks' && (
+        <button
+          type="button"
+          className="linkbtn linkbtn--bar"
+          onClick={() => {
+            props.onExpandAll(!props.anyOpen);
+          }}
+        >
+          {props.anyOpen ? 'Collapse all' : 'Expand all'}
+        </button>
+      )}
 
       <span className="toolbar__status">
         {props.shown} of {props.total} shown

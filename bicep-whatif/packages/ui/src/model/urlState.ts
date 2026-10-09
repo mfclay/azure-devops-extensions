@@ -15,6 +15,19 @@ import { DEFAULT_SEVERITIES, defaultViewState, isDefaultSeveritySet, type ViewSt
 
 const SEVERITY_BY_NAME = new Map<string, Severity>(SEVERITIES.map((s) => [s.toLowerCase(), s]));
 
+function list(keys: ReadonlySet<string>): string {
+  return [...keys].sort().map(encodeURIComponent).join(',');
+}
+
+function decodeList(value: string): Set<string> {
+  return new Set(
+    value
+      .split(',')
+      .map((s) => decodeURIComponent(s))
+      .filter((s) => s.length > 0),
+  );
+}
+
 export function encodeViewState(state: ViewState): string {
   const parts: string[] = [];
 
@@ -28,7 +41,10 @@ export function encodeViewState(state: ViewState): string {
   }
   if (state.query.trim().length > 0) parts.push(`q=${encodeURIComponent(state.query.trim())}`);
   if (state.hideNoise) parts.push('hidenoise=1');
-  if (state.selected !== null) parts.push(`sel=${encodeURIComponent(state.selected)}`);
+  if (state.layout === 'resources') parts.push('view=all');
+  if (state.openStacks.size > 0) parts.push(`open=${list(state.openStacks)}`);
+  // `encodeURIComponent` escapes commas, so a comma can only ever be ours.
+  if (state.open.size > 0) parts.push(`sel=${list(state.open)}`);
 
   return parts.join('&');
 }
@@ -76,11 +92,17 @@ export function decodeViewState(hash: string): ViewState {
       case 'hidenoise':
         state.hideNoise = value === '1';
         break;
-      case 'sel': {
-        const sel = decodeURIComponent(value);
-        state.selected = sel.length > 0 ? sel : null;
+      // A link from before rows opened in place carries one key here, which
+      // decodes as a list of one.
+      case 'sel':
+        state.open = decodeList(value);
         break;
-      }
+      case 'open':
+        state.openStacks = decodeList(value);
+        break;
+      case 'view':
+        state.layout = value === 'all' ? 'resources' : 'stacks';
+        break;
       default:
         break;
     }

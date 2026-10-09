@@ -7,8 +7,11 @@ import {
   countsForStrip,
   defaultViewState,
   setStacks,
+  setStacksOpen,
+  toggleRow,
   toggleSeverity,
   toggleStack,
+  toggleStackOpen,
 } from '../src/model/view.js';
 
 function row(over: Partial<GridRow> & Pick<GridRow, 'key' | 'severity'>): GridRow {
@@ -86,7 +89,7 @@ describe('filtering', () => {
   });
 });
 
-describe('the summary strip counts', () => {
+describe('the totals counts', () => {
   it('ignores the severity filter, so a chip can still show what it would reveal', () => {
     const state = { ...defaultViewState(), severities: new Set<'destructive'>(['destructive']) };
     const counts = countsForStrip(ROWS, state);
@@ -117,5 +120,35 @@ describe('toggles', () => {
 
   it('treats selecting every stack as "all"', () => {
     expect(setStacks(defaultViewState(), ['a', 'b'], ['a', 'b']).stacks).toBeNull();
+  });
+});
+
+describe('opening rows and stacks', () => {
+  it('always shows an open row, even one the filters would hide', () => {
+    const state = { ...defaultViewState(), open: new Set(['st']), query: 'nothing matches this' };
+    expect(applyFilters(ROWS, state).map((r) => r.key)).toEqual(['st']);
+  });
+
+  it('opens several rows at once, and closes each on a second toggle', () => {
+    const two = toggleRow(toggleRow(defaultViewState(), 'kv'), 'pe');
+    expect([...two.open].sort()).toEqual(['kv', 'pe']);
+    expect([...toggleRow(two, 'kv').open]).toEqual(['pe']);
+  });
+
+  it('closes a stack and every row open in it, leaving other rows open', () => {
+    let state = toggleStackOpen(defaultViewState(), 'network', false, []);
+    expect(state.openStacks.has('network')).toBe(true);
+    state = toggleRow(toggleRow(state, 'kv'), 'pg');
+    state = toggleStackOpen(state, 'network', true, ['kv', 'pe', 'vnet']);
+    expect(state.openStacks.has('network')).toBe(false);
+    expect([...state.open]).toEqual(['pg']);
+  });
+
+  it('expands every listed stack, and collapsing all closes rows too', () => {
+    const all = setStacksOpen(toggleRow(defaultViewState(), 'kv'), ['a', 'b']);
+    expect([...all.openStacks]).toEqual(['a', 'b']);
+    const none = setStacksOpen(all, []);
+    expect(none.openStacks.size).toBe(0);
+    expect(none.open.size).toBe(0);
   });
 });

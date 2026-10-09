@@ -15,9 +15,18 @@ export interface ViewState {
   query: string;
   /** Decision C4's client-side noise toggle. Off by default; never hides a whole row. */
   hideNoise: boolean;
-  /** Row key of the resource open in the detail panel. */
-  selected: string | null;
+  /** Row keys open in place. Several may be open at once, to compare them. */
+  open: ReadonlySet<string>;
+  /** Stack keys open in the stack list. A stack holding an open row is open too. */
+  openStacks: ReadonlySet<string>;
+  layout: Layout;
 }
+
+/**
+ * `stacks` opens on one line per stack, worst first; `resources` is the flat
+ * list ranked by severity across every stack.
+ */
+export type Layout = 'stacks' | 'resources';
 
 /**
  * The default view: everything above `noChange`, severity-descending.
@@ -36,7 +45,9 @@ export function defaultViewState(): ViewState {
     stacks: null,
     query: '',
     hideNoise: false,
-    selected: null,
+    open: new Set(),
+    openStacks: new Set(),
+    layout: 'stacks',
   };
 }
 
@@ -61,10 +72,19 @@ function compareRows(a: GridRow, b: GridRow): number {
   return a.key.localeCompare(b.key);
 }
 
+/**
+ * An open row is always shown, whatever the filters say: a link that names one
+ * resource is someone saying "look at this", and an unchanged resource that
+ * lost its protection is exactly what the default filter would otherwise hide.
+ */
 export function applyFilters(rows: readonly GridRow[], state: ViewState): GridRow[] {
   const q = state.query.trim().toLowerCase();
   const out: GridRow[] = [];
   for (const row of rows) {
+    if (state.open.has(row.key)) {
+      out.push(row);
+      continue;
+    }
     if (!state.severities.has(row.severity)) continue;
     if (state.stacks !== null && !state.stacks.has(row.stackKey)) continue;
     if (q.length > 0 && !row.haystack.includes(q)) continue;
@@ -74,7 +94,7 @@ export function applyFilters(rows: readonly GridRow[], state: ViewState): GridRo
   return out;
 }
 
-/** Counts for the summary strip, over the stack filter but *not* the severity filter. */
+/** Counts for the totals line, over the stack filter but *not* the severity filter. */
 export function countsForStrip(
   rows: readonly GridRow[],
   state: ViewState,
@@ -112,4 +132,38 @@ export function toggleStack(state: ViewState, key: string, allKeys: readonly str
 export function setStacks(state: ViewState, keys: readonly string[], allKeys: readonly string[]): ViewState {
   if (keys.length === allKeys.length) return { ...state, stacks: null };
   return { ...state, stacks: new Set(keys) };
+}
+
+export function toggleRow(state: ViewState, key: string): ViewState {
+  const open = new Set(state.open);
+  if (open.has(key)) open.delete(key);
+  else open.add(key);
+  return { ...state, open };
+}
+
+/**
+ * Open or close one stack. `rowKeys` are that stack's rows: closing a stack
+ * closes them too, or the open row would hold the stack open.
+ */
+export function toggleStackOpen(
+  state: ViewState,
+  key: string,
+  isOpen: boolean,
+  rowKeys: readonly string[],
+): ViewState {
+  const openStacks = new Set(state.openStacks);
+  if (!isOpen) {
+    openStacks.add(key);
+    return { ...state, openStacks };
+  }
+  openStacks.delete(key);
+  const open = new Set(state.open);
+  for (const k of rowKeys) open.delete(k);
+  return { ...state, openStacks, open };
+}
+
+/** Every stack in `keys` open, or (with an empty list) every stack and row closed. */
+export function setStacksOpen(state: ViewState, keys: readonly string[]): ViewState {
+  if (keys.length === 0) return { ...state, openStacks: new Set(), open: new Set() };
+  return { ...state, openStacks: new Set(keys) };
 }

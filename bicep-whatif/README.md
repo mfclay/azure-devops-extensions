@@ -86,10 +86,8 @@ Three things are easy to get wrong here, and two of them are traps a dependency
 resolver will walk you into:
 
 - **Do not add `azure-devops-ui`.** It is actively maintained (2.278.0, Aug 2026)
-  but pinned to `react ^16.8.1`, while `@tanstack/react-table` requires
-  `react >=18`. They are **mutually exclusive**, and this page is a data grid, not
-  a form. The decision is React 19 with TanStack Table and Virtual, themed against
-  Azure DevOps CSS custom properties.
+  but pinned to `react ^16.8.1`, and the tab is React 19. The decision is React 19
+  with no component library, themed against Azure DevOps CSS custom properties.
 - **Pin `azure-devops-extension-sdk` to `^4`.** `azure-devops-extension-api@5.276.0`
   peer-deps the SDK at `^2 || ^3 || ^4`, but the SDK's own latest is `5.0.0`.
   Microsoft's two packages disagree. Do not paper over it with `--legacy-peer-deps`.

@@ -1,15 +1,15 @@
 /**
  * @vitest-environment jsdom
  *
- * The property delta tree. Its one rule worth a test of its own: the noise
- * toggle may hide a node only when that node says nothing. A real change that
+ * The property changes table. Its one rule worth a test of its own: the noise
+ * toggle may hide a line only when that line says nothing. A real change that
  * goes missing behind "hide noise" is the failure that loses a reviewer's trust,
  * so most of what follows is about what must *stay* on screen.
  */
 import type { PropertyChange } from '@bicep-whatif/core';
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { PropertyDeltaTree } from '../src/components/PropertyDeltaTree.js';
+import { PropertyChanges } from '../src/components/PropertyChanges.js';
 
 function change(over: Partial<PropertyChange> & Pick<PropertyChange, 'path'>): PropertyChange {
   return {
@@ -28,15 +28,15 @@ function paths(): string[] {
   return [...document.querySelectorAll('.delta__path')].map((e) => e.textContent ?? '');
 }
 
-describe('PropertyDeltaTree', () => {
+describe('PropertyChanges', () => {
   it('renders nothing for an empty list', () => {
-    const { container } = render(<PropertyDeltaTree changes={[]} hideNoise={false} />);
+    const { container } = render(<PropertyChanges changes={[]} hideNoise={false} />);
     expect(container.innerHTML).toBe('');
   });
 
   it('draws before → after for a scalar change', () => {
     render(
-      <PropertyDeltaTree
+      <PropertyChanges
         changes={[change({ path: 'properties.publicNetworkAccess', before: 'Enabled', after: 'Disabled' })]}
         hideNoise={false}
       />,
@@ -47,7 +47,7 @@ describe('PropertyDeltaTree', () => {
 
   it('gives the property enum its own word marks, not the resource glyphs', () => {
     render(
-      <PropertyDeltaTree
+      <PropertyChanges
         changes={[
           change({ path: 'a', changeType: 'create', after: 1 }),
           change({ path: 'b', changeType: 'delete', before: 1 }),
@@ -64,7 +64,7 @@ describe('PropertyDeltaTree', () => {
 
   it('shows an unrecognised change type verbatim and flags it as unknown', () => {
     render(
-      <PropertyDeltaTree
+      <PropertyChanges
         changes={[change({ path: 'properties.futureThing', changeType: 'teleport', changeTypeKnown: false, after: 'x' })]}
         hideNoise={false}
       />,
@@ -77,7 +77,7 @@ describe('PropertyDeltaTree', () => {
   it('renders every kind of leaf value legibly', () => {
     const long = { blob: 'x'.repeat(300) };
     render(
-      <PropertyDeltaTree
+      <PropertyChanges
         changes={[
           change({ path: 'absent', changeType: 'create', before: undefined, after: null }),
           change({ path: 'empty', before: '', after: 'set' }),
@@ -99,22 +99,23 @@ describe('PropertyDeltaTree', () => {
 
   it('does not draw null → null under container nodes', () => {
     render(
-      <PropertyDeltaTree
+      <PropertyChanges
         changes={[change({ path: 'properties.subnets', changeType: 'array', before: null, after: null })]}
         hideNoise={false}
       />,
     );
-    expect(document.querySelector('.delta__values')).toBeNull();
+    expect(paths()).toEqual(['properties.subnets']);
+    expect(document.querySelector('.val')).toBeNull();
   });
 
   it('says plainly that a noEffect property will be ignored', () => {
-    render(<PropertyDeltaTree changes={[change({ path: 'type', changeType: 'noEffect' })]} hideNoise={false} />);
+    render(<PropertyChanges changes={[change({ path: 'type', changeType: 'noEffect' })]} hideNoise={false} />);
     expect(screen.getByText(/the provider will ignore this property/i)).toBeTruthy();
   });
 
-  it('recurses through nested children, three levels deep', () => {
+  it('flattens nested children, three levels deep, to dotted paths', () => {
     render(
-      <PropertyDeltaTree
+      <PropertyChanges
         changes={[
           change({
             path: 'properties.virtualNetworkPeerings',
@@ -130,8 +131,8 @@ describe('PropertyDeltaTree', () => {
         hideNoise={false}
       />,
     );
-    expect(paths()).toEqual(['properties.virtualNetworkPeerings', '0', 'properties.allowGatewayTransit']);
-    expect(document.querySelectorAll('.delta--nested')).toHaveLength(2);
+    // The containers hold only children, so their children's paths name them.
+    expect(paths()).toEqual(['properties.virtualNetworkPeerings.0.properties.allowGatewayTransit']);
   });
 
   describe('with hide noise on', () => {
@@ -153,26 +154,26 @@ describe('PropertyDeltaTree', () => {
       change({ path: 'properties.sku', before: 'Basic', after: 'Premium' }),
     ];
 
-    it('hides noEffect nodes and containers holding only noise', () => {
-      render(<PropertyDeltaTree changes={tree} hideNoise />);
+    it('hides noEffect lines and everything under containers holding only noise', () => {
+      render(<PropertyChanges changes={tree} hideNoise />);
       expect(paths()).not.toContain('properties.type');
-      expect(paths()).not.toContain('properties.subnets');
+      expect(paths().some((p) => p.startsWith('properties.subnets'))).toBe(false);
     });
 
-    it('keeps every node on the way down to a real change', () => {
-      render(<PropertyDeltaTree changes={tree} hideNoise />);
-      expect(paths()).toEqual(['properties.peerings', '1', 'enabled', 'properties.sku']);
+    it('keeps every real change, with its full path', () => {
+      render(<PropertyChanges changes={tree} hideNoise />);
+      expect(paths()).toEqual(['properties.peerings.1.enabled', 'properties.sku']);
     });
 
     it('hides nothing when it is off', () => {
-      render(<PropertyDeltaTree changes={tree} hideNoise={false} />);
+      render(<PropertyChanges changes={tree} hideNoise={false} />);
       expect(paths()).toContain('properties.type');
-      expect(paths()).toContain('properties.subnets');
+      expect(paths()).toContain('properties.subnets.0');
     });
 
     it('renders nothing when the whole list is noise', () => {
       const { container } = render(
-        <PropertyDeltaTree changes={[change({ path: 'x', changeType: 'noEffect' })]} hideNoise />,
+        <PropertyChanges changes={[change({ path: 'x', changeType: 'noEffect' })]} hideNoise />,
       );
       expect(container.innerHTML).toBe('');
     });

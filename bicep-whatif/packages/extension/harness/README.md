@@ -158,7 +158,7 @@ Eleven stacks from ten stages, spanning the cases that matter:
 | `WhatIf_SharedInfra` | A real capture — 4 resource changes, layer 2 |
 | `WhatIf_Destructive` | `delete` and `detach`, plus a weakened deny mode — the severe rungs no real capture in this repo contains |
 | `WhatIf_SchemaDrift` | Change types and a `delta` the parser has never seen |
-| `WhatIf_ShortCircuit` | Azure **diagnostics**: a banner with Azure's short-circuit warning, a row whose name is known only during the deploy, with Azure's reason, and two `potential` changes |
+| `WhatIf_ShortCircuit` | Azure **diagnostics**: Azure's short-circuit warning in the headline and on the stack's line, a row whose name is known only during the deploy, with Azure's reason, and two `potential` changes |
 | `WhatIf_Failed` | A sidecar with `status: failed` and **no payload** |
 | `WhatIf_NeverEvaluated` | **Nothing attached at all** |
 | `WhatIf_Application` | **Two stacks**, `app-frontend` and `app-backend`, each with its own sidecar |

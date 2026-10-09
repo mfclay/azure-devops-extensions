@@ -10,11 +10,19 @@ This extension puts every stack in a run on one screen.
 
 ## What it adds
 
-**A build results tab.** One row per changed resource across every stack in the
-run, ranked by how much it can hurt you rather than grouped by which stack it
-came from. Filter by severity, by stack, or by resource type; click a row for its
-property-level diff; every filter and selection lives in the URL, so a link picks
-out the row you were looking at.
+**A build results tab.** It opens on one sentence: how many stacks would delete
+or stop protecting resources, how many were not evaluated, and whether Azure
+warned that a result may be incomplete. Below it is one line per stack, worst
+first, with its counts by severity. Open a stack for its resources, and a
+resource for its property changes, before and after side by side. "All
+resources" lists every changed resource across the run, ranked by how much it can
+hurt you. Filter by severity, by stack, or by search; what you open and filter
+lives in the URL, so a link picks out the resource you were looking at.
+
+Azure's own warnings stay with the stack they are about. When a resource's name
+cannot be worked out before the deploy, Azure short-circuits it, says the result
+is non-deterministic, and marks the changes it is unsure of as *potential*; the
+tab shows each of those as potential rather than as certain.
 
 **A pipeline task.** One task, with `BicepDeploy@0`'s operations and input
 names. `whatIf` previews a stack against what it currently manages and attaches
@@ -72,8 +80,9 @@ nothing at all. A tab that rendered only the attachments it received would show
 eight clean stacks as a safe deploy while the ninth was never evaluated. So the
 tab reconciles against the build timeline rather than the attachment list: every
 what-if stage in the run gets a row, and a stage that produced nothing is ranked
-`unevaluated` — above `noChange`, so the default filter cannot bury it — with a
-banner that does not dismiss.
+`unevaluated` — above `noChange`, so the default filter cannot bury it. The
+headline says how many stacks were not evaluated, and they get their own group,
+above every stack that only modifies. Neither dismisses.
 
 The task holds up its end: it writes its sidecar manifest on failure as well as
 on success, because "evaluated, found nothing" and "never evaluated" have to be
