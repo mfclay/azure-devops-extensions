@@ -1,6 +1,8 @@
 import { SEVERITIES, SEVERITY_RANK, SEVERITY_TONE, type Severity } from '@bicep-whatif/core';
+import { useMemo } from 'react';
+import { warningLines } from '../model/diagnostics.js';
 import type { GridRow, StackView } from '../model/estate.js';
-import { stackWarnings, type StackGroup } from '../model/summary.js';
+import { stackTwins, type StackGroup } from '../model/summary.js';
 import { Glyph, SEVERITY_LABEL, WarningIcon } from './Glyph.js';
 import { ResourceRows } from './ResourceRows.js';
 import { StackDetail } from './StackDetail.js';
@@ -25,15 +27,19 @@ export interface StackListProps {
   onShowUnchanged: () => void;
 }
 
-/** One line under the stack's name for each thing worth knowing before opening it. */
-function notesFor(stack: StackView): { text: string; tone: 'warning' | 'muted' }[] {
+/**
+ * One line under the stack's name for each thing worth knowing before opening
+ * it. Azure's warnings are said in a plain sentence each; its own text, which
+ * shouts, is one click away in the opened stack, and a closed line says so.
+ */
+function notesFor(stack: StackView, open: boolean): { text: string; tone: 'warning' | 'muted' }[] {
   const out: { text: string; tone: 'warning' | 'muted' }[] = [];
   if (stack.notEvaluatedDetail !== undefined) out.push({ text: stack.notEvaluatedDetail, tone: 'muted' });
-  for (const d of stackWarnings(stack)) {
-    out.push({ text: `Azure warned this result may be incomplete: ${d.message}`, tone: 'warning' });
+  for (const line of warningLines(stack)) {
+    out.push({ text: open ? line : `${line} Open for Azure's message.`, tone: 'warning' });
   }
   if (stack.stack?.denySettingsWeakened === true) {
-    out.push({ text: "This stack's deny settings weaken.", tone: 'warning' });
+    out.push({ text: 'Deny settings weaken in this run.', tone: 'warning' });
   }
   return out;
 }
@@ -71,8 +77,8 @@ function Counts({ stack, rows }: { stack: StackView; rows: readonly GridRow[] })
   );
 }
 
-function StackLine(props: StackListProps & { stack: StackView }): React.ReactElement {
-  const { stack } = props;
+function StackLine(props: StackListProps & { stack: StackView; twin: string | undefined }): React.ReactElement {
+  const { stack, twin } = props;
   const open = props.openStacks.has(stack.key);
   const rows = props.rowsByStack.get(stack.key) ?? [];
   const all = props.allRowsByStack.get(stack.key) ?? [];
@@ -80,7 +86,7 @@ function StackLine(props: StackListProps & { stack: StackView }): React.ReactEle
   const hidden = all.filter((r) => !shown.has(r.key));
   const hiddenUnchanged = props.unchangedHidden ? hidden.filter((r) => r.severity === 'noChange').length : 0;
   const hiddenOther = hidden.length - hiddenUnchanged;
-  const notes = notesFor(stack);
+  const notes = notesFor(stack, open);
   const potential = all.some((r) => r.potential && r.severity === stack.highestSeverity);
   const toggle = (): void => {
     props.onToggleStack(stack.key);
@@ -120,14 +126,18 @@ function StackLine(props: StackListProps & { stack: StackView }): React.ReactEle
               {open ? '▾' : '▸'}
             </span>
             <span className="stack__name">{stack.label}</span>
-            {stack.stageDisplayName !== stack.label && (
-              <span className="stack__stage">{stack.stageDisplayName}</span>
+            {/* Another line carries this name: the stage is what tells them apart, so it is said louder. */}
+            {twin !== undefined ? (
+              <span className="stack__stagechip">{stack.stageDisplayName}</span>
+            ) : (
+              stack.stageDisplayName !== stack.label && <span className="stack__stage">{stack.stageDisplayName}</span>
             )}
           </span>
+          {twin !== undefined && <span className="stack__twin">· {twin}</span>}
           {notes.map((n, i) => (
             <span key={String(i)} className="stack__note" data-tone={n.tone}>
               {n.tone === 'warning' && <WarningIcon />}
-              {n.text}
+              <span>{n.text}</span>
             </span>
           ))}
         </span>
@@ -178,12 +188,13 @@ function StackLine(props: StackListProps & { stack: StackView }): React.ReactEle
  */
 export function StackList(props: StackListProps): React.ReactElement {
   const titled = props.groups.length > 1;
+  const twins = useMemo(() => stackTwins([...props.stacks.values()]), [props.stacks]);
   return (
     <div className="stacks">
       <div className="stacks__head" aria-hidden="true">
         <span />
         <span />
-        <span>Stack</span>
+        <span>Stack · resources per stack →</span>
         {COLUMNS.map((rung) => (
           <span key={rung} className="stack__colhead" data-rung={rung}>
             {SEVERITY_LABEL[rung]}
@@ -194,7 +205,7 @@ export function StackList(props: StackListProps): React.ReactElement {
         <section key={group.kind} className="stacks__group" aria-label={group.title} data-kind={group.kind}>
           {titled && <h2 className="stacks__title">{group.title}</h2>}
           {group.stacks.map((stack) => (
-            <StackLine key={stack.key} {...props} stack={stack} />
+            <StackLine key={stack.key} {...props} stack={stack} twin={twins.get(stack.key)} />
           ))}
         </section>
       ))}

@@ -1,5 +1,6 @@
 import { SEVERITY_TONE } from '@bicep-whatif/core';
 import type { GridRow, StackView } from '../model/estate.js';
+import { shortType } from '../model/view.js';
 import { Glyph } from './Glyph.js';
 import { RowDetail } from './RowDetail.js';
 
@@ -22,6 +23,22 @@ export function surprisingReason(row: GridRow): string | undefined {
   const routine = top.code === 'resourceModified' || top.code === 'resourceCreated' || top.code === 'noChange';
   if (routine && row.reasons.length <= 1) return undefined;
   return top.detail;
+}
+
+/**
+ * The provider in the type, less the `Microsoft.` everyone shares, and in a
+ * lighter tone: `Storage/storageAccounts` tells a storage account from a
+ * Network one where `storageAccounts` alone would not always. The full type
+ * shows on hover, and the cell ends in an ellipsis when it runs out of room.
+ */
+function TypeCell({ resourceType }: { resourceType: string }): React.ReactElement {
+  const { namespace, rest } = shortType(resourceType);
+  return (
+    <span className="cell cell--mono cell--type" title={resourceType}>
+      {namespace !== '' && <span className="cell__ns">{namespace}</span>}
+      {rest}
+    </span>
+  );
 }
 
 export interface ResourceRowsProps {
@@ -89,12 +106,16 @@ export function ResourceRows(props: ResourceRowsProps): React.ReactElement {
                 {why !== undefined && <span className="cell__why">{why}</span>}
               </span>
               {props.withStack && <span className="cell cell--mono">{row.stackLabel}</span>}
-              <span className="cell cell--mono cell--type" title={row.resourceType}>
-                {row.resourceType.split('/').pop() ?? row.resourceType}
-              </span>
-              <span className="cell cell--change" data-known={row.changeTypeKnown}>
-                {row.changeType}
-              </span>
+              <TypeCell resourceType={row.resourceType} />
+              {row.isStagePlaceholder ? (
+                <span className="cell cell--change" data-placeholder="true">
+                  not evaluated
+                </span>
+              ) : (
+                <span className="cell cell--change" data-known={row.changeTypeKnown}>
+                  {row.changeType}
+                </span>
+              )}
             </div>
             {open && (
               <RowDetail

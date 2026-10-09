@@ -14,6 +14,7 @@ import {
   applyFilters,
   countsForStrip,
   defaultViewState,
+  resourceBands,
   setStacks,
   setStacksOpen,
   toggleRow,
@@ -278,14 +279,30 @@ export function App(props: AppProps): React.ReactElement {
                 <span className="cell--type">Type</span>
                 <span>Change</span>
               </div>
-              <ResourceRows
-                rows={rows}
-                open={state.open}
-                stacks={stacksByKey}
-                hideNoise={state.hideNoise}
-                withStack
-                onToggle={onToggleRow}
-              />
+              {/*
+                In bands, worst first, with unknowns above new and modified: an
+                unknown can hide a delete. Every row that passes the filters is
+                listed; no band is cut short.
+              */}
+              {resourceBands(rows).map((band) => (
+                <section key={band.kind} className="band" data-kind={band.kind} aria-label={band.title}>
+                  <h2 className="band__title">
+                    {band.title}
+                    <span className="band__count">
+                      {band.count}
+                      {band.note !== undefined && <span className="band__note"> — {band.note}</span>}
+                    </span>
+                  </h2>
+                  <ResourceRows
+                    rows={band.rows}
+                    open={state.open}
+                    stacks={stacksByKey}
+                    hideNoise={state.hideNoise}
+                    withStack
+                    onToggle={onToggleRow}
+                  />
+                </section>
+              ))}
             </div>
           )}
         </main>

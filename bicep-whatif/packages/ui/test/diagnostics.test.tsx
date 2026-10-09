@@ -5,7 +5,7 @@
  * incomplete, the stack detail that shows them all, and the row that says why
  * it could not be predicted.
  */
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { surprisingReason } from '../src/components/ResourceRows.js';
 import { RowDetail } from '../src/components/RowDetail.js';
@@ -80,10 +80,14 @@ describe('the stack line', () => {
     const lines = document.querySelectorAll<HTMLElement>('[data-stack-key]');
     const identityLine = [...lines].find((l) => l.dataset.stackKey === 'identity')!;
     const networkLine = [...lines].find((l) => l.dataset.stackKey === 'network')!;
-    expect(identityLine.textContent).toMatch(/Azure warned this result may be incomplete: RESULT NON-DETERMINISTIC!/);
+    // In a plain sentence that keeps Azure's point (deletes can't be ruled out), never its shouting.
+    expect(identityLine.textContent).toMatch(
+      /Result may be incomplete — Azure couldn't resolve a resource id, so it can't rule out deletes\. Open for Azure's message\./,
+    );
+    expect(identityLine.textContent).not.toMatch(/NON-DETERMINISTIC/);
     // Info-level messages stay in the stack's detail.
     expect(identityLine.textContent).not.toMatch(/SyntheticInformational/);
-    expect(networkLine.textContent).not.toMatch(/Azure warned/);
+    expect(networkLine.textContent).not.toMatch(/incomplete/);
     // The warning is marked with the triangle, named for anyone who can't see it.
     expect(within(identityLine).getByRole('img', { name: 'warning' })).toBeTruthy();
     expect(within(networkLine).queryByRole('img', { name: 'warning' })).toBeNull();
@@ -97,18 +101,57 @@ describe('the stack line', () => {
   });
 });
 
+describe('two stack lines with one name', () => {
+  it('tells them apart by a stage chip, and says whether they are the same stack', () => {
+    const smoke = buildEstateView([
+      { stageId: 'WhatIf_Smoke81', displayName: 'smoke-81-short-circuit', stackId: 'smoke-81', payload: fixture('real/smoke-81-short-circuit.json'), notes: [] },
+      { stageId: 'WhatIf_Smoke85', displayName: 'smoke-85-short-circuit-after-create', stackId: 'smoke-85', payload: fixture('real/smoke-85-short-circuit-after-create.json'), notes: [] },
+    ]);
+    const rows = byStack(smoke.rows);
+    render(
+      <StackList
+        groups={summaryGroups(smoke.stacks)}
+        rowsByStack={rows}
+        allRowsByStack={rows}
+        stacks={new Map(smoke.stacks.map((s) => [s.key, s]))}
+        openStacks={new Set()}
+        openRows={new Set()}
+        hideNoise={false}
+        unchangedHidden
+        onToggleStack={vi.fn()}
+        onToggleRow={vi.fn()}
+        onShowUnchanged={vi.fn()}
+      />,
+    );
+    const line = document.querySelector<HTMLElement>('[data-stack-key="smoke-81"]')!;
+    expect(line.querySelector('.stack__stagechip')?.textContent).toBe('smoke-81-short-circuit');
+    expect(line.querySelector('.stack__stage')).toBeNull();
+    expect(line.textContent).toMatch(/· same stack also in stage smoke-85-short-circuit-after-create/);
+  });
+});
+
 describe('the stack detail', () => {
-  it('shows every diagnostic, warnings before info', () => {
+  it('says what the warning means first, with Azure\'s own text one click under it', () => {
     render(<StackDetail stack={identity} />);
-    const section = screen.getByRole('heading', { name: 'Azure diagnostics' }).closest('section')!;
-    const items = within(section).getAllByRole('listitem').map((li) => li.textContent ?? '');
+    const note = screen.getByRole('note');
+    expect(within(note).getByText("This result isn't complete.")).toBeTruthy();
+    // Azure doesn't say how many ids short-circuited, so neither does the callout.
+    expect(note.textContent).toMatch(/one or more resource ids/);
+    expect(within(note).queryByRole('listitem')).toBeNull();
+
+    const disclosure = within(note).getByRole('button', { name: /Show Azure's messages \(1 warning, 1 info\)/ });
+    expect(disclosure.getAttribute('aria-expanded')).toBe('false');
+    fireEvent.click(disclosure);
+    expect(disclosure.getAttribute('aria-expanded')).toBe('true');
+    const items = within(note).getAllByRole('listitem').map((li) => li.textContent ?? '');
     expect(items[0]).toMatch(/ShortCircuitedResourceId/);
     expect(items[items.length - 1]).toMatch(/SyntheticInformational/);
   });
 
-  it('has no diagnostics section for a stack without any', () => {
+  it('has no callout and no disclosure for a stack without diagnostics', () => {
     render(<StackDetail stack={view.stacks.find((s) => s.key === 'network')!} />);
-    expect(screen.queryByRole('heading', { name: 'Azure diagnostics' })).toBeNull();
+    expect(screen.queryByRole('note')).toBeNull();
+    expect(screen.queryByRole('button', { name: /Show Azure/ })).toBeNull();
   });
 });
 

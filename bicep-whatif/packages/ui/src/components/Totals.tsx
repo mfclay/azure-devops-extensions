@@ -25,6 +25,8 @@ export function Totals(props: TotalsProps): React.ReactElement | null {
 
   return (
     <div className="totals" role="group" aria-label="Filter by severity">
+      {/* The headline counts stacks; these count resources. Said, so the two aren't read as one. */}
+      <span className="totals__label">Resources</span>
       {rungs.map((severity) => {
         const count = props.counts[severity];
         const potential = props.potentialCounts?.[severity] ?? 0;

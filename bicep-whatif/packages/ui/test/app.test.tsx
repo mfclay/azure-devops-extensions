@@ -217,6 +217,24 @@ describe('the flat list', () => {
     expect(within(detail).getByRole('region', { name: /About stack/ })).toBeTruthy();
     expect(within(detail).queryByText(/property-level/i)).toBeNull();
   });
+
+  it('bands the rows, with the unknowns above modified, and keeps the provider in the type', async () => {
+    renderApp([REAL_STAGE, MISSING_STAGE]);
+    await summary();
+    fireEvent.click(screen.getByRole('button', { name: 'All resources' }));
+    const bands = [...document.querySelectorAll<HTMLElement>('.band')].map((b) => b.dataset.kind);
+    expect(bands.indexOf('unknown')).toBeGreaterThanOrEqual(0);
+    expect(bands.indexOf('unknown')).toBeLessThan(bands.indexOf('modified'));
+
+    const unknown = screen.getByRole('region', { name: 'Unknown — not predicted or not evaluated' });
+    const stage = within(unknown).getByText('Stack 3 — Shared Platform (prod)').closest<HTMLElement>('.row')!;
+    expect(stage.querySelector('.cell--change')?.textContent).toBe('not evaluated');
+
+    const vnet = within(screen.getByRole('region', { name: 'Modified' })).getByText('app-cus-vnet').closest('.row')!;
+    const type = vnet.querySelector<HTMLElement>('.cell--type')!;
+    expect(type.textContent).toBe('Network/virtualNetworks');
+    expect(type.title).toBe('Microsoft.Network/virtualNetworks');
+  });
 });
 
 describe('filtering to nothing', () => {

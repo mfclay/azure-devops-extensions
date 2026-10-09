@@ -35,6 +35,8 @@
   --w-warning: var(--status-warning-text, #a8760a);
   --w-positive: var(--status-success-text, #107c10);
   --w-neutral: var(--text-secondary-color, rgba(0, 0, 0, 0.55));
+  /* A wash of the warning tone, so it follows the host theme light or dark. */
+  --w-warning-soft: color-mix(in srgb, var(--w-warning) 12%, transparent);
 
   --w-font: var(--font-family, "Segoe UI", -apple-system, BlinkMacSystemFont, system-ui, sans-serif);
   /* Resource ids, property paths and values are machine text and get a machine face. */

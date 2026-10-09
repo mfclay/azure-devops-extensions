@@ -1,5 +1,8 @@
 import { needsAttention, SEVERITY_TONE, type WhatIfDiagnostic } from '@bicep-whatif/core';
+import { useState } from 'react';
+import { diagnosticsDisclosure, incompleteCallout } from '../model/diagnostics.js';
 import type { StackView } from '../model/estate.js';
+import { WarningIcon } from './Glyph.js';
 
 export function DiagnosticList({ diagnostics }: { diagnostics: readonly WhatIfDiagnostic[] }): React.ReactElement {
   return (
@@ -32,22 +35,53 @@ export function Fact({ label, children }: { label: string; children: React.React
  *
  * These used to sit in banners above the table and again under every row's
  * details. They are said once now, where the stack is opened.
+ *
+ * When Azure warned, what that means for this stack comes first, in plain
+ * words. Azure's own text, which is written for a log and shouts, sits behind
+ * a disclosure under it, warnings first.
  */
 export function StackDetail({ stack }: { stack: StackView }): React.ReactElement {
   const s = stack.stack;
   const diagnostics = [...(s?.diagnostics ?? [])].sort(
     (a, b) => Number(needsAttention(b)) - Number(needsAttention(a)),
   );
+  const callout = incompleteCallout(stack);
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
+
+  const azureText = diagnostics.length > 0 && (
+    <>
+      <button
+        type="button"
+        className="linkbtn disclosure"
+        aria-expanded={showDiagnostics}
+        onClick={() => {
+          setShowDiagnostics((v) => !v);
+        }}
+      >
+        <span className="chev" aria-hidden="true">
+          {showDiagnostics ? '▾' : '▸'}
+        </span>
+        {diagnosticsDisclosure(diagnostics)}
+      </button>
+      {showDiagnostics && <DiagnosticList diagnostics={diagnostics} />}
+    </>
+  );
 
   return (
     <div className="stackdetail" role="region" aria-label={`About stack ${stack.label}`}>
       {stack.notEvaluatedDetail !== undefined && <p className="stackdetail__lead">{stack.notEvaluatedDetail}</p>}
 
-      {diagnostics.length > 0 && (
-        <section className="section">
-          <h3 className="section__head">Azure diagnostics</h3>
-          <DiagnosticList diagnostics={diagnostics} />
-        </section>
+      {callout !== undefined ? (
+        <div className="callout" role="note">
+          <WarningIcon />
+          <div className="callout__body">
+            <p className="callout__title">{callout.title}</p>
+            <p className="callout__text">{callout.body}</p>
+            {azureText}
+          </div>
+        </div>
+      ) : (
+        azureText
       )}
 
       {s?.denySettingsWeakened === true && (
