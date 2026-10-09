@@ -73,6 +73,9 @@ parameters:
   values:
   - empty
   - bicep
+  # What-if at subscription scope only. Short-circuits a module on purpose, so
+  # Azure reports diagnostics; bicep/shortCircuit.bicep says how.
+  - shortCircuit
 - name: serviceConnection
   displayName: 'Azure Resource Manager service connection'
   type: string
@@ -151,6 +154,9 @@ stages:
         ${{ if eq(parameters.template, 'empty') }}:
           stackId: smoke
           stackName: bicep-whatif-smoke
+        ${{ elseif eq(parameters.template, 'shortCircuit') }}:
+          stackId: smoke-short-circuit
+          stackName: bicep-whatif-smoke-short-circuit
         ${{ else }}:
           stackId: smoke-bicep
           stackName: bicep-whatif-smoke-bicep
@@ -159,6 +165,8 @@ stages:
             location: ${{ parameters.location }}
           ${{ if eq(parameters.template, 'empty') }}:
             templateFile: '$(Agent.TempDirectory)/empty.json'
+          ${{ elseif eq(parameters.template, 'shortCircuit') }}:
+            parametersFile: '$(Build.SourcesDirectory)/bicep-whatif/packages/task/smoke/bicep/shortCircuit.bicepparam'
           ${{ else }}:
             parametersFile: '$(Build.SourcesDirectory)/bicep-whatif/packages/task/smoke/bicep/${{ parameters.scope }}.bicepparam'
           denySettingsMode: none
