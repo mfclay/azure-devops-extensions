@@ -7,8 +7,18 @@
  * scrubbing, and the scrub is structure-preserving by construction.
  */
 import { describe, expect, it } from 'vitest';
-import { normalizeStackWhatIf, normalizeEstate, flattenPropertyChanges } from '../src/index.js';
-import { REAL_NETWORK, REAL_SHARED_INFRA } from './fixtures.js';
+import {
+  normalizeStackWhatIf,
+  normalizeEstate,
+  flattenPropertyChanges,
+  NAME_UNKNOWN_UNTIL_DEPLOY,
+} from '../src/index.js';
+import {
+  REAL_NETWORK,
+  REAL_SHARED_INFRA,
+  REAL_SHORT_CIRCUIT,
+  REAL_SHORT_CIRCUIT_AFTER_CREATE,
+} from './fixtures.js';
 
 describe('real payloads from build 7700017', () => {
   it('normalizes app-network: 7 changes, 5 modify + 2 noChange', () => {
@@ -97,5 +107,37 @@ describe('real payloads from build 7700017', () => {
     expect(new Set(e.rows.map((r) => r.stackName))).toEqual(
       new Set(['app-network', 'app-shared-infra']),
     );
+  });
+});
+
+describe('a real short-circuited what-if (smoke builds 81 and 85)', () => {
+  it('carries Azure\'s warning, with no target, and parses without a warning of its own', () => {
+    for (const payload of [REAL_SHORT_CIRCUIT(), REAL_SHORT_CIRCUIT_AFTER_CREATE()]) {
+      const r = normalizeStackWhatIf(payload);
+      expect(r.diagnostics).toHaveLength(1);
+      expect(r.diagnostics[0]).toMatchObject({ level: 'warning', code: 'ShortCircuitedResourceId', target: undefined });
+      expect(r.warnings).toEqual([]);
+    }
+  });
+
+  it('gives the short-circuited group a row of its own, named as unknown', () => {
+    const r = normalizeStackWhatIf(REAL_SHORT_CIRCUIT());
+    const row = r.rows.find((x) => x.changeType === 'unsupported')!;
+    expect(row.name).toBe(NAME_UNKNOWN_UNTIL_DEPLOY);
+    expect(row.resourceType).toBe('Microsoft.Network/networkSecurityGroups');
+    expect(row.unsupportedReason).toMatch(/cannot be calculated until the deployment is under way/);
+    expect(r.counts).toMatchObject({ create: 2, unevaluated: 1 });
+  });
+
+  it('once the stack exists, reports the deployed group as a potential detach', () => {
+    // The same group as the unsupported row: Azure cannot match the two, so it
+    // says the one it has may be let go. This is the pairing a real estate
+    // shows for role assignments named after a principal id.
+    const r = normalizeStackWhatIf(REAL_SHORT_CIRCUIT_AFTER_CREATE());
+    const detach = r.rows.find((x) => x.changeType === 'detach')!;
+    expect(detach.changeCertainty).toBe('potential');
+    expect(detach.resourceType).toBe('Microsoft.Network/networkSecurityGroups');
+    expect(detach.severity).toBe('protectionLoss');
+    expect(r.counts).toMatchObject({ protectionLoss: 1, unevaluated: 1, noChange: 2 });
   });
 });

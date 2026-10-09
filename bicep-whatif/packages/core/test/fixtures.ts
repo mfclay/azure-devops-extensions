@@ -16,3 +16,8 @@ export const SYNTH_SEVERITY = () => load('synthetic/synthetic-destructive-and-pr
 export const SYNTH_DRIFT = () => load('synthetic/synthetic-schema-drift.json');
 /** Hand-authored. Diagnostics and a short-circuit, as no captured payload here shows them. */
 export const SYNTH_SHORT_CIRCUIT = () => load('synthetic/synthetic-short-circuit.json');
+
+/** From this repo's own smoke pipeline, `shortCircuit` template, identifiers scrubbed. */
+export const REAL_SHORT_CIRCUIT = () => load('real/smoke-81-short-circuit.json');
+/** The same template's what-if once the stack existed: the potential detach appears. */
+export const REAL_SHORT_CIRCUIT_AFTER_CREATE = () => load('real/smoke-85-short-circuit-after-create.json');

@@ -1,0 +1,107 @@
+{
+  "location": "centralus",
+  "properties": {
+    "deploymentStackResourceId": "/subscriptions/00000000-0000-4000-8000-000000000401/providers/Microsoft.Resources/deploymentStacks/bicep-whatif-smoke-short-circuit",
+    "retentionInterval": "PT3H",
+    "provisioningState": "succeeded",
+    "deploymentStackLastModified": "0001-01-01T00:00:00+00:00",
+    "changes": {
+      "resourceChanges": [
+        {
+          "id": "[resourceId('00000000-0000-4000-8000-000000000401', 'rg-bicep-whatif-short-circuit', 'Microsoft.Network/networkSecurityGroups', format('nsg-{0}', reference('/subscriptions/00000000-0000-4000-8000-000000000401/resourceGroups/rg-bicep-whatif-short-circuit/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-bicep-whatif-smoke', '2023-01-31').principalId))]",
+          "type": "Microsoft.Network/networkSecurityGroups",
+          "unsupportedReason": "Changes to the resource declared at 'properties.template.resources[2].properties.template.resources[0]' on line 1 and column 2790 cannot be analyzed because its resource ID or API version cannot be calculated until the deployment is under way. Please see https://aka.ms/WhatIfUnidentifiableResource for more guidance.",
+          "managementStatusChange": {
+            "before": "notManaged",
+            "after": "unknown"
+          },
+          "changeType": "unsupported",
+          "changeCertainty": "definite"
+        },
+        {
+          "id": "/subscriptions/00000000-0000-4000-8000-000000000401/resourceGroups/rg-bicep-whatif-short-circuit",
+          "type": "Microsoft.Resources/resourceGroups",
+          "managementStatusChange": {
+            "before": "notManaged",
+            "after": "managed"
+          },
+          "denyStatusChange": {
+            "before": "none",
+            "after": "none"
+          },
+          "changeType": "create",
+          "changeCertainty": "definite"
+        },
+        {
+          "id": "/subscriptions/00000000-0000-4000-8000-000000000401/resourceGroups/rg-bicep-whatif-short-circuit/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-bicep-whatif-smoke",
+          "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+          "managementStatusChange": {
+            "before": "notManaged",
+            "after": "managed"
+          },
+          "denyStatusChange": {
+            "before": "none",
+            "after": "none"
+          },
+          "changeType": "create",
+          "changeCertainty": "definite"
+        }
+      ],
+      "denySettingsChange": {
+        "after": {
+          "mode": "None",
+          "excludedPrincipals": [],
+          "excludedActions": [],
+          "applyToChildScopes": false
+        },
+        "delta": [
+          {
+            "path": "Mode",
+            "changeType": "create",
+            "after": "None"
+          },
+          {
+            "path": "ApplyToChildScopes",
+            "changeType": "create",
+            "after": "False"
+          }
+        ]
+      },
+      "deploymentScopeChange": {}
+    },
+    "diagnostics": [
+      {
+        "level": "warning",
+        "code": "ShortCircuitedResourceId",
+        "message": "RESULT NON-DETERMINISTIC! UNMARKED RESOURCES COULD BE DELETED. One or more resource ids short-circuited, leading to the result not being deterministic. If the corresponding existing deployment stack contains resources that do not have a definite change entry, every such resource will be marked as potentially deleted as non-determinism does not allow definite predictions of unmanaged resources.",
+        "additionalInfo": []
+      }
+    ],
+    "correlationId": "00000000-0000-4000-8000-000000000402",
+    "actionOnUnmanage": {
+      "resources": "detach",
+      "resourceGroups": "detach",
+      "managementGroups": "detach",
+      "resourcesWithoutDeleteSupport": "fail"
+    },
+    "denySettings": {
+      "mode": "none",
+      "applyToChildScopes": false,
+      "excludedPrincipals": [],
+      "excludedActions": []
+    },
+    "parameters": {},
+    "bypassStackOutOfSyncError": false
+  },
+  "systemData": {
+    "createdBy": "00000000-0000-4000-8000-000000000403",
+    "createdByType": "Application",
+    "createdAt": "2026-10-09T01:20:04.9076552Z",
+    "lastModifiedBy": "00000000-0000-4000-8000-000000000403",
+    "lastModifiedByType": "Application",
+    "lastModifiedAt": "2026-10-09T01:20:04.9076552Z"
+  },
+  "id": "/subscriptions/00000000-0000-4000-8000-000000000401/providers/Microsoft.Resources/deploymentStacksWhatIfResults/whatif-smoke-short-circuit-81",
+  "type": "Microsoft.Resources/deploymentStacksWhatIfResults",
+  "name": "whatif-smoke-short-circuit-81"
+}

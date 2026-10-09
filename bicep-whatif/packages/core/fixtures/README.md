@@ -11,6 +11,16 @@ cited as though it were.
 | `build-7700017-app-network.json` | `app-network` | 7 — 5 `modify`, 2 `noChange` |
 | `build-7700017-app-shared-infra.json` | `app-shared-infra` | 4 — 2 `modify`, 2 `noChange` |
 
+Two more come from this repo's own smoke pipeline
+([`packages/task/smoke`](../../task/smoke)), `shortCircuit` template, run against Azure on
+2026-10-08 and scrubbed in one run of `tools/scrub-fixture.mjs` with `--start 401`, so their
+ids (`…0401`–`…0405`) collide with no other fixture's:
+
+| File | What it shows |
+|---|---|
+| `smoke-81-short-circuit.json` | A stack what-if that short-circuited, before the stack existed: Azure's `ShortCircuitedResourceId` warning (no target), and an `unsupported` row whose id is the unevaluated template expression |
+| `smoke-85-short-circuit-after-create.json` | The same what-if once the stack existed: the deployed group is now also reported as a **`potential` detach**, beside its own unsupported row |
+
 There is also one capture that is not an ARM payload at all:
 
 | File | What it is |
