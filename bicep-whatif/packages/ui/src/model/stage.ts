@@ -56,6 +56,11 @@ export interface StageResult {
   stageId: string;
   /** Display name from the timeline record. Falls back to `stageId`. */
   displayName: string;
+  /**
+   * The stage's timeline record id, a GUID. The build results page opens a
+   * stage's log by it. Undefined for an attachment no stage could be found for.
+   */
+  recordId?: string | undefined;
   /** Timeline record state / result, verbatim. `SucceededWithIssues` is the interesting one. */
   state?: string | undefined;
   result?: string | undefined;

@@ -968,6 +968,18 @@
   margin: 0;
 }
 
+/* The statement an unevaluated stack opens on: like the callout, without the alarm colour. */
+.statement {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  max-width: 72ch;
+}
+
+.statement .glyph {
+  margin-top: 2px;
+}
+
 /* Said before Azure's own text when it warned: what the warning means for this stack. */
 .callout {
   display: flex;
@@ -1079,6 +1091,31 @@
   font-family: var(--w-mono);
   font-size: 12px;
   overflow-wrap: anywhere;
+}
+
+/* Label above, value beside: the not-evaluated stack's why, error, stage and next step. */
+.facts--list {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 5px 24px;
+}
+
+.facts--list .fact {
+  display: contents;
+}
+
+.facts--list dd {
+  font-family: var(--w-font);
+  font-size: 13px;
+}
+
+.codechip {
+  padding: 0 5px;
+  border: 1px solid var(--w-line);
+  border-radius: var(--w-radius);
+  background: var(--w-surface-3);
+  font-family: var(--w-mono);
+  font-size: 12px;
 }
 
 /* ---------- property changes ---------- */

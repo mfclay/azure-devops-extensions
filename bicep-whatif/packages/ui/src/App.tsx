@@ -2,6 +2,7 @@ import type { Severity } from '@bicep-whatif/core';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BuildNotes } from './components/BuildNotes.js';
 import { Headline } from './components/Headline.js';
+import { HostLinksContext } from './components/HostLinks.js';
 import { ResourceRows } from './components/ResourceRows.js';
 import { StackList } from './components/StackList.js';
 import { Toolbar } from './components/Toolbar.js';
@@ -109,6 +110,16 @@ export function App(props: AppProps): React.ReactElement {
   );
   const allStackKeys = useMemo(() => estate?.stacks.map((s) => s.key) ?? [], [estate]);
   const stacksByKey = useMemo(() => new Map(estate?.stacks.map((s) => [s.key, s]) ?? []), [estate]);
+  const buildResultsUrl = load.status === 'ready' ? load.result.buildResultsUrl : undefined;
+  const hostLinks = useMemo(
+    () => ({
+      buildResultsUrl,
+      openUrl: (url: string) => {
+        props.navigation.openUrl(url);
+      },
+    }),
+    [buildResultsUrl, props.navigation],
+  );
   const allRowsByStack = useMemo(() => byStack(allRows), [allRows]);
   const rowsByStack = useMemo(() => byStack(rows), [rows]);
 
@@ -247,67 +258,69 @@ export function App(props: AppProps): React.ReactElement {
       )}
 
       {hasStacks && (
-        <main className="app__main">
-          {rows.length === 0 ? (
-            <div className="empty">
-              <p>Nothing matches these filters.</p>
-              <button type="button" className="btn" onClick={onReset}>
-                Show everything
-              </button>
-            </div>
-          ) : state.layout === 'stacks' ? (
-            <StackList
-              groups={groups}
-              rowsByStack={rowsByStack}
-              allRowsByStack={allRowsByStack}
-              stacks={stacksByKey}
-              openStacks={openStacks}
-              openRows={state.open}
-              hideNoise={state.hideNoise}
-              query={state.query}
-              unchangedHidden={!state.severities.has('noChange')}
-              onToggleStack={onToggleStack}
-              onToggleRow={onToggleRow}
-              onShowUnchanged={onShowUnchanged}
-            />
-          ) : (
-            <div className="flat">
-              <div className="flat__head" aria-hidden="true">
-                <span />
-                <span />
-                <span>Resource</span>
-                <span>Stack</span>
-                <span className="cell--type">Type</span>
-                <span>Change</span>
+        <HostLinksContext.Provider value={hostLinks}>
+          <main className="app__main">
+            {rows.length === 0 ? (
+              <div className="empty">
+                <p>Nothing matches these filters.</p>
+                <button type="button" className="btn" onClick={onReset}>
+                  Show everything
+                </button>
               </div>
-              {/*
-                In bands, worst first, with unknowns above new and modified: an
-                unknown can hide a delete. Every row that passes the filters is
-                listed; no band is cut short.
-              */}
-              {resourceBands(rows).map((band) => (
-                <section key={band.kind} className="band" data-kind={band.kind} aria-label={band.title}>
-                  <h2 className="band__title">
-                    {band.title}
-                    <span className="band__count">
-                      {band.count}
-                      {band.note !== undefined && <span className="band__note"> — {band.note}</span>}
-                    </span>
-                  </h2>
-                  <ResourceRows
-                    rows={band.rows}
-                    open={state.open}
-                    stacks={stacksByKey}
-                    hideNoise={state.hideNoise}
-                    query={state.query}
-                    withStack
-                    onToggle={onToggleRow}
-                  />
-                </section>
-              ))}
-            </div>
-          )}
-        </main>
+            ) : state.layout === 'stacks' ? (
+              <StackList
+                groups={groups}
+                rowsByStack={rowsByStack}
+                allRowsByStack={allRowsByStack}
+                stacks={stacksByKey}
+                openStacks={openStacks}
+                openRows={state.open}
+                hideNoise={state.hideNoise}
+                query={state.query}
+                unchangedHidden={!state.severities.has('noChange')}
+                onToggleStack={onToggleStack}
+                onToggleRow={onToggleRow}
+                onShowUnchanged={onShowUnchanged}
+              />
+            ) : (
+              <div className="flat">
+                <div className="flat__head" aria-hidden="true">
+                  <span />
+                  <span />
+                  <span>Resource</span>
+                  <span>Stack</span>
+                  <span className="cell--type">Type</span>
+                  <span>Change</span>
+                </div>
+                {/*
+                  In bands, worst first, with unknowns above new and modified: an
+                  unknown can hide a delete. Every row that passes the filters is
+                  listed; no band is cut short.
+                */}
+                {resourceBands(rows).map((band) => (
+                  <section key={band.kind} className="band" data-kind={band.kind} aria-label={band.title}>
+                    <h2 className="band__title">
+                      {band.title}
+                      <span className="band__count">
+                        {band.count}
+                        {band.note !== undefined && <span className="band__note"> — {band.note}</span>}
+                      </span>
+                    </h2>
+                    <ResourceRows
+                      rows={band.rows}
+                      open={state.open}
+                      stacks={stacksByKey}
+                      hideNoise={state.hideNoise}
+                      query={state.query}
+                      withStack
+                      onToggle={onToggleRow}
+                    />
+                  </section>
+                ))}
+              </div>
+            )}
+          </main>
+        </HostLinksContext.Provider>
       )}
     </div>
   );

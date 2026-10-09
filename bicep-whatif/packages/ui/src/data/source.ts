@@ -22,6 +22,11 @@ export interface LoadResult {
   buildLabel: string;
   /** Things the source coped with. Shown, never swallowed. */
   notes: string[];
+  /**
+   * This build's results page, `…/_build/results?buildId=N`, when the host
+   * gave enough to build it. A stage's log link is made from it.
+   */
+  buildResultsUrl?: string | undefined;
 }
 
 export interface WhatIfSource {

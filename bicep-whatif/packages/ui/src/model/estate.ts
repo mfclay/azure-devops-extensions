@@ -91,7 +91,24 @@ export interface StackView {
   warnings: ParseWarning[];
   /** Set only when `evaluated` is false. */
   notEvaluatedDetail?: string | undefined;
+  /**
+   * Why a stack was not evaluated, as the stage left it. Set only when
+   * `evaluated` is false. The code and message are kept apart, so the opened
+   * stack can show the code as a code.
+   */
+  failure?: StackFailure | undefined;
+  /** The stage's timeline result, verbatim (`succeededWithIssues`). */
+  stageResult?: string | undefined;
+  /** The stage's timeline record id, which the build results page opens its log by. */
+  stageRecordId?: string | undefined;
   notes: string[];
+}
+
+export interface StackFailure {
+  /** The sidecar said the what-if step failed. Otherwise the stage attached nothing at all. */
+  failed: boolean;
+  code?: string | undefined;
+  message?: string | undefined;
 }
 
 export interface EstateView {
@@ -169,13 +186,25 @@ function haystackFor(stackLabel: string, row: ResourceRow): string {
  * neither `code` nor `message` is shown raw rather than dropped, since it is the
  * only account of why the stack was never evaluated.
  */
-function errorText(error: unknown): string | undefined {
+/**
+ * The sidecar's error, as a code and a message. ARM writes `{ code, message }`;
+ * older producers wrote a plain string, which is all message.
+ */
+function errorParts(error: unknown): { code?: string; message?: string } | undefined {
   if (error === null || error === undefined || error === '') return undefined;
-  if (typeof error === 'string') return error;
-  if (typeof error !== 'object') return String(error);
+  if (typeof error === 'string') return { message: error };
+  if (typeof error !== 'object') return { message: String(error) };
   const { code, message } = error as Record<string, unknown>;
-  const parts = [code, message].filter((p): p is string => typeof p === 'string' && p.length > 0);
-  return parts.length > 0 ? parts.join(': ') : JSON.stringify(error);
+  const out: { code?: string; message?: string } = {};
+  if (typeof code === 'string' && code.length > 0) out.code = code;
+  if (typeof message === 'string' && message.length > 0) out.message = message;
+  return out.code === undefined && out.message === undefined ? { message: JSON.stringify(error) } : out;
+}
+
+function errorText(error: unknown): string | undefined {
+  const parts = errorParts(error);
+  if (parts === undefined) return undefined;
+  return [parts.code, parts.message].filter((p) => p !== undefined).join(': ');
 }
 
 /**
@@ -238,6 +267,12 @@ export function buildEstateView(stages: readonly StageResult[]): EstateView {
         highestSeverity: 'unevaluated',
         warnings: [],
         notEvaluatedDetail: row.reasons[0]?.detail,
+        failure: {
+          failed: stage.sidecar?.status?.toLowerCase() === 'failed',
+          ...errorParts(stage.sidecar?.error),
+        },
+        stageResult: stage.result,
+        stageRecordId: stage.recordId,
         notes: stage.notes,
       });
       continue;

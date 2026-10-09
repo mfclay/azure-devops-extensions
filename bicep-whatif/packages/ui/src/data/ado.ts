@@ -23,7 +23,7 @@ import { getClient } from 'azure-devops-extension-api';
 import { BuildRestClient } from 'azure-devops-extension-api/Build';
 import * as SDK from 'azure-devops-extension-sdk';
 import { ensureSdkReady } from './sdk.js';
-import { describeConfig, resolveBuildContext } from './buildContext.js';
+import { describeConfig, resolveBuildContext, resolveBuildResultsUrl } from './buildContext.js';
 import type { Sidecar } from '../model/stage.js';
 import {
   attachmentRefs,
@@ -64,12 +64,13 @@ export function createAdoSource(): WhatIfSource {
       const client = getClient(BuildRestClient);
       const notes: string[] = [];
 
-      const [timeline, payloadAttachments, sidecarAttachments] = await Promise.all([
+      const [timeline, payloadAttachments, sidecarAttachments, resultsUrl] = await Promise.all([
         client.getBuildTimeline(context.projectId, context.buildId),
         client.getAttachments(context.projectId, context.buildId, ATTACHMENT_TYPE_PAYLOAD),
         client
           .getAttachments(context.projectId, context.buildId, ATTACHMENT_TYPE_SIDECAR)
           .catch(() => [] as AttachmentLike[]),
+        resolveBuildResultsUrl(context.projectId, context.buildId, (id) => SDK.getService(id)),
       ]);
 
       const records = (timeline.records ?? []) as unknown as TimelineRecordLike[];
@@ -126,6 +127,7 @@ export function createAdoSource(): WhatIfSource {
         stages,
         buildLabel: context.buildNumber ? `build ${context.buildNumber}` : `build ${String(context.buildId)}`,
         notes,
+        buildResultsUrl: resultsUrl,
       };
     },
   };

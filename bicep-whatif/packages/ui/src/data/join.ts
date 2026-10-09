@@ -236,6 +236,7 @@ export function joinStages(input: JoinInput): StageResult[] {
     const base = {
       stageId,
       displayName: stage.name ?? stageId,
+      recordId: stage.id,
       ...(asString(stage.state) !== undefined ? { state: asString(stage.state) } : {}),
       ...(asString(stage.result) !== undefined ? { result: asString(stage.result) } : {}),
     };

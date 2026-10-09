@@ -2,7 +2,9 @@ import { needsAttention, SEVERITY_TONE, type WhatIfDiagnostic } from '@bicep-wha
 import { useState } from 'react';
 import { diagnosticsDisclosure, incompleteCallout } from '../model/diagnostics.js';
 import type { StackView } from '../model/estate.js';
-import { WarningIcon } from './Glyph.js';
+import { notEvaluatedDetail, type NotEvaluatedDetail } from '../model/notEvaluated.js';
+import { Glyph, WarningIcon } from './Glyph.js';
+import { useHostLinks } from './HostLinks.js';
 
 export function DiagnosticList({ diagnostics }: { diagnostics: readonly WhatIfDiagnostic[] }): React.ReactElement {
   return (
@@ -29,6 +31,61 @@ export function Fact({ label, children }: { label: string; children: React.React
 }
 
 /**
+ * A stack nobody evaluated, opened: what that means first, then why, the error,
+ * the stage and what to do. The log link goes through the host, which can open
+ * a tab where this frame may not be allowed to.
+ */
+function NotEvaluated({ stack, detail }: { stack: StackView; detail: NotEvaluatedDetail }): React.ReactElement {
+  const { openUrl } = useHostLinks();
+  const { logUrl } = detail;
+  return (
+    <>
+      <div className="statement" role="note">
+        <Glyph severity="unevaluated" size={16} label="not evaluated" />
+        <div className="callout__body">
+          <p className="callout__title">{detail.title}</p>
+          <p className="callout__text">{detail.body}</p>
+        </div>
+      </div>
+      <dl className="facts facts--list">
+        <Fact label="Why">{detail.why}</Fact>
+        {detail.error !== undefined && (
+          <Fact label="Error">
+            {detail.error.code !== undefined && <code className="codechip">{detail.error.code}</code>}
+            {detail.error.code !== undefined && detail.error.message !== undefined && ' '}
+            {detail.error.message}
+          </Fact>
+        )}
+        <Fact label="Stage">
+          {stack.stageDisplayName}
+          {stack.stageDisplayName !== stack.stageId && <span className="muted"> ({stack.stageId})</span>}
+          {detail.stageOutcome !== undefined && <span className="muted"> · {detail.stageOutcome}</span>}
+        </Fact>
+        <Fact label="Next step">
+          {logUrl !== undefined && (
+            <>
+              <a
+                href={logUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => {
+                  e.preventDefault();
+                  openUrl(logUrl);
+                }}
+              >
+                Open this stage&rsquo;s log
+              </a>
+              {' · '}
+            </>
+          )}
+          {detail.next}
+        </Fact>
+      </dl>
+    </>
+  );
+}
+
+/**
  * What is true of a whole stack rather than of one resource in it: why it was
  * not evaluated, Azure's diagnostics on its what-if, the settings the what-if
  * echoed back, and what the parser coped with.
@@ -47,6 +104,8 @@ export function StackDetail({ stack }: { stack: StackView }): React.ReactElement
   );
   const callout = incompleteCallout(stack);
   const [showDiagnostics, setShowDiagnostics] = useState(false);
+  const { buildResultsUrl } = useHostLinks();
+  const notEvaluated = notEvaluatedDetail(stack, buildResultsUrl);
 
   const azureText = diagnostics.length > 0 && (
     <>
@@ -69,7 +128,7 @@ export function StackDetail({ stack }: { stack: StackView }): React.ReactElement
 
   return (
     <div className="stackdetail" role="region" aria-label={`About stack ${stack.label}`}>
-      {stack.notEvaluatedDetail !== undefined && <p className="stackdetail__lead">{stack.notEvaluatedDetail}</p>}
+      {notEvaluated !== undefined && <NotEvaluated stack={stack} detail={notEvaluated} />}
 
       {callout !== undefined ? (
         <div className="callout" role="note">
@@ -96,27 +155,29 @@ export function StackDetail({ stack }: { stack: StackView }): React.ReactElement
         retentionInterval back, so there is nothing to keep in sync — and if
         these differ from what the deploy passes, the preview is a lie.
       */}
-      <dl className="facts">
-        <Fact label="Stage">
-          {stack.stageDisplayName}
-          {stack.stageDisplayName !== stack.stageId && <span className="muted"> ({stack.stageId})</span>}
-        </Fact>
-        {s && (
-          <>
-            <Fact label="Deny mode">{s.denySettings?.mode?.value ?? '—'}</Fact>
-            <Fact label="On unmanage">
-              {s.actionOnUnmanage
-                ? Object.entries(s.actionOnUnmanage)
-                    .map(([k, v]) => `${k}: ${v}`)
-                    .join(', ')
-                : '—'}
-            </Fact>
-            <Fact label="Retention">{s.retentionInterval ?? '—'}</Fact>
-            <Fact label="State">{s.provisioningState ?? '—'}</Fact>
-            <Fact label="Correlation id">{s.correlationId ?? '—'}</Fact>
-          </>
-        )}
-      </dl>
+      {notEvaluated === undefined && (
+        <dl className="facts">
+          <Fact label="Stage">
+            {stack.stageDisplayName}
+            {stack.stageDisplayName !== stack.stageId && <span className="muted"> ({stack.stageId})</span>}
+          </Fact>
+          {s && (
+            <>
+              <Fact label="Deny mode">{s.denySettings?.mode?.value ?? '—'}</Fact>
+              <Fact label="On unmanage">
+                {s.actionOnUnmanage
+                  ? Object.entries(s.actionOnUnmanage)
+                      .map(([k, v]) => `${k}: ${v}`)
+                      .join(', ')
+                  : '—'}
+              </Fact>
+              <Fact label="Retention">{s.retentionInterval ?? '—'}</Fact>
+              <Fact label="State">{s.provisioningState ?? '—'}</Fact>
+              <Fact label="Correlation id">{s.correlationId ?? '—'}</Fact>
+            </>
+          )}
+        </dl>
+      )}
 
       {/* Everything the parser coped with. Surfaced, never swallowed. */}
       {stack.warnings.length > 0 && (

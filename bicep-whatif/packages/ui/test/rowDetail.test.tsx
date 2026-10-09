@@ -7,8 +7,9 @@
  * renders a stage that was not evaluated as though it were a resource with
  * nothing to say; and that what is true of a whole stack is said once, on it.
  */
-import { cleanup, render, screen, within } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { HostLinksContext } from '../src/components/HostLinks.js';
 import { RowDetail } from '../src/components/RowDetail.js';
 import { StackDetail } from '../src/components/StackDetail.js';
 import { buildEstateView, type GridRow, type StackView } from '../src/model/estate.js';
@@ -243,9 +244,41 @@ describe('StackDetail', () => {
     expect(within(stack).queryByRole('heading', { name: 'Notes' })).toBeNull();
   });
 
-  it('says why a stack was not evaluated, and shows no settings it never had', () => {
+  it('says nothing in it was evaluated, why, and what next, and shows no settings it never had', () => {
     const stack = showStack('platform-prod');
-    expect(within(stack).getByText(/failed, so nothing was evaluated/)).toBeTruthy();
-    expect(Object.keys(facts(stack))).toEqual(['Stage']);
+    expect(within(stack).getByRole('note').textContent).toMatch(/Nothing in this stack was evaluated\./);
+    const f = facts(stack);
+    expect(Object.keys(f)).toEqual(['Why', 'Error', 'Stage', 'Next step']);
+    expect(f['Why']).toBe('The what-if step failed before Azure returned a result.');
+    expect(f['Error']).toBe('Template reference could not be resolved.');
+    // Rendered without a build address, so there is no link, and the step says where to look.
+    expect(within(stack).queryByRole('link')).toBeNull();
+    expect(f['Next step']).toMatch(/^Read this stage's log/);
+  });
+
+  it('links to the stage log through the host, and shows the error code as a code', () => {
+    const failed: StackView = {
+      ...view.stacks.find((s) => s.key === 'platform-prod')!,
+      failure: { failed: true, code: 'InvalidTemplate', message: 'The template reference could not be resolved.' },
+      stageResult: 'succeededWithIssues',
+      stageRecordId: 'rec-1',
+    };
+    const results = 'https://dev.azure.com/contoso/Platform/_build/results?buildId=21';
+    const openUrl = vi.fn<(url: string) => void>();
+    render(
+      <HostLinksContext.Provider value={{ buildResultsUrl: results, openUrl }}>
+        <StackDetail stack={failed} />
+      </HostLinksContext.Provider>,
+    );
+    const stack = screen.getByRole('region', { name: 'About stack platform-prod' });
+    expect(stack.querySelector('.codechip')?.textContent).toBe('InvalidTemplate');
+    // The result, stated; no cause claimed for it.
+    expect(facts(stack)['Stage']).toMatch(/· finished SucceededWithIssues$/);
+
+    const link = within(stack).getByRole('link', { name: 'Open this stage’s log' });
+    const url = `${results}&view=logs&s=rec-1`;
+    expect(link.getAttribute('href')).toBe(url);
+    fireEvent.click(link);
+    expect(openUrl).toHaveBeenCalledWith(url);
   });
 });

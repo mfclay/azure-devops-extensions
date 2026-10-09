@@ -13,6 +13,12 @@ export interface Navigation {
   getHash(): Promise<string>;
   setHash(hash: string): void;
   subscribe(onChange: (hash: string) => void): () => void;
+  /** Open a page of Azure DevOps itself, such as a stage's log, in a new tab. */
+  openUrl(url: string): void;
+}
+
+function openInWindow(url: string): void {
+  window.open(url, '_blank', 'noopener');
 }
 
 export function createWindowNavigation(): Navigation {
@@ -32,6 +38,7 @@ export function createWindowNavigation(): Navigation {
         window.removeEventListener('hashchange', handler);
       };
     },
+    openUrl: openInWindow,
   };
 }
 
@@ -47,6 +54,8 @@ interface HostNavigationServiceLike {
   getHash: () => Promise<string>;
   setHash: (hash: string) => void;
   onHashChanged?: ((cb: (hash: string) => void) => void) | undefined;
+  /** Opens a new browser tab from the host page, where the tab's own frame may not be allowed to. */
+  openNewWindow?: ((url: string, features: string) => void) | undefined;
 }
 
 function isUsable(service: unknown): service is HostNavigationServiceLike {
@@ -71,6 +80,7 @@ export async function createHostNavigation(): Promise<Navigation> {
     const getHash = service.getHash.bind(service);
     const setHash = service.setHash.bind(service);
     const onHashChanged = service.onHashChanged?.bind(service);
+    const openNewWindow = service.openNewWindow?.bind(service);
 
     return {
       getHash: async () => (await getHash()).replace(/^#/, ''),
@@ -86,6 +96,10 @@ export async function createHostNavigation(): Promise<Navigation> {
         return () => {
           live = false;
         };
+      },
+      openUrl: (url) => {
+        if (openNewWindow) openNewWindow(url, '');
+        else openInWindow(url);
       },
     };
   } catch {
