@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App.js';
+import { aboutLine, MOCK_ABOUT } from './data/about.js';
 import { createMockSource } from './data/mock.js';
 import type { WhatIfSource } from './data/source.js';
 import { createHostNavigation, createWindowNavigation, type Navigation } from './nav/navigation.js';
@@ -17,6 +18,16 @@ function isMock(): boolean {
   return new URLSearchParams(window.location.search).get('mock') === '1';
 }
 
+/** The installed extension and version, for the footer. Never throws: a tab without it still works. */
+async function readAbout(): Promise<string> {
+  try {
+    const SDK = await import('azure-devops-extension-sdk');
+    return aboutLine(SDK.getExtensionContext());
+  } catch {
+    return aboutLine(undefined);
+  }
+}
+
 async function start(): Promise<void> {
   const mock = isMock();
 
@@ -29,13 +40,14 @@ async function start(): Promise<void> {
     ? createMockSource()
     : (await import('./data/ado.js')).createAdoSource();
   const navigation: Navigation = mock ? createWindowNavigation() : await createHostNavigation();
+  const about = mock ? MOCK_ABOUT : await readAbout();
 
   const container = document.getElementById('root');
   if (!container) throw new Error('Missing #root');
 
   createRoot(container).render(
     <StrictMode>
-      <App source={source} navigation={navigation} />
+      <App source={source} navigation={navigation} about={about} />
     </StrictMode>,
   );
 

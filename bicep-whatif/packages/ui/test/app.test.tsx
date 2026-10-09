@@ -205,6 +205,25 @@ describe('searching', () => {
   });
 });
 
+describe('the footer', () => {
+  it('says which extension and version drew the page, last on it', async () => {
+    render(
+      <App source={sourceOf([REAL_STAGE])} navigation={createWindowNavigation()} about="MichaelC.bicep-whatif-dev 1.0.8" />,
+    );
+    await summary();
+    const footer = screen.getByRole('contentinfo');
+    expect(footer.textContent).toBe('About this extension: MichaelC.bicep-whatif-dev 1.0.8');
+    expect(footer.parentElement?.lastElementChild).toBe(footer);
+  });
+
+  it('is there when the build could not be read, where it matters most', async () => {
+    const failing: WhatIfSource = { kind: 'ado', load: () => Promise.reject(new Error('Build 21 is gone.')) };
+    render(<App source={failing} navigation={createWindowNavigation()} about="MichaelC.bicep-whatif-dev 1.0.8" />);
+    await screen.findByText(/could not read the build.s what-if results/i);
+    expect(screen.getByRole('contentinfo').textContent).toMatch(/1\.0\.8$/);
+  });
+});
+
 describe('the flat list', () => {
   it('lists every resource ranked across stacks, a stage that never ran included', async () => {
     renderApp([REAL_STAGE, MISSING_STAGE]);

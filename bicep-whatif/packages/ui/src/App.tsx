@@ -29,6 +29,18 @@ import type { Navigation } from './nav/navigation.js';
 export interface AppProps {
   source: WhatIfSource;
   navigation: Navigation;
+  /** Which extension and version this is, for the footer: `MichaelC.bicep-whatif-dev 1.0.8`. */
+  about?: string | undefined;
+}
+
+/** At the very bottom of the page: what to quote when reporting what the tab showed. */
+function AboutFooter({ about }: { about: string | undefined }): React.ReactElement | null {
+  if (about === undefined) return null;
+  return (
+    <footer className="about">
+      About this extension: <span className="about__id">{about}</span>
+    </footer>
+  );
 }
 
 type Load =
@@ -216,6 +228,7 @@ export function App(props: AppProps): React.ReactElement {
         <p>
           To work offline against the committed fixtures, open this page with <code>?mock=1</code>.
         </p>
+        <AboutFooter about={props.about} />
       </div>
     );
   }
@@ -322,6 +335,8 @@ export function App(props: AppProps): React.ReactElement {
           </main>
         </HostLinksContext.Provider>
       )}
+
+      <AboutFooter about={props.about} />
     </div>
   );
 }

@@ -36,6 +36,7 @@ vi.mock('azure-devops-extension-sdk', () => ({
   notifyLoadSucceeded: (): void => {
     h.calls.push('notifyLoadSucceeded');
   },
+  getExtensionContext: () => ({ id: 'MichaelC.bicep-whatif-dev', version: '1.0.8' }),
 }));
 
 vi.mock('react-dom/client', () => ({
@@ -60,8 +61,10 @@ afterEach(() => {
 });
 
 /** The `<App>` element inside `<StrictMode>`, for its props. */
-function appProps(): { source: { kind: string }; navigation: unknown } {
-  const strict = h.rendered[0] as { props: { children: { props: { source: { kind: string }; navigation: unknown } } } };
+type Props = { source: { kind: string }; navigation: unknown; about?: string };
+
+function appProps(): Props {
+  const strict = h.rendered[0] as { props: { children: { props: Props } } };
   return strict.props.children.props;
 }
 
@@ -73,6 +76,8 @@ describe('main', () => {
     }, SETTLE);
     expect(h.calls).toEqual(['init', 'ready', 'getService', 'render', 'notifyLoadSucceeded']);
     expect(appProps().source.kind).toBe('ado');
+    // The footer's line, from the host: which extension, at which version.
+    expect(appProps().about).toBe('MichaelC.bicep-whatif-dev 1.0.8');
   });
 
   it('touches no host at all in mock mode', async () => {
@@ -85,5 +90,6 @@ describe('main', () => {
     await new Promise((r) => setTimeout(r, 0));
     expect(h.calls).toEqual(['render']);
     expect(appProps().source.kind).toBe('mock');
+    expect(appProps().about).toBe('mock mode, no installed extension');
   });
 });

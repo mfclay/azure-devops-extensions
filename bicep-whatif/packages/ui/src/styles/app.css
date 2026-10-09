@@ -13,6 +13,19 @@
   padding: 0 16px 24px;
 }
 
+/* Which extension and version: last on the page, quiet, and selectable to copy. */
+.about {
+  padding: 12px 16px 16px;
+  color: var(--w-text-3);
+  font-size: 11px;
+  user-select: text;
+}
+
+.about__id {
+  font-family: var(--w-mono);
+  color: var(--w-text-2);
+}
+
 .sr-only {
   position: absolute;
   width: 1px;
