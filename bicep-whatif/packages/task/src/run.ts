@@ -172,6 +172,7 @@ export async function run(deps: RunDeps): Promise<RunResult> {
           bicepVersion: compilerVersion,
           resultName,
           resultId: outcome.resourceId,
+          payload: redacted,
         })
       : stackSidecar({
           operation,

@@ -155,6 +155,8 @@ describe('DetailPanel', () => {
       expect(f['On unmanage']).toMatch(/resources: delete/);
       expect(f['Retention']).toBe('3:00:00');
       expect(f['State']).toBe('succeeded');
+      // What a what-if noise report to Microsoft asks for.
+      expect(f['Correlation id']).toBe('00000000-0000-4000-8000-000000000004');
       expect(screen.getByText(/deny settings weaken in this run/i)).toBeTruthy();
     });
 
@@ -175,6 +177,7 @@ describe('DetailPanel', () => {
           actionOnUnmanage: undefined,
           retentionInterval: undefined,
           provisioningState: undefined,
+          correlationId: undefined,
         },
       };
       render(<DetailPanel row={row} stack={bare} hideNoise={false} onClose={() => undefined} />);
@@ -183,6 +186,7 @@ describe('DetailPanel', () => {
         'On unmanage': '—',
         Retention: '—',
         State: '—',
+        'Correlation id': '—',
       });
     });
   });

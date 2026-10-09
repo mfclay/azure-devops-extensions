@@ -12,6 +12,11 @@
  * reading them off the payload is one fewer thing that can disagree with what
  * actually ran. Do not add them here "for convenience" — the omission exists to
  * prevent exactly that disagreement.
+ *
+ * `correlationId` is the exception, copied off the payload like the counts: it is
+ * the key to everything else Azure recorded about the request, and a reader
+ * should not need the payload to find it. It cannot disagree with the payload,
+ * because both come from the same response.
  */
 import { SIDECAR_SCHEMA_VERSION } from './contract.js';
 import type { Operation } from './inputs.js';
@@ -29,6 +34,12 @@ export interface SidecarCommon {
   bicepVersion: string | null;
   /** The task's `operation` input. New in schema 2. */
   operation: Operation;
+  /**
+   * `properties.correlationId` from ARM's response, or null when there was none.
+   * A deploy's changes carry it in Resource Graph; a what-if noise report to
+   * Microsoft asks for it. New in schema 2.
+   */
+  correlationId: string | null;
 }
 
 export interface WhatIfSidecar extends SidecarCommon {
@@ -63,6 +74,19 @@ export interface SidecarArgs {
   error: unknown;
   producer: string;
   bicepVersion: string | undefined;
+  payload: unknown;
+}
+
+function propertyOf(payload: unknown, key: string): unknown {
+  if (payload === null || typeof payload !== 'object') return undefined;
+  const properties = (payload as Record<string, unknown>)['properties'];
+  if (properties === null || typeof properties !== 'object') return undefined;
+  return (properties as Record<string, unknown>)[key];
+}
+
+function correlationIdOf(payload: unknown): string | null {
+  const value = propertyOf(payload, 'correlationId');
+  return typeof value === 'string' && value.length > 0 ? value : null;
 }
 
 export function whatIfSidecar(
@@ -80,14 +104,12 @@ export function whatIfSidecar(
     producer: args.producer,
     bicepVersion: args.bicepVersion ?? null,
     operation: 'whatIf',
+    correlationId: correlationIdOf(args.payload),
   };
 }
 
 function countOf(payload: unknown, key: string): number | null {
-  if (payload === null || typeof payload !== 'object') return null;
-  const properties = (payload as Record<string, unknown>)['properties'];
-  if (properties === null || typeof properties !== 'object') return null;
-  const value = (properties as Record<string, unknown>)[key];
+  const value = propertyOf(payload, key);
   return Array.isArray(value) ? value.length : null;
 }
 
@@ -97,7 +119,6 @@ export function stackSidecar(
     stackName: string;
     stackResourceId: string | undefined;
     provisioningState: string | undefined;
-    payload: unknown;
   },
 ): StackSidecar {
   return {
@@ -115,5 +136,6 @@ export function stackSidecar(
     producer: args.producer,
     bicepVersion: args.bicepVersion ?? null,
     operation: args.operation,
+    correlationId: correlationIdOf(args.payload),
   };
 }

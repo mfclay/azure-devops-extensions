@@ -185,6 +185,8 @@ export function DetailPanel(props: DetailPanelProps): React.ReactElement {
               <dd>{stack.stack.retentionInterval ?? '—'}</dd>
               <dt>State</dt>
               <dd>{stack.stack.provisioningState ?? '—'}</dd>
+              <dt>Correlation id</dt>
+              <dd>{stack.stack.correlationId ?? '—'}</dd>
             </dl>
             {stack.stack.denySettingsWeakened && (
               <p className="reason__detail" style={{ color: `var(--w-${SEVERITY_TONE.protectionLoss})` }}>
