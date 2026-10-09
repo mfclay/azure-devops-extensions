@@ -45,6 +45,9 @@ function label(row: ResourceRow): string {
   return `${row.name} (${type})`;
 }
 
+/** `changeCertainty: potential`: may or may not happen. Ranked as is, and marked. */
+const isPotential = (row: ResourceRow): boolean => row.changeCertainty?.toLowerCase() === 'potential';
+
 /**
  * The "why" line, printed only when the ranking is not what the change type
  * alone would predict. The tab makes the same choice for the same reason:
@@ -140,9 +143,10 @@ export function renderSummary(payload: unknown, context: SummaryContext): Render
     for (const row of shown) {
       const glyph = SEVERITY_GLYPH[row.severity];
       const why = surprisingReason(row);
-      logLines.push(`  ${glyph} ${label(row)}${why !== undefined ? `  — ${why}` : ''}`);
+      const potential = isPotential(row) ? ' [potential]' : '';
+      logLines.push(`  ${glyph} ${label(row)}${potential}${why !== undefined ? `  — ${why}` : ''}`);
       mdLines.push(
-        `| \`${glyph}\` | \`${row.name}\` | ${row.changeType} | ${why ?? ''} |`.replace(
+        `| \`${glyph}\` | \`${row.name}\` | ${row.changeType}${isPotential(row) ? ' (potential)' : ''} | ${why ?? ''} |`.replace(
           /\|\s*\|/g,
           '| |',
         ),

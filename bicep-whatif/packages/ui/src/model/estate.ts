@@ -22,6 +22,7 @@
 import {
   SEVERITY_RANK,
   flattenPropertyChanges,
+  needsAttention,
   normalizeStackWhatIf,
   type NormalizedStackWhatIf,
   type ParseWarning,
@@ -60,6 +61,14 @@ export interface GridRow {
   changeTypeKnown: boolean;
   /** True when this row stands for a stage, not a resource. */
   isStagePlaceholder: boolean;
+  /**
+   * Azure's `changeCertainty: potential`: the change may or may not happen. The
+   * rank is unchanged — a potential detach can still be real — but the row says
+   * it is a guess, so it does not read like a definite one.
+   */
+  potential: boolean;
+  /** Why the row is only potential, in a line. Set exactly when `potential` is. */
+  certaintyNote?: string | undefined;
   /** The normalized resource. Undefined on a placeholder row. */
   resource?: ResourceRow | undefined;
   /** Lowercased haystack, precomputed once so filtering stays cheap while typing. */
@@ -120,8 +129,27 @@ function rowKey(stackKey: string, row: ResourceRow, index: number): string {
  */
 const NO_ID = '(resource with no id)';
 
+function isPotential(row: ResourceRow): boolean {
+  return row.changeCertainty?.toLowerCase() === 'potential';
+}
+
+/**
+ * The line a potential row shows. A short-circuit is the usual cause, and Azure
+ * says so in a warning on the stack; without one, all that is known is Azure's
+ * own definition of the word.
+ */
+function certaintyNoteFor(stack: NormalizedStackWhatIf): string {
+  const warnings = stack.diagnostics.filter(needsAttention);
+  if (warnings.some((d) => /shortcircuit/i.test(d.code ?? ''))) {
+    return "Azure couldn't tell whether this happens: this stack's what-if short-circuited.";
+  }
+  if (warnings.length > 0) return "Azure couldn't tell whether this happens; see its warning for this stack.";
+  return 'Azure says this may or may not happen, depending on the deploy.';
+}
+
 function haystackFor(stackLabel: string, row: ResourceRow): string {
   const parts = [stackLabel, row.name, row.resourceType, row.resourceId, String(row.changeType)];
+  if (isPotential(row)) parts.push('potential');
   for (const p of flattenPropertyChanges(row.propertyChanges)) {
     parts.push(p.path);
     if (typeof p.before === 'string') parts.push(p.before);
@@ -175,6 +203,7 @@ function placeholderRow(stage: StageResult, stackKey: string, label: string): Gr
     changeType: 'notEvaluated',
     changeTypeKnown: false,
     isStagePlaceholder: true,
+    potential: false,
     haystack: [label, stage.stageId, stage.displayName, 'not evaluated'].join(' ').toLowerCase(),
   };
 }
@@ -229,6 +258,8 @@ export function buildEstateView(stages: readonly StageResult[]): EstateView {
         changeType: String(r.changeType),
         changeTypeKnown: r.changeTypeKnown,
         isStagePlaceholder: false,
+        potential: isPotential(r),
+        ...(isPotential(r) ? { certaintyNote: certaintyNoteFor(normalized) } : {}),
         resource: r,
         haystack: haystackFor(label, r),
       });

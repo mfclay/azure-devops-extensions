@@ -78,6 +78,7 @@ export function applyFilters(rows: readonly GridRow[], state: ViewState): GridRo
 export function countsForStrip(
   rows: readonly GridRow[],
   state: ViewState,
+  only: (row: GridRow) => boolean = () => true,
 ): Record<Severity, number> {
   const counts = {} as Record<Severity, number>;
   for (const s of SEVERITIES) counts[s] = 0;
@@ -85,6 +86,7 @@ export function countsForStrip(
   for (const row of rows) {
     if (state.stacks !== null && !state.stacks.has(row.stackKey)) continue;
     if (q.length > 0 && !row.haystack.includes(q)) continue;
+    if (!only(row)) continue;
     counts[row.severity] += 1;
   }
   return counts;

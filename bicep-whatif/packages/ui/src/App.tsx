@@ -86,6 +86,10 @@ export function App(props: AppProps): React.ReactElement {
   const allRows = useMemo(() => estate?.rows ?? [], [estate]);
   const rows = useMemo(() => applyFilters(allRows, state), [allRows, state]);
   const stripCounts = useMemo(() => countsForStrip(allRows, state), [allRows, state]);
+  const potentialCounts = useMemo(
+    () => countsForStrip(allRows, state, (row) => row.potential),
+    [allRows, state],
+  );
   const allStackKeys = useMemo(() => estate?.stacks.map((s) => s.key) ?? [], [estate]);
 
   const selectedRow = useMemo(
@@ -154,6 +158,7 @@ export function App(props: AppProps): React.ReactElement {
         evaluatedCount={load.estate.stacks.filter((s) => s.evaluated).length}
         resourceCount={load.estate.total}
         counts={stripCounts}
+        potentialCounts={potentialCounts}
         active={state.severities}
         onToggle={onToggleSeverity}
       />

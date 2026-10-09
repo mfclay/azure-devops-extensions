@@ -27,6 +27,9 @@ const helper = createColumnHelper<GridFeatures, GridRow>();
  * is load-bearing — which is also exactly when the ranking looks surprising.
  */
 export function surprisingReason(row: GridRow): string | undefined {
+  // A potential change always says so: it is the one thing that row's rank
+  // cannot tell you.
+  if (row.certaintyNote !== undefined) return row.certaintyNote;
   const top = row.reasons[0];
   if (!top) return undefined;
   if (row.isStagePlaceholder) return top.detail;
@@ -47,7 +50,10 @@ const columns = [
       const why = surprisingReason(row.original);
       return (
         <span className="cell cell--name">
-          <span className="cell__name">{row.original.name}</span>
+          <span className="cell__name">
+            {row.original.name}
+            {row.original.potential && <span className="pill">potential</span>}
+          </span>
           {why !== undefined && <span className="cell__why">{why}</span>}
         </span>
       );
@@ -155,6 +161,7 @@ export function ResultsGrid(props: ResultsGridProps): React.ReactElement {
                     className="rail"
                     data-tone={SEVERITY_TONE[original.severity]}
                     data-rank={original.severityRank}
+                    data-potential={original.potential && original.severity !== 'unevaluated'}
                     aria-hidden="true"
                   />
                   {row.getAllCells().map((cell) => (

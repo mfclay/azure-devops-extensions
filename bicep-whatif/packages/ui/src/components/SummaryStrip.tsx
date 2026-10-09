@@ -7,6 +7,8 @@ export interface SummaryStripProps {
   evaluatedCount: number;
   resourceCount: number;
   counts: Record<Severity, number>;
+  /** How many of each rung's rows Azure marked potential. Shown only where non-zero. */
+  potentialCounts?: Record<Severity, number> | undefined;
   active: ReadonlySet<Severity>;
   onToggle: (severity: Severity) => void;
 }
@@ -48,6 +50,7 @@ export function SummaryStrip(props: SummaryStripProps): React.ReactElement {
       <div className="strip__chips" role="group" aria-label="Filter by severity">
         {rungs.map((severity) => {
           const count = props.counts[severity] ?? 0;
+          const potential = props.potentialCounts?.[severity] ?? 0;
           const on = props.active.has(severity);
           return (
             <button
@@ -67,6 +70,7 @@ export function SummaryStrip(props: SummaryStripProps): React.ReactElement {
               </span>
               <span className="chip__count">{count}</span>
               <span className="chip__label">{SEVERITY_LABEL[severity]}</span>
+              {potential > 0 && <span className="chip__sub">· {potential} potential</span>}
             </button>
           );
         })}

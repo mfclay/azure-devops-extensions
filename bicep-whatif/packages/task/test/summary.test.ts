@@ -155,3 +155,18 @@ describe('renderSummary with Azure diagnostics', () => {
     expect(clean.diagnostics).toEqual([]);
   });
 });
+
+describe('renderSummary with a potential change', () => {
+  // Smoke build 85: the deployed group as a potential detach.
+  const summary = renderSummary(load('real/smoke-85-short-circuit-after-create.json'), CONTEXT);
+
+  it('marks it in the log and the markdown, and ranks it as before', () => {
+    expect(summary.log).toMatch(/^ {2}\/ nsg-\S+ \(Microsoft\.Network\/networkSecurityGroups\) \[potential\]/m);
+    expect(summary.markdown).toMatch(/\| detach \(potential\) \|/);
+    expect(summary.counts.protectionLoss).toBe(1);
+  });
+
+  it('marks nothing definite', () => {
+    expect(summary.log.match(/\[potential\]/g)).toHaveLength(1);
+  });
+});

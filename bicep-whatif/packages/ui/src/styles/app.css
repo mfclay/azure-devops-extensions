@@ -155,6 +155,11 @@
   font-size: 12px;
 }
 
+.chip__sub {
+  font-size: 11px;
+  color: var(--w-text-2);
+}
+
 .chip[data-on='true'] {
   color: var(--w-text);
   background: var(--w-surface-3);
@@ -442,6 +447,42 @@
 .rail[data-rank='3'] { opacity: 0.6; }
 .rail[data-rank='2'] { opacity: 0.28; }
 .rail[data-rank='0'] { opacity: 0.12; }
+
+/*
+ * A potential change keeps its rung's colour, broken into dashes: the same
+ * severity, said less firmly. Distinct from the diagonal hatching below, which
+ * means there is no answer at all.
+ */
+.rail[data-potential='true'] {
+  background: repeating-linear-gradient(
+    180deg,
+    var(--w-warning) 0 4px,
+    transparent 4px 7px
+  );
+}
+.rail[data-potential='true'][data-tone='critical'] {
+  background: repeating-linear-gradient(180deg, var(--w-critical) 0 4px, transparent 4px 7px);
+}
+.rail[data-potential='true'][data-tone='positive'] {
+  background: repeating-linear-gradient(180deg, var(--w-positive) 0 4px, transparent 4px 7px);
+}
+.rail[data-potential='true'][data-tone='neutral'] {
+  background: repeating-linear-gradient(180deg, var(--w-neutral) 0 4px, transparent 4px 7px);
+}
+
+/* The word itself, beside the name, so a scan of the grid catches it. */
+.pill {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+  color: var(--w-warning);
+  background: rgba(var(--palette-neutral-8, 218, 218, 218), 0.6);
+  vertical-align: 1px;
+}
 
 /*
  * `unevaluated` gets hatching rather than a colour. It is not a severity — it is
