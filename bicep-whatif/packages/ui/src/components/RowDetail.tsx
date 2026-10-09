@@ -45,7 +45,11 @@ export function RowDetail(props: RowDetailProps): React.ReactElement {
       <ul className="reasons" aria-label="Why it ranks here">
         {row.reasons.map((reason, i) => (
           <li className="reason" key={`${reason.code}:${String(i)}`}>
-            <Glyph severity={reason.severity} />
+            <Glyph
+              severity={reason.severity}
+              size={16}
+              label={row.isStagePlaceholder ? 'not evaluated' : undefined}
+            />
             <span className="reason__detail">{reason.detail}</span>
           </li>
         ))}

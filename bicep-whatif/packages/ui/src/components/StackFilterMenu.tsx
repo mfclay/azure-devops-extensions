@@ -1,7 +1,8 @@
-import { SEVERITY_GLYPH, SEVERITY_TONE, type Severity } from '@bicep-whatif/core';
+import type { Severity } from '@bicep-whatif/core';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { StackView } from '../model/estate.js';
 import { groupStacks } from '../model/layers.js';
+import { Glyph } from './Glyph.js';
 
 export interface StackFilterMenuProps {
   stacks: readonly StackView[];
@@ -144,9 +145,12 @@ export function StackFilterMenu(props: StackFilterMenuProps): React.ReactElement
                     >
                       <input type="checkbox" checked={isOn(key)} readOnly tabIndex={-1} />
                       <span className="stackmenu__name">{stack?.label ?? key}</span>
-                      <span className="stackmenu__worst" data-tone={SEVERITY_TONE[worst]} aria-hidden="true">
-                        {SEVERITY_GLYPH[worst]}
-                      </span>
+                      <Glyph
+                        severity={worst}
+                        size={18}
+                        className="stackmenu__worst"
+                        label={stack?.evaluated === false ? 'not evaluated' : undefined}
+                      />
                       <span className="stackmenu__count">{total}</span>
                     </button>
                   );

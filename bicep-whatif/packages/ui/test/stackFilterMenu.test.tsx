@@ -73,9 +73,12 @@ describe('StackFilterMenu', () => {
     expect(network.getAttribute('aria-checked')).toBe('true');
     expect(network.querySelector('.stackmenu__count')?.textContent).toBe('7');
     expect(network.querySelector('.stackmenu__worst')?.getAttribute('data-tone')).toBeTruthy();
+    expect(within(network).getByRole('img').getAttribute('aria-label')).toBe('modified');
 
     const prod = item('platform-prod');
     expect(prod.getAttribute('aria-checked')).toBe('false');
+    // A stack that never ran is "not evaluated", never "not predicted".
+    expect(within(prod).getByRole('img').getAttribute('aria-label')).toBe('not evaluated');
     // An unevaluated stack counts as one row — its placeholder.
     expect(prod.querySelector('.stackmenu__count')?.textContent).toBe('1');
   });

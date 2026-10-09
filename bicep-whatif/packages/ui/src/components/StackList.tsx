@@ -1,7 +1,7 @@
 import { SEVERITIES, SEVERITY_RANK, SEVERITY_TONE, type Severity } from '@bicep-whatif/core';
 import type { GridRow, StackView } from '../model/estate.js';
 import { stackWarnings, type StackGroup } from '../model/summary.js';
-import { Glyph, SEVERITY_LABEL } from './Glyph.js';
+import { Glyph, SEVERITY_LABEL, WarningIcon } from './Glyph.js';
 import { ResourceRows } from './ResourceRows.js';
 import { StackDetail } from './StackDetail.js';
 
@@ -109,7 +109,11 @@ function StackLine(props: StackListProps & { stack: StackView }): React.ReactEle
           data-potential={potential && stack.highestSeverity !== 'unevaluated'}
           aria-hidden="true"
         />
-        {stack.highestSeverity ? <Glyph severity={stack.highestSeverity} /> : <span />}
+        {stack.highestSeverity ? (
+          <Glyph severity={stack.highestSeverity} label={stack.evaluated ? undefined : 'not evaluated'} />
+        ) : (
+          <span />
+        )}
         <span className="stack__who">
           <span className="stack__title">
             <span className="chev" aria-hidden="true">
@@ -122,11 +126,7 @@ function StackLine(props: StackListProps & { stack: StackView }): React.ReactEle
           </span>
           {notes.map((n, i) => (
             <span key={String(i)} className="stack__note" data-tone={n.tone}>
-              {n.tone === 'warning' && (
-                <span className="stack__bang" aria-hidden="true">
-                  !
-                </span>
-              )}
+              {n.tone === 'warning' && <WarningIcon />}
               {n.text}
             </span>
           ))}
@@ -197,6 +197,29 @@ export function StackList(props: StackListProps): React.ReactElement {
             <StackLine key={stack.key} {...props} stack={stack} />
           ))}
         </section>
+      ))}
+      <Legend />
+    </div>
+  );
+}
+
+/** What the rail's patterns and the icons mean, once, under the list. */
+function Legend(): React.ReactElement {
+  return (
+    <div className="legend">
+      <span className="legend__item">
+        <span className="legend__swatch" data-kind="potential" aria-hidden="true" />
+        dashed = potential: Azure couldn’t tell whether it happens
+      </span>
+      <span className="legend__item">
+        <span className="legend__swatch" data-kind="noresult" aria-hidden="true" />
+        hatched = no result for this stack
+      </span>
+      {COLUMNS.map((rung) => (
+        <span key={rung} className="legend__item">
+          <Glyph severity={rung} size={18} decorative />
+          {rung === 'unevaluated' ? 'not evaluated / not predicted' : SEVERITY_LABEL[rung]}
+        </span>
       ))}
     </div>
   );

@@ -84,6 +84,16 @@ describe('the stack line', () => {
     // Info-level messages stay in the stack's detail.
     expect(identityLine.textContent).not.toMatch(/SyntheticInformational/);
     expect(networkLine.textContent).not.toMatch(/Azure warned/);
+    // The warning is marked with the triangle, named for anyone who can't see it.
+    expect(within(identityLine).getByRole('img', { name: 'warning' })).toBeTruthy();
+    expect(within(networkLine).queryByRole('img', { name: 'warning' })).toBeNull();
+    // The legend says what each mark means, in words, so its icons need no names of their own.
+    const legend = document.querySelector<HTMLElement>('.legend')!;
+    expect(within(legend).queryAllByRole('img')).toHaveLength(0);
+    expect(legend.textContent).toMatch(/dashed = potential.*hatched = no result for this stack/);
+    expect(legend.textContent).toMatch(
+      /destructive.*protection loss.*new.*modified.*not evaluated \/ not predicted.*unchanged/,
+    );
   });
 });
 

@@ -77,7 +77,7 @@ export function ResourceRows(props: ResourceRowsProps): React.ReactElement {
                 data-potential={row.potential && row.severity !== 'unevaluated'}
                 aria-hidden="true"
               />
-              <Glyph severity={row.severity} title={row.severity} />
+              <Glyph severity={row.severity} label={row.isStagePlaceholder ? 'not evaluated' : undefined} />
               <span className="cell cell--name">
                 <span className="cell__name">
                   <span className="chev" aria-hidden="true">

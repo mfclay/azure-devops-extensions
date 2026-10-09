@@ -352,9 +352,7 @@
 }
 
 .stackmenu__worst {
-  font-family: var(--w-mono);
-  font-weight: 700;
-  font-size: 12px;
+  flex: none;
 }
 
 .stackmenu__count {
@@ -389,7 +387,7 @@
 .stacks__head,
 .stack {
   display: grid;
-  grid-template-columns: 14px 18px minmax(0, 1fr) repeat(6, 64px);
+  grid-template-columns: 14px 26px minmax(0, 1fr) repeat(6, 64px);
   gap: 0 10px;
   align-items: center;
   padding-right: 14px;
@@ -410,7 +408,7 @@
 
 .stacks__title {
   margin: 0;
-  padding: 10px 14px 4px 42px;
+  padding: 10px 14px 4px 50px;
   color: var(--w-text-2);
   font-size: 11px;
   font-weight: 600;
@@ -484,10 +482,10 @@
   color: var(--w-warning);
 }
 
-.stack__bang {
-  font-family: var(--w-mono);
-  font-weight: 700;
+.stack__note .glyph--note {
+  display: inline-block;
   margin-right: 6px;
+  vertical-align: -3px;
 }
 
 .stack__count {
@@ -504,9 +502,11 @@
 .stack__count[data-tone='warning'] { color: var(--w-warning); font-weight: 600; }
 .stack__count[data-tone='positive'] { color: var(--w-positive); font-weight: 600; }
 
-/* Some of these are only potential: said with a dotted underline and the title. */
+/* Some of these are only potential: said with a dashed underline, like the rail, and the title. */
 .stack__count[data-potential='true'] {
-  text-decoration: underline dotted;
+  text-decoration-line: underline;
+  text-decoration-style: dashed;
+  text-decoration-thickness: 1px;
   text-underline-offset: 3px;
 }
 
@@ -535,7 +535,7 @@
 
 .stack__hidden {
   margin: 0;
-  padding: 8px 14px 10px 64px;
+  padding: 8px 14px 10px 72px;
   color: var(--w-text-2);
   font-size: 12px;
 }
@@ -544,11 +544,41 @@
   font-size: 12px;
 }
 
+/* What the rail patterns and icons mean: one wrapping row under the stack list. */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 20px;
+  padding: 10px 14px;
+  color: var(--w-text-2);
+  font-size: 12px;
+}
+
+.legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend__swatch {
+  display: inline-block;
+  width: 18px;
+}
+
+.legend__swatch[data-kind='potential'] {
+  border-bottom: 2px dashed var(--w-warning);
+}
+
+.legend__swatch[data-kind='noresult'] {
+  height: 8px;
+  background: repeating-linear-gradient(135deg, var(--w-warning) 0 2px, transparent 2px 5px);
+}
+
 /* ---------- resource rows ---------- */
 .row,
 .flat__head {
   display: grid;
-  grid-template-columns: 14px 18px minmax(160px, 2.4fr) minmax(110px, 1.2fr) 92px;
+  grid-template-columns: 14px 26px minmax(160px, 2.4fr) minmax(110px, 1.2fr) 92px;
   gap: 0 10px;
   align-items: center;
   padding-right: 14px;
@@ -556,7 +586,7 @@
 
 .rows[data-with-stack='true'] .row,
 .flat__head {
-  grid-template-columns: 14px 18px minmax(160px, 2.4fr) minmax(110px, 1.3fr) minmax(110px, 1.2fr) 92px;
+  grid-template-columns: 14px 26px minmax(160px, 2.4fr) minmax(110px, 1.3fr) minmax(110px, 1.2fr) 92px;
 }
 
 .flat__head {
@@ -680,12 +710,12 @@
   );
 }
 
+/* An icon, coloured by its rung's tone through currentColor. Centred in the 26px mark track. */
 .glyph {
-  font-family: var(--w-mono);
-  font-weight: 700;
-  font-size: 14px;
-  line-height: 1;
-  text-align: center;
+  display: block;
+  flex: none;
+  justify-self: center;
+  color: var(--w-neutral);
 }
 
 .glyph[data-tone='critical'] { color: var(--w-critical); }
@@ -753,19 +783,19 @@
 }
 
 .rowdetail {
-  padding: 10px 14px 14px 64px;
+  padding: 10px 14px 14px 72px;
   background: var(--w-surface-2);
   border-bottom: 1px solid var(--w-line);
 }
 
 .stack__body > .stackdetail {
-  padding: 10px 14px 12px 42px;
+  padding: 10px 14px 12px 50px;
   background: var(--w-surface-2);
   border-bottom: 1px solid var(--w-line);
 }
 
 .stack__body .rowdetail {
-  padding-left: 88px;
+  padding-left: 96px;
 }
 
 .stackdetail__lead,
@@ -804,7 +834,11 @@
 .reason {
   display: flex;
   gap: 8px;
-  align-items: baseline;
+  align-items: flex-start;
+}
+
+.reason .glyph {
+  margin-top: 1px;
 }
 
 .reason__detail {
@@ -978,18 +1012,18 @@
 @media (max-width: 760px) {
   .stacks__head,
   .stack {
-    grid-template-columns: 14px 18px minmax(0, 1fr) repeat(5, 56px) 0;
+    grid-template-columns: 14px 26px minmax(0, 1fr) repeat(5, 56px) 0;
   }
   .stack__count[data-rung='noChange'],
   .stack__colhead[data-rung='noChange'] {
     visibility: hidden;
   }
   .row {
-    grid-template-columns: 14px 18px minmax(140px, 2.4fr) 0 78px;
+    grid-template-columns: 14px 26px minmax(140px, 2.4fr) 0 78px;
   }
   .rows[data-with-stack='true'] .row,
   .flat__head {
-    grid-template-columns: 14px 18px minmax(140px, 2.4fr) minmax(90px, 1.2fr) 0 78px;
+    grid-template-columns: 14px 26px minmax(140px, 2.4fr) minmax(90px, 1.2fr) 0 78px;
   }
   .cell--type {
     display: none;
