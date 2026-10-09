@@ -392,6 +392,21 @@
   text-decoration: underline;
 }
 
+/*
+ * A real link (the stage log) looks like the link buttons beside it, in the
+ * host's link colour. Without this it fell back to the browser's own blue and
+ * purple, which the dark theme makes hard to read.
+ */
+a,
+a:visited {
+  color: var(--w-accent-fg);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
 .stackmenu__item {
   display: flex;
   align-items: center;
