@@ -1,14 +1,17 @@
-// The smoke pipeline's `shortCircuit` template, at subscription scope, for a
-// what-if only: it exists to make Azure report diagnostics, which no other
-// smoke template does.
+// The smoke pipeline's `shortCircuit` template, at subscription scope. It
+// exists to make Azure report diagnostics, which no other smoke template does.
 //
-// A module whose resource ids cannot be worked out before the deploy is
-// short-circuited: left out of the what-if result and named only in its
-// `diagnostics`. Here the second module names its security group after the
-// identity's principal id, which exists only once the identity does.
+// A resource whose id cannot be worked out before the deploy is
+// short-circuited. Here the second module names its security group after the
+// identity's principal id, which exists only once the identity does. The stack
+// what-if then gives the group an `unsupported` row whose id is the unevaluated
+// expression, and a `ShortCircuitedResourceId` warning.
 //
-// Never `create` it. Nothing in it costs anything, but nothing needs to exist
-// either: a what-if creates nothing.
+// Run as `whatIf` alone, that is all (smoke build 81). After a `create`, the
+// next what-if also reports the deployed group as a `potential` detach, the
+// same group as the unsupported row (build 85): the pairing a real estate shows
+// for role assignments named after a principal id. Nothing here costs anything;
+// clean up with `operation: delete`, `unmanage: delete`.
 targetScope = 'subscription'
 
 @description('Where both resources go; the stack\'s own location by default.')
