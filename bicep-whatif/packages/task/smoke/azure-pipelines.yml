@@ -24,8 +24,8 @@
 #   - managementGroup: one policy definition, never assigned, whose metadata
 #     carries the stand-in secret.
 # After one `create`, each what-if reports the tagged resource as a modify. No
-# stack what-if has carried the secret even then, at subscription or resource-
-# group scope (subscription.bicep says why). A `create` is where redaction
+# stack what-if has carried the secret even then, at any scope (subscription.bicep
+# says why). A `create` is where redaction
 # meets Azure: each template outputs the stand-in inside a longer string, and
 # the stack's outputs are in the payload a `create` attaches.
 # Clean up with `operation: delete`, `unmanage: delete`, resource-group and

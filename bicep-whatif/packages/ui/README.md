@@ -7,7 +7,7 @@ reconciles them against the build timeline, and renders the rows
 ```bash
 npm install
 npm run dev -w @bicep-whatif/ui    # http://localhost:5173/?mock=1
-npm test -w @bicep-whatif/ui       # 57 tests
+npm test -w @bicep-whatif/ui       # 177 tests
 npm run build -w @bicep-whatif/ui  # tsc --noEmit, then vite build
 ```
 

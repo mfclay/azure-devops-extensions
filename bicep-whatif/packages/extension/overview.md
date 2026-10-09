@@ -105,7 +105,13 @@ Azure DevOps. No CDN, no font host, no telemetry.
 The task talks to Azure Resource Manager using the service connection you give
 it, and downloads a version-pinned Bicep compiler from `github.com/Azure/bicep`
 at run time. Pinning is deliberate: compiler output changes across versions, and
-every consumer's what-if should compile identically.
+every consumer's what-if should compile identically. The pinned version may move
+in a minor release, always with a release note; set `bicepVersion` to stay on
+one.
+
+Tested on Azure public cloud. The task takes its sign-in authority and Resource
+Manager URL from the service connection, so other clouds should work the same
+way, but none has been tried.
 
 ## Getting started
 
@@ -139,3 +145,8 @@ It carries documented accuracy limits and stack what-if inherits every one of
 them. The Detach and Delete rows are simultaneously the most valuable output here
 and the ones to check hardest. This tool exists to make them easier to *read* —
 it is not a reason to trust them without looking.
+
+One limit found while testing: a stack what-if compares the parameter values it
+is given, not the template's defaults. A change that comes only from a parameter
+default, such as a `utcNow()` stamp, was reported as no change. Pass values that
+the preview must see.

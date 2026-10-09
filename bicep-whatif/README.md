@@ -4,9 +4,9 @@ An Azure DevOps extension that renders [Azure Deployment Stacks][stacks] what-if
 output for a multi-stack estate — filterable, severity-ranked, and honest about
 what it could not evaluate.
 
-> **Status: not yet released.** All four packages are built, and dev builds run
-> the task against Azure in both modes. The first public release will be 1.0.0;
-> [RELEASING.md](../RELEASING.md) has the process.
+> **Status: not yet released.** All four packages are built, and dev builds have
+> run every operation against Azure at all three scopes. The first public release
+> will be 1.0.0; [RELEASING.md](../RELEASING.md) has the process.
 
 [stacks]: https://learn.microsoft.com/azure/azure-resource-manager/bicep/deployment-stacks
 
@@ -32,7 +32,7 @@ An extension tab is the only way to get JavaScript onto that page.
 
 ```bash
 npm install
-npm test        # core: 46 · task: 144 · ui: 57 · extension: 15
+npm test        # core: 46 · task: 251 · ui: 177 · extension: 17
 npm run build   # core, then task, then ui
 
 npm run dev -w @bicep-whatif/ui              # http://localhost:5173/?mock=1
@@ -74,8 +74,9 @@ So the tab reconciles against the build Timeline API rather than against the
 attachments: every `WhatIf_*` stage in the run gets a row, and attachments join
 onto it, one per stack. A stage with no attachment renders as a loud *not
 evaluated*, ranked above *no changes*. A stage named otherwise shows only when a
-what-if attached to it, because a stage that never ran leaves nothing to find. `core` carries the same rule inward — anything it could not parse
-ranks `unevaluated`, above `noChange`, so a default filter cannot bury it.
+what-if attached to it, because a stage that never ran leaves nothing to find.
+`core` carries the same rule inward — anything it could not parse ranks
+`unevaluated`, above `noChange`, so a default filter cannot bury it.
 
 Everything else in this design is convenience. This is correctness.
 
