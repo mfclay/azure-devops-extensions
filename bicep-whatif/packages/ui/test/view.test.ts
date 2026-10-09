@@ -23,6 +23,7 @@ function row(over: Partial<GridRow> & Pick<GridRow, 'key' | 'severity'>): GridRo
     changeType: 'modify',
     changeTypeKnown: true,
     isStagePlaceholder: false,
+    potential: false,
     haystack: `${over.key} network`.toLowerCase(),
     ...over,
   };
