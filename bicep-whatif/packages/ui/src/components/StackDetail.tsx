@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { diagnosticsDisclosure, incompleteCallout } from '../model/diagnostics.js';
 import type { StackView } from '../model/estate.js';
 import { notEvaluatedDetail, type NotEvaluatedDetail } from '../model/notEvaluated.js';
-import { Glyph, WarningIcon } from './Glyph.js';
+import { Chevron, Glyph, WarningIcon } from './Glyph.js';
 import { useHostLinks } from './HostLinks.js';
 
 export function DiagnosticList({ diagnostics }: { diagnostics: readonly WhatIfDiagnostic[] }): React.ReactElement {
@@ -117,9 +117,7 @@ export function StackDetail({ stack }: { stack: StackView }): React.ReactElement
           setShowDiagnostics((v) => !v);
         }}
       >
-        <span className="chev" aria-hidden="true">
-          {showDiagnostics ? '▾' : '▸'}
-        </span>
+        <Chevron open={showDiagnostics} />
         {diagnosticsDisclosure(diagnostics)}
       </button>
       {showDiagnostics && <DiagnosticList diagnostics={diagnostics} />}

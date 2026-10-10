@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import { warningLines } from '../model/diagnostics.js';
 import type { GridRow, StackView } from '../model/estate.js';
 import { stackTwins, type StackGroup } from '../model/summary.js';
-import { Glyph, SEVERITY_LABEL, WarningIcon } from './Glyph.js';
+import { Chevron, Glyph, SEVERITY_LABEL, WarningIcon } from './Glyph.js';
 import { ResourceRows } from './ResourceRows.js';
 import { StackDetail } from './StackDetail.js';
 
@@ -124,9 +124,7 @@ function StackLine(props: StackListProps & { stack: StackView; twin: string | un
         )}
         <span className="stack__who">
           <span className="stack__title">
-            <span className="chev" aria-hidden="true">
-              {open ? '▾' : '▸'}
-            </span>
+            <Chevron open={open} />
             <span className="stack__name">{stack.label}</span>
             {/* Another line carries this name: the stage is what tells them apart, so it is said louder. */}
             {twin !== undefined ? (

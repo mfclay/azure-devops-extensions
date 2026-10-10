@@ -10,6 +10,7 @@ import {
   type PropertyItem,
   type PropertyLine,
 } from '../model/propertyLines.js';
+import { Chevron } from './Glyph.js';
 
 /**
  * A resource's property changes, as one table: property, before, after.
@@ -183,9 +184,7 @@ export function PropertyChanges({
                 {mark} ×{item.lines.length}
               </span>
               <span className="delta__grouphead">
-                <span className="chev" aria-hidden="true">
-                  {open ? '▾' : '▸'}
-                </span>
+                <Chevron open={open} />
                 <span className="delta__grouppath">{item.path}</span>
                 <span className="delta__groupsummary">{item.summary}</span>
                 {!open && <span className="delta__show">Show {item.lines.length}</span>}

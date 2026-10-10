@@ -80,6 +80,32 @@ export function WarningIcon(): React.ReactElement {
   return <Icon path={PATHS.warning} size={16} className="glyph glyph--note" tone="warning" label="warning" />;
 }
 
+/**
+ * The open/closed mark on anything that expands: one chevron, turned a
+ * quarter when open. Drawn rather than typed, because the ▸ character came out
+ * at a few pixels, in the faintest grey, and was missed. Decorative: the
+ * control around it carries `aria-expanded`.
+ */
+export function Chevron({ open }: { open: boolean }): React.ReactElement {
+  return (
+    <svg
+      className="chev"
+      data-open={open}
+      width={12}
+      height={12}
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M6 3.5L10.5 8L6 12.5" />
+    </svg>
+  );
+}
+
 export const SEVERITY_LABEL: Readonly<Record<Severity, string>> = Object.freeze({
   destructive: 'destructive',
   protectionLoss: 'protection loss',

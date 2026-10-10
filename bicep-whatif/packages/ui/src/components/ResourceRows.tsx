@@ -1,7 +1,7 @@
 import { SEVERITY_TONE } from '@bicep-whatif/core';
 import type { GridRow, StackView } from '../model/estate.js';
 import { shortType } from '../model/view.js';
-import { Glyph } from './Glyph.js';
+import { Chevron, Glyph } from './Glyph.js';
 import { RowDetail } from './RowDetail.js';
 
 /**
@@ -99,9 +99,7 @@ export function ResourceRows(props: ResourceRowsProps): React.ReactElement {
               <Glyph severity={row.severity} label={row.isStagePlaceholder ? 'not evaluated' : undefined} />
               <span className="cell cell--name">
                 <span className="cell__name">
-                  <span className="chev" aria-hidden="true">
-                    {open ? '▾' : '▸'}
-                  </span>
+                  <Chevron open={open} />
                   {row.name}
                   {row.potential && <span className="pill">potential</span>}
                 </span>

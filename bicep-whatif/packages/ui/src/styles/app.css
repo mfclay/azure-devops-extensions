@@ -656,12 +656,18 @@ a:hover {
   font-style: italic;
 }
 
+/* Secondary text colour, not the disabled one: it is the control people click. */
 .chev {
   display: inline-block;
-  width: 12px;
+  flex: none;
   margin-right: 6px;
-  color: var(--w-text-3);
-  font-size: 10px;
+  color: var(--w-text-2);
+  vertical-align: -1px;
+  transition: transform 0.1s ease;
+}
+
+.chev[data-open='true'] {
+  transform: rotate(90deg);
 }
 
 .stack__title .chev {
