@@ -21,11 +21,17 @@ across the run, ranked by how much it can hurt you. Choose which changes and
 which stacks to show from the toolbar, or search; what you open and filter lives
 in the URL, so a link picks out the resource you were looking at.
 
+![Every stack in the run, in one view](images/screenshot-1-every-stack.png)
+
+![Repeated changes collapse into one row](images/screenshot-2-repeated-changes.png)
+
 Azure's own warnings stay with the stack they are about. When a resource's name
 cannot be worked out before the deploy, Azure short-circuits it, says the result
 is non-deterministic, and marks the changes it is unsure of as *potential*. A
 stack whose only deletes are potential is listed as one that *might* delete,
 apart from the stacks that will.
+
+![See why Azure says it only might change](images/screenshot-3-might-change.png)
 
 **A pipeline task.** One task, with `BicepDeploy@0`'s operations and input
 names. `whatIf` previews a stack against what it currently manages and attaches
@@ -86,6 +92,8 @@ what-if stage in the run gets a row, and a stage that produced nothing is ranked
 `unevaluated` — above `noChange`, so no filter can hide it. The
 headline says how many stacks were not evaluated, and they get their own group,
 above every stack that only modifies. Neither dismisses.
+
+![Honest about stacks it couldn't evaluate](images/screenshot-4-not-evaluated.png)
 
 The task holds up its end: it writes its sidecar manifest on failure as well as
 on success, because "evaluated, found nothing" and "never evaluated" have to be

@@ -90,6 +90,12 @@ colours. They are PNGs at display size because the listing rejects any SVG in th
 and draws a markdown image at its own pixel size. A sized HTML `<img>` is no way out: only
 markdown images get their paths rewritten, so it comes out broken. Re-render them if those paths change.
 
+`images/screenshot-*.png` are the manifest's `screenshots` and also appear in the overview. They
+are the real tab on the harness build (synthetic data only), cropped to the tab's frame so no
+URL or organisation shows. The listing's carousel shows only the first three, so order them by
+importance. Each was re-encoded losslessly with its metadata chunks dropped, which also cleared
+a chance denylist match in the compressed bytes.
+
 ## Publishing
 
 [RELEASING.md](../../../RELEASING.md) at the repo root has the whole process: identity, dev
