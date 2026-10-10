@@ -69,6 +69,15 @@ describe('decodeViewState is tolerant, but never quietly hides anything', () => 
     expect(decodeViewState('sev=').severities).toEqual(new Set(DEFAULT_SEVERITIES));
   });
 
+  it("round-trips an empty selection, which the Changes menu's None asks for", () => {
+    // The host echoes the tab's own hash back to it. If "none" read back as the
+    // default, picking None would flash and undo itself.
+    const none = { ...defaultViewState(), severities: new Set<never>() };
+    const hash = encodeViewState(none);
+    expect(hash).toBe('sev=none');
+    expect(decodeViewState(hash).severities.size).toBe(0);
+  });
+
   it('keeps the severities it does recognise and drops the rest', () => {
     expect([...decodeViewState('sev=destructive,bogus').severities]).toEqual(['destructive']);
   });

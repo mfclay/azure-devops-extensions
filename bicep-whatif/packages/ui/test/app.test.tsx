@@ -15,7 +15,7 @@ import { App } from '../src/App.js';
 import { createMockSource } from '../src/data/mock.js';
 import type { LoadResult, WhatIfSource } from '../src/data/source.js';
 import type { StageResult } from '../src/model/stage.js';
-import { createWindowNavigation } from '../src/nav/navigation.js';
+import { createWindowNavigation, type Navigation } from '../src/nav/navigation.js';
 import { fixture } from './fixtures.js';
 
 function sourceOf(stages: StageResult[], notes: string[] = []): WhatIfSource {
@@ -141,6 +141,33 @@ describe('the default view', () => {
     fireEvent.click(within(menu).getByRole('menuitemcheckbox', { name: /modified/ }));
     expect(changesButton().textContent).toBe('Changes (3 of 6) ▾');
     expect(document.querySelector('[data-stack-key="network"]')).not.toBeNull();
+  });
+
+  it('keeps None when the host echoes the hash back, as the real one does', async () => {
+    // The window fallback never echoes, which is how None reached a real host
+    // broken: its empty selection read back as the default and undid itself.
+    let hash = '';
+    const listeners = new Set<(h: string) => void>();
+    const echoing: Navigation = {
+      getHash: () => Promise.resolve(hash),
+      setHash: (h) => {
+        hash = h;
+        for (const l of listeners) l(h);
+      },
+      subscribe: (l) => {
+        listeners.add(l);
+        return () => listeners.delete(l);
+      },
+      openUrl: () => undefined,
+    };
+    render(<App source={sourceOf([REAL_STAGE, MISSING_STAGE])} navigation={echoing} />);
+    await summary();
+    fireEvent.click(within(openChanges()).getByRole('button', { name: 'None' }));
+    expect(hash).toMatch(/sev=none/);
+    expect(changesButton().textContent).toBe('Changes (0 of 6) ▾');
+    // Nothing a severity covers is left, but the stack nobody evaluated still is.
+    expect(document.querySelector('[data-stack-key="network"]')).toBeNull();
+    expect(document.querySelector('[data-stack-key="platform-prod"]')).not.toBeNull();
   });
 
   it('opens on the stack lines, closed', async () => {

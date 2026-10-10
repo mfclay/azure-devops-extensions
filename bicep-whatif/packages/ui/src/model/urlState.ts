@@ -28,13 +28,17 @@ function decodeList(value: string): Set<string> {
   );
 }
 
+/** The `sev` value for "no kind of change picked". */
+const SEV_NONE = 'none';
+
 export function encodeViewState(state: ViewState): string {
   const parts: string[] = [];
 
   if (!isDefaultSeveritySet(state.severities)) {
     // Encode in ladder order so the same selection always produces the same string.
     const on = SEVERITIES.filter((s) => state.severities.has(s));
-    parts.push(`sev=${on.join(',')}`);
+    // An empty selection is said outright: `sev=` alone reads back as the default.
+    parts.push(`sev=${on.length > 0 ? on.join(',') : SEV_NONE}`);
   }
   if (state.stacks !== null) {
     parts.push(`stacks=${[...state.stacks].sort().map(encodeURIComponent).join(',')}`);
@@ -68,6 +72,11 @@ export function decodeViewState(hash: string): ViewState {
 
     switch (key) {
       case 'sev': {
+        // Asked for by name (the Changes menu's "None"), so showing nothing is no lie.
+        if (value.toLowerCase() === SEV_NONE) {
+          state.severities = new Set();
+          break;
+        }
         const wanted = new Set<Severity>();
         for (const token of value.split(',')) {
           const hit = SEVERITY_BY_NAME.get(decodeURIComponent(token).toLowerCase());
