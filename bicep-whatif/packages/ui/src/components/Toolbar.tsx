@@ -1,10 +1,15 @@
+import type { Severity } from '@bicep-whatif/core';
 import type { StackView } from '../model/estate.js';
 import type { Layout } from '../model/view.js';
+import { ChangesFilterMenu } from './ChangesFilterMenu.js';
 import { StackFilterMenu } from './StackFilterMenu.js';
 
 export interface ToolbarProps {
   stacks: readonly StackView[];
   selectedStacks: ReadonlySet<string> | null;
+  /** Resources per kind of change, for the Changes menu. */
+  counts: Record<Severity, number>;
+  severities: ReadonlySet<Severity>;
   query: string;
   hideNoise: boolean;
   shown: number;
@@ -16,6 +21,7 @@ export interface ToolbarProps {
   onExpandAll: (expand: boolean) => void;
   onQuery: (q: string) => void;
   onStacks: (keys: string[]) => void;
+  onSeverities: (severities: Severity[]) => void;
   onHideNoise: (value: boolean) => void;
   onReset: () => void;
 }
@@ -56,6 +62,7 @@ export function Toolbar(props: ToolbarProps): React.ReactElement {
       </div>
 
       <StackFilterMenu stacks={props.stacks} selected={props.selectedStacks} onChange={props.onStacks} />
+      <ChangesFilterMenu counts={props.counts} selected={props.severities} onChange={props.onSeverities} />
 
       {/*
         Decision C4: Azure's own baseline beats any hardcoded blocklist, so this

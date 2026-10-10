@@ -54,6 +54,16 @@ async function summary(): Promise<HTMLElement> {
   return screen.findByRole('status', { name: 'Summary' });
 }
 
+function changesButton(): HTMLElement {
+  return screen.getByRole('button', { name: /^Changes \(/ });
+}
+
+/** Open the Changes menu and return its panel. */
+function openChanges(): HTMLElement {
+  fireEvent.click(changesButton());
+  return changesButton().parentElement!.querySelector<HTMLElement>('.stackmenu__panel')!;
+}
+
 function stackLine(key: string): HTMLElement {
   const wrap = document.querySelector<HTMLElement>(`[data-stack-key="${key}"]`);
   if (!wrap) throw new Error(`No stack line ${key}`);
@@ -101,18 +111,36 @@ describe('the default view', () => {
   it('opens with unchanged filtered out and every other rung shown', async () => {
     renderApp([REAL_STAGE]);
     await summary();
-    const totals = screen.getByRole('group', { name: 'Filter by severity' });
-    expect(within(totals).getByRole('button', { name: /unchanged/ }).getAttribute('aria-pressed')).toBe('false');
-    expect(within(totals).getByRole('button', { name: /modified/ }).getAttribute('aria-pressed')).toBe('true');
+    const menu = openChanges();
+    expect(within(menu).getByRole('menuitemcheckbox', { name: /unchanged/ }).getAttribute('aria-checked')).toBe('false');
+    expect(within(menu).getByRole('menuitemcheckbox', { name: /modified/ }).getAttribute('aria-checked')).toBe('true');
+    expect(changesButton().textContent).toBe('Changes (5 of 6) ▾');
   });
 
-  it('counts every resource in the totals, including the ones it is hiding', async () => {
+  it('counts every resource in the totals, including the ones it is hiding, as plain text', async () => {
     renderApp([REAL_STAGE]);
     await summary();
     // The network capture is 7 resource changes: 5 modify, 2 noChange.
-    const totals = screen.getByRole('group', { name: 'Filter by severity' });
-    expect(within(totals).getByRole('button', { name: /unchanged/ }).textContent).toBe('2 unchanged');
-    expect(within(totals).getByRole('button', { name: /modified/ }).textContent).toBe('5 modified');
+    const totals = screen.getByRole('group', { name: 'Resources by kind of change' });
+    expect(totals.textContent).toBe('Resources5 modified2 unchanged');
+    // They report; filtering is the Changes menu's job.
+    expect(within(totals).queryByRole('button')).toBeNull();
+  });
+
+  it('filters by kind of change from the Changes menu, with quick picks', async () => {
+    renderApp([REAL_STAGE, MISSING_STAGE]);
+    await summary();
+    const menu = openChanges();
+    fireEvent.click(within(menu).getByRole('button', { name: 'Deletes and protection loss' }));
+    expect(changesButton().textContent).toBe('Changes (2 of 6) ▾');
+    expect(changesButton().getAttribute('data-active')).toBe('true');
+    // The network stack has neither, so only the stack nobody evaluated is left: it ignores this filter.
+    expect(document.querySelector('[data-stack-key="network"]')).toBeNull();
+    expect(document.querySelector('[data-stack-key="platform-prod"]')).not.toBeNull();
+
+    fireEvent.click(within(menu).getByRole('menuitemcheckbox', { name: /modified/ }));
+    expect(changesButton().textContent).toBe('Changes (3 of 6) ▾');
+    expect(document.querySelector('[data-stack-key="network"]')).not.toBeNull();
   });
 
   it('opens on the stack lines, closed', async () => {
@@ -168,8 +196,8 @@ describe('opening a stack, then a row', () => {
     expect(screen.getByText(/2 unchanged resources not shown/)).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Show unchanged' }));
     expect(screen.queryByText(/unchanged resources not shown/)).toBeNull();
-    const totals = screen.getByRole('group', { name: 'Filter by severity' });
-    expect(within(totals).getByRole('button', { name: /unchanged/ }).getAttribute('aria-pressed')).toBe('true');
+    const menu = openChanges();
+    expect(within(menu).getByRole('menuitemcheckbox', { name: /unchanged/ }).getAttribute('aria-checked')).toBe('true');
   });
 
   it('expands and collapses every stack at once', async () => {

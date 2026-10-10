@@ -357,10 +357,12 @@ frame, and banners, a chip strip and a toolbar took most of it before the grid b
 - A **headline sentence** says how many stacks will delete or stop protecting resources, how many
   more might, how many were not evaluated, and whether Azure warned a result may be incomplete. No
   filter changes it.
-- A **totals line** in plain words is also the severity filter. Colour sits on the number only. It
-  counts resources: the `unevaluated` rung reads *not predicted* there, and a stage that never ran
-  is not counted in it. That stage's row ignores the severity filter, so hiding resources Azure
-  could not predict never hides a stack nobody evaluated.
+- A **totals line** in plain words reports the counts. Colour sits on the number only. It counts
+  resources: the `unevaluated` rung reads *not predicted* there, and a stage that never ran is not
+  counted in it. The severity filter is a **Changes** menu in the toolbar, beside the stack filter;
+  the totals were the filter until clicking a count turned out to hide what people meant to see.
+  A stage that never ran ignores the severity filter, so hiding resources Azure could not predict
+  never hides a stack nobody evaluated.
 - Stacks group in four, in this order. Stacks that **will** delete or stop protecting something.
   Stacks that **might**, because every such change in them is potential. Stacks that were **not
   evaluated**. Then the rest. A stack goes in *will* when it has a definite delete or protection

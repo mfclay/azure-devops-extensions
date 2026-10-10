@@ -1,9 +1,10 @@
 import type { Severity } from '@bicep-whatif/core';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import type { StackView } from '../model/estate.js';
 import { groupStacks, prefixGroupingHelps } from '../model/layers.js';
 import { needsALook, stackMatches, stackTwins, summaryGroups, type StackGroupKind } from '../model/summary.js';
 import { Glyph } from './Glyph.js';
+import { useDismiss } from './useDismiss.js';
 
 export interface StackFilterMenuProps {
   stacks: readonly StackView[];
@@ -45,21 +46,10 @@ export function StackFilterMenu(props: StackFilterMenuProps): React.ReactElement
   const lookKeys = useMemo(() => needsALook(props.stacks), [props.stacks]);
   const twins = useMemo(() => stackTwins(props.stacks), [props.stacks]);
 
-  useEffect(() => {
-    if (!open) return undefined;
-    const onDocument = (e: MouseEvent): void => {
-      if (root.current && !root.current.contains(e.target as Node)) setOpen(false);
-    };
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') setOpen(false);
-    };
-    document.addEventListener('mousedown', onDocument);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onDocument);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [open]);
+  const close = useCallback(() => {
+    setOpen(false);
+  }, []);
+  useDismiss(open, close, root);
 
   const byKey = useMemo(() => new Map(props.stacks.map((s) => [s.key, s])), [props.stacks]);
   const visible = useMemo(() => props.stacks.filter((s) => stackMatches(s, query)).map((s) => s.key), [props.stacks, query]);

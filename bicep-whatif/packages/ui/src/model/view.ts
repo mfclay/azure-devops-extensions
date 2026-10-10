@@ -122,6 +122,26 @@ export function countsForStrip(
   return counts;
 }
 
+export function setSeverities(state: ViewState, severities: Iterable<Severity>): ViewState {
+  return { ...state, severities: new Set(severities) };
+}
+
+export interface SeverityPick {
+  label: string;
+  severities: readonly Severity[];
+}
+
+/**
+ * The Changes menu's quick picks. "Deletes and protection loss" is the question
+ * people open the tab to ask. A stack that never ran stays on screen under every
+ * one of them, None included: its row ignores the severity filter.
+ */
+export const SEVERITY_PICKS: readonly SeverityPick[] = Object.freeze([
+  { label: 'All', severities: [...SEVERITIES] },
+  { label: 'Deletes and protection loss', severities: ['destructive', 'protectionLoss'] },
+  { label: 'None', severities: [] },
+]);
+
 export function toggleSeverity(state: ViewState, severity: Severity): ViewState {
   const next = new Set(state.severities);
   if (next.has(severity)) next.delete(severity);

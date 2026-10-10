@@ -142,19 +142,10 @@
 
 .total {
   padding: 1px 6px;
-  border: 0;
-  border-radius: var(--w-radius);
-  background: none;
   color: var(--w-text-2);
   font-size: 13px;
   font-variant-numeric: tabular-nums;
-  cursor: pointer;
-}
-
-.total:hover {
-  background: var(--w-row-hover);
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  white-space: nowrap;
 }
 
 .total__count {
@@ -170,11 +161,6 @@
   color: var(--w-text-2);
 }
 
-.total[data-on='false'],
-.total[data-on='false'] .total__count,
-.total[data-on='false'] .total__sub {
-  color: var(--w-text-3);
-}
 
 /* ---------- toolbar ---------- */
 .toolbar {
@@ -306,12 +292,14 @@
 
 .stackmenu__quick {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
   font-size: 12px;
 }
 
 .chip {
+  white-space: nowrap;
   padding: 1px 9px;
   border: 1px solid var(--w-line-strong);
   border-radius: 10px;
@@ -478,6 +466,22 @@ a:hover {
 .stackmenu__selected {
   margin-left: auto;
   color: var(--w-text-2);
+}
+
+.stackmenu__panel--narrow {
+  width: 370px;
+}
+
+.stackmenu__label {
+  font-size: 13px;
+}
+
+.stackmenu__note {
+  margin: 0;
+  padding: 6px 10px 8px;
+  border-top: 1px solid var(--w-line);
+  color: var(--w-text-2);
+  font-size: 11px;
 }
 
 .stackmenu__empty {

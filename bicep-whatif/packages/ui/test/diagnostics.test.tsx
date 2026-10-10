@@ -227,16 +227,10 @@ describe('a potential change', () => {
     const state = defaultViewState();
     const counts = countsForStrip(real.rows, state, (r) => r.potential);
     expect(counts.protectionLoss).toBe(1);
-    render(
-      <Totals
-        counts={countsForStrip(real.rows, state)}
-        potentialCounts={counts}
-        active={state.severities}
-        onToggle={vi.fn()}
-      />,
-    );
-    const total = screen.getByRole('button', { name: /protection loss/i });
-    expect(total.textContent).toBe('1 protection loss, 1 potential');
-    expect(screen.queryByRole('button', { name: /modified/i })?.textContent ?? '').not.toMatch(/potential/);
+    render(<Totals counts={countsForStrip(real.rows, state)} potentialCounts={counts} />);
+    const total = (rung: string): string =>
+      document.querySelector(`.total[data-rung="${rung}"]`)?.textContent ?? '';
+    expect(total('protectionLoss')).toBe('1 protection loss, 1 potential');
+    expect(total('modify')).not.toMatch(/potential/);
   });
 });

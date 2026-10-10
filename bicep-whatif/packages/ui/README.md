@@ -54,7 +54,7 @@ it, and 7 to 15 were added.
 | | Question | Answer |
 |---|---|---|
 | 1 | Master-detail or expand-in-place for property deltas? | **Expand in place.** A row opens beneath itself, full width, property changes first as a Property / Before / After table. Several can be open at once. |
-| 2 | A summary of counts per rung? | **One line of plain words, and it *is* the severity filter.** Colour on the number only, for destructive, protection loss and new. Zero counts are left out; the headline states what a zero would have implied. |
+| 2 | A summary of counts per rung? | **One line of plain words that only reports.** Colour on the number only, for destructive, protection loss and new. Zero counts are left out; the headline states what a zero would have implied. The line was the severity filter until the second review: each count was a toggle, on by default, so a click *hid* that kind of change, while the counts looked like links that would show it. Filtering is now the toolbar's **Changes** menu, beside Stacks: a checkbox per kind with its count, and quick picks (All, Deletes and protection loss, None). |
 | 3 | Where do filters live? | **A toolbar**, pinned while the page scrolls. |
 | 4 | Do rows deep-link? | **Yes** — filters, the layout, open stacks *and* open resources live in the URL hash. An open row is shown whatever the filters say. |
 | 5 | What does the tab open on? | **A headline sentence, then one line per stack, worst first**, with that stack's counts in one column per rung. "All resources" switches to the flat list ranked by severity across every stack. Both hide `noChange` by default; `unevaluated` is shown by construction. |

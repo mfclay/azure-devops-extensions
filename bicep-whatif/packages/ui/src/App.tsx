@@ -16,10 +16,11 @@ import {
   countsForStrip,
   defaultViewState,
   resourceBands,
+  setSeverities,
+  toggleSeverity,
   setStacks,
   setStacksOpen,
   toggleRow,
-  toggleSeverity,
   toggleStackOpen,
   type Layout,
   type ViewState,
@@ -178,8 +179,8 @@ export function App(props: AppProps): React.ReactElement {
   const onShowUnchanged = useCallback(() => {
     setState((s) => (s.severities.has('noChange') ? s : toggleSeverity(s, 'noChange')));
   }, []);
-  const onToggleSeverity = useCallback((severity: Severity) => {
-    setState((s) => toggleSeverity(s, severity));
+  const onSeverities = useCallback((severities: Severity[]) => {
+    setState((s) => setSeverities(s, severities));
   }, []);
   const onStacks = useCallback(
     (keys: string[]) => {
@@ -245,8 +246,6 @@ export function App(props: AppProps): React.ReactElement {
           <Totals
             counts={stripCounts}
             potentialCounts={potentialCounts}
-            active={state.severities}
-            onToggle={onToggleSeverity}
           />
         </header>
       )}
@@ -265,6 +264,9 @@ export function App(props: AppProps): React.ReactElement {
           onExpandAll={onExpandAll}
           onQuery={onQuery}
           onStacks={onStacks}
+          counts={stripCounts}
+          severities={state.severities}
+          onSeverities={onSeverities}
           onHideNoise={onHideNoise}
           onReset={onReset}
         />
