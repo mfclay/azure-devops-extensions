@@ -5,17 +5,18 @@
  * that produced no attachment has to reach the screen, loudly, in the default
  * view. The model tests prove the row exists; this proves nothing between the
  * model and the DOM swallows it. After that, the wiring the components cannot
- * test alone: selection into the detail panel, the way back from an empty
- * filter, a source that fails, and the notes a source returns about the whole
- * build.
+ * test alone: stacks and rows opening in place, links that open them, the two
+ * layouts, the way back from an empty filter, a source that fails, and the
+ * notes a source returns about the whole build.
  */
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
-import { afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { afterEach, describe, expect, it } from 'vitest';
 import { App } from '../src/App.js';
+import { aboutOf } from '../src/data/about.js';
 import { createMockSource } from '../src/data/mock.js';
-import type { LoadResult, WhatIfSource } from '../src/data/source.js';
+import type { LoadProgress, LoadResult, WhatIfSource } from '../src/data/source.js';
 import type { StageResult } from '../src/model/stage.js';
-import { createWindowNavigation } from '../src/nav/navigation.js';
+import { createWindowNavigation, type Navigation } from '../src/nav/navigation.js';
 import { fixture } from './fixtures.js';
 
 function sourceOf(stages: StageResult[], notes: string[] = []): WhatIfSource {
@@ -41,17 +42,6 @@ const MISSING_STAGE: StageResult = {
   notes: [],
 };
 
-beforeAll(() => {
-  // jsdom has no layout, so the virtualizer measures a zero-height viewport and
-  // would window every row away. A fixed height puts rows on screen.
-  Object.defineProperty(HTMLElement.prototype, 'getBoundingClientRect', {
-    configurable: true,
-    value: () => ({ width: 900, height: 800, top: 0, left: 0, bottom: 800, right: 900, x: 0, y: 0, toJSON: () => ({}) }),
-  });
-  Object.defineProperty(HTMLElement.prototype, 'offsetHeight', { configurable: true, value: 800 });
-  Object.defineProperty(HTMLElement.prototype, 'clientHeight', { configurable: true, value: 800 });
-});
-
 afterEach(() => {
   cleanup();
   window.history.replaceState(null, '', '/');
@@ -61,85 +51,337 @@ function renderApp(stages: StageResult[], notes: string[] = []): void {
   render(<App source={sourceOf(stages, notes)} navigation={createWindowNavigation()} />);
 }
 
+async function summary(): Promise<HTMLElement> {
+  return screen.findByRole('status', { name: 'Summary' });
+}
+
+function changesButton(): HTMLElement {
+  return screen.getByRole('button', { name: /^Changes \(/ });
+}
+
+/** Open the Changes menu and return its panel. */
+function openChanges(): HTMLElement {
+  fireEvent.click(changesButton());
+  return changesButton().parentElement!.querySelector<HTMLElement>('.stackmenu__panel')!;
+}
+
+function stackLine(key: string): HTMLElement {
+  const wrap = document.querySelector<HTMLElement>(`[data-stack-key="${key}"]`);
+  if (!wrap) throw new Error(`No stack line ${key}`);
+  return wrap.querySelector<HTMLElement>('.stack')!;
+}
+
+function rowFor(name: string): HTMLElement {
+  return screen.getByText(name).closest('[role="button"]') as HTMLElement;
+}
+
 describe('a stage that produced no what-if result', () => {
-  it('announces itself at the top of the page', async () => {
+  it('is stated in the headline', async () => {
     renderApp([REAL_STAGE, MISSING_STAGE]);
-    const banner = await screen.findByRole('status');
-    expect(within(banner).getByText(/1 stack was not evaluated/i)).toBeTruthy();
-    expect(within(banner).getByText(/platform-prod/)).toBeTruthy();
+    expect((await summary()).textContent).toMatch(/1 stack wasn't evaluated\./);
   });
 
-  it('reaches the grid in the default view, without touching a filter', async () => {
+  it('gets its own line in the default view, without touching a filter', async () => {
     renderApp([REAL_STAGE, MISSING_STAGE]);
-    await screen.findByRole('status');
-    expect(screen.getByText('Stack 3 — Shared Platform (prod)')).toBeTruthy();
+    await summary();
+    const group = screen.getByRole('region', { name: /Not evaluated/ });
+    expect(within(group).getByText('platform-prod')).toBeTruthy();
+    expect(within(group).getByText('no result')).toBeTruthy();
   });
 
   it('says plainly that it is unknown rather than unchanged', async () => {
     renderApp([REAL_STAGE, MISSING_STAGE]);
-    await screen.findByRole('status');
-    expect(screen.getByText(/treat that as unknown, not as unchanged/i)).toBeTruthy();
+    await summary();
+    expect(screen.getByRole('heading', { name: /treat as unknown, not as unchanged/i })).toBeTruthy();
   });
 
-  it('leaves no banner when every stage was evaluated', async () => {
+  it('ranks above a stack that only modifies', async () => {
+    renderApp([REAL_STAGE, MISSING_STAGE]);
+    await summary();
+    const order = [...document.querySelectorAll<HTMLElement>('[data-stack-key]')].map((e) => e.dataset.stackKey);
+    expect(order).toEqual(['platform-prod', 'network']);
+  });
+
+  it('leaves the headline clean when every stage was evaluated', async () => {
     renderApp([REAL_STAGE]);
-    // Anchor on a chip rather than the strip's counts, which split the number
-    // and its noun across elements.
-    await screen.findByRole('button', { name: /no change/i });
-    expect(screen.queryByRole('status')).toBeNull();
+    expect((await summary()).textContent).toMatch(/^Nothing would be deleted or lose protection\./);
   });
 });
 
 describe('the default view', () => {
-  it('opens with the no-change chip off and every other rung on', async () => {
+  it('opens with unchanged filtered out and every other rung shown', async () => {
     renderApp([REAL_STAGE]);
-    const noChange = await screen.findByRole('button', { name: /no change/i });
-    expect(noChange.getAttribute('aria-pressed')).toBe('false');
-    for (const label of ['destructive', 'protection loss', 'new', 'modified', 'not evaluated']) {
-      const chip = screen.getByRole('button', { name: new RegExp(label, 'i') });
-      expect(chip.getAttribute('aria-pressed')).toBe('true');
-    }
+    await summary();
+    const menu = openChanges();
+    expect(within(menu).getByRole('menuitemcheckbox', { name: /unchanged/ }).getAttribute('aria-checked')).toBe('false');
+    expect(within(menu).getByRole('menuitemcheckbox', { name: /modified/ }).getAttribute('aria-checked')).toBe('true');
+    expect(changesButton().textContent).toBe('Changes (5 of 6) ▾');
   });
 
-  it('counts every resource in the strip, including the ones it is hiding', async () => {
+  it('counts every resource in the totals, including the ones it is hiding, as plain text', async () => {
     renderApp([REAL_STAGE]);
+    await summary();
     // The network capture is 7 resource changes: 5 modify, 2 noChange.
-    const noChange = await screen.findByRole('button', { name: /no change/i });
-    expect(noChange.textContent).toMatch(/2/);
-    const modified = screen.getByRole('button', { name: /modified/i });
-    expect(modified.textContent).toMatch(/5/);
+    const totals = screen.getByRole('group', { name: 'Resources by kind of change' });
+    expect(totals.textContent).toBe('Resources5 modified2 unchanged');
+    // They report; filtering is the Changes menu's job.
+    expect(within(totals).queryByRole('button')).toBeNull();
+  });
+
+  it('filters by kind of change from the Changes menu, with quick picks', async () => {
+    renderApp([REAL_STAGE, MISSING_STAGE]);
+    await summary();
+    const menu = openChanges();
+    fireEvent.click(within(menu).getByRole('button', { name: 'Deletes and protection loss' }));
+    expect(changesButton().textContent).toBe('Changes (2 of 6) ▾');
+    expect(changesButton().getAttribute('data-active')).toBe('true');
+    // The network stack has neither, so only the stack nobody evaluated is left: it ignores this filter.
+    expect(document.querySelector('[data-stack-key="network"]')).toBeNull();
+    expect(document.querySelector('[data-stack-key="platform-prod"]')).not.toBeNull();
+
+    fireEvent.click(within(menu).getByRole('menuitemcheckbox', { name: /modified/ }));
+    expect(changesButton().textContent).toBe('Changes (3 of 6) ▾');
+    expect(document.querySelector('[data-stack-key="network"]')).not.toBeNull();
+  });
+
+  it('keeps None when the host echoes the hash back, as the real one does', async () => {
+    // The window fallback never echoes, which is how None reached a real host
+    // broken: its empty selection read back as the default and undid itself.
+    let hash = '';
+    const listeners = new Set<(h: string) => void>();
+    const echoing: Navigation = {
+      getHash: () => Promise.resolve(hash),
+      setHash: (h) => {
+        hash = h;
+        for (const l of listeners) l(h);
+      },
+      subscribe: (l) => {
+        listeners.add(l);
+        return () => listeners.delete(l);
+      },
+      openUrl: () => undefined,
+    };
+    render(<App source={sourceOf([REAL_STAGE, MISSING_STAGE])} navigation={echoing} />);
+    await summary();
+    fireEvent.click(within(openChanges()).getByRole('button', { name: 'None' }));
+    expect(hash).toMatch(/sev=none/);
+    expect(changesButton().textContent).toBe('Changes (0 of 6) ▾');
+    // Nothing a severity covers is left, but the stack nobody evaluated still is.
+    expect(document.querySelector('[data-stack-key="network"]')).toBeNull();
+    expect(document.querySelector('[data-stack-key="platform-prod"]')).not.toBeNull();
+  });
+
+  it('opens on the stack lines, closed', async () => {
+    renderApp([REAL_STAGE]);
+    await summary();
+    expect(stackLine('network').getAttribute('aria-expanded')).toBe('false');
+    expect(screen.queryByText('app-cus-vnet')).toBeNull();
   });
 });
 
-describe('selecting a row', () => {
-  it('opens its details, and closes them again', async () => {
+describe('opening a stack, then a row', () => {
+  it('shows the stack, its rows, and a row opened in place', async () => {
     renderApp([REAL_STAGE]);
-    const row = (await screen.findByText('app-cus-vnet')).closest('[role="button"]') as HTMLElement;
+    await summary();
+    fireEvent.click(stackLine('network'));
+    expect(stackLine('network').getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getByRole('region', { name: 'About stack app-network' })).toBeTruthy();
+
+    const row = rowFor('app-cus-vnet');
     fireEvent.click(row);
-    expect(screen.getByRole('complementary', { name: 'Details for app-cus-vnet' })).toBeTruthy();
-    expect(row.getAttribute('aria-pressed')).toBe('true');
-    // The selection is deep-linkable, so it lands in the hash.
+    expect(screen.getByRole('region', { name: 'Details for app-cus-vnet' })).toBeTruthy();
+    expect(row.getAttribute('aria-expanded')).toBe('true');
+    // The open row is deep-linkable, so it lands in the hash.
     expect(window.location.hash).toMatch(/sel=/);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Close details' }));
-    expect(screen.queryByRole('complementary')).toBeNull();
+    fireEvent.click(row);
+    expect(screen.queryByRole('region', { name: 'Details for app-cus-vnet' })).toBeNull();
   });
 
-  it('opens from the keyboard and toggles off on a second press', async () => {
+  it('opens rows from the keyboard, several at once', async () => {
     renderApp([REAL_STAGE]);
-    const row = (await screen.findByText('app-cus-vnet')).closest('[role="button"]') as HTMLElement;
-    fireEvent.keyDown(row, { key: 'Enter' });
-    expect(screen.getByRole('complementary')).toBeTruthy();
-    fireEvent.keyDown(row, { key: ' ' });
-    expect(screen.queryByRole('complementary')).toBeNull();
+    await summary();
+    fireEvent.keyDown(stackLine('network'), { key: 'Enter' });
+    fireEvent.keyDown(rowFor('app-cus-vnet'), { key: 'Enter' });
+    fireEvent.keyDown(rowFor('app-internal-vnet'), { key: ' ' });
+    expect(screen.getAllByRole('region', { name: /^Details for/ })).toHaveLength(2);
   });
 
-  it('shows a not-evaluated stage as a stage, with no resource facts', async () => {
+  it('closes a stack and the rows open in it', async () => {
+    renderApp([REAL_STAGE]);
+    await summary();
+    fireEvent.click(stackLine('network'));
+    fireEvent.click(rowFor('app-cus-vnet'));
+    fireEvent.click(stackLine('network'));
+    expect(screen.queryByText('app-cus-vnet')).toBeNull();
+    expect(window.location.hash).not.toMatch(/sel=/);
+  });
+
+  it('offers the unchanged rows it is hiding', async () => {
+    renderApp([REAL_STAGE]);
+    await summary();
+    fireEvent.click(stackLine('network'));
+    expect(screen.getByText(/2 unchanged resources not shown/)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Show unchanged' }));
+    expect(screen.queryByText(/unchanged resources not shown/)).toBeNull();
+    const menu = openChanges();
+    expect(within(menu).getByRole('menuitemcheckbox', { name: /unchanged/ }).getAttribute('aria-checked')).toBe('true');
+  });
+
+  it('expands and collapses every stack at once', async () => {
     renderApp([REAL_STAGE, MISSING_STAGE]);
-    fireEvent.click((await screen.findByText('Stack 3 — Shared Platform (prod)')).closest('[role="button"]') as HTMLElement);
-    const panel = screen.getByRole('complementary');
-    expect(within(panel).getByRole('heading', { name: 'Stage' })).toBeTruthy();
-    expect(within(panel).queryByRole('heading', { name: 'Resource' })).toBeNull();
+    await summary();
+    fireEvent.click(screen.getByRole('button', { name: 'Expand all' }));
+    expect(stackLine('network').getAttribute('aria-expanded')).toBe('true');
+    expect(stackLine('platform-prod').getAttribute('aria-expanded')).toBe('true');
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse all' }));
+    expect(stackLine('network').getAttribute('aria-expanded')).toBe('false');
+  });
+});
+
+describe('a link to one resource', () => {
+  it('opens that resource and its stack', async () => {
+    type Payload = { properties: { changes: { resourceChanges: { id: string }[] } } };
+    const id = (fixture('real/build-7700017-app-network.json') as Payload).properties.changes.resourceChanges[0]!.id;
+    window.history.replaceState(null, '', `/#sel=${encodeURIComponent(id)}`);
+    renderApp([REAL_STAGE]);
+    await summary();
+    expect(stackLine('network').getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getAllByRole('region', { name: /^Details for/ })).toHaveLength(1);
+  });
+
+  it('survives a host that answers getHash after a round trip', async () => {
+    // The window fallback reads its hash synchronously, which hid this: the real
+    // host replies by message, so the default view written on mount got there
+    // first and a fresh tab opened from a link lost it.
+    let hash = 'open=network';
+    const writes: string[] = [];
+    const host: Navigation = {
+      getHash: () => new Promise((resolve) => setTimeout(() => resolve(hash), 0)),
+      setHash: (h) => {
+        writes.push(h);
+        hash = h;
+      },
+      subscribe: () => () => undefined,
+      openUrl: () => undefined,
+    };
+    render(<App source={sourceOf([REAL_STAGE])} navigation={host} />);
+    await summary();
+    await waitFor(() => {
+      expect(stackLine('network').getAttribute('aria-expanded')).toBe('true');
+    });
+    expect(writes).not.toContain('');
+    expect(hash).toMatch(/open=network/);
+  });
+});
+
+describe('searching', () => {
+  it('opens every stack with a match', async () => {
+    renderApp([REAL_STAGE]);
+    const search = await screen.findByPlaceholderText(/search resources/i);
+    fireEvent.change(search, { target: { value: 'cus-vnet' } });
+    expect(stackLine('network').getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getByText('app-cus-vnet')).toBeTruthy();
+  });
+});
+
+describe('while the build is read', () => {
+  it('shows the loading screen, and counts the stacks as the source reports them', async () => {
+    let report: ((p: LoadProgress) => void) | undefined;
+    let finish: ((r: LoadResult) => void) | undefined;
+    const slow: WhatIfSource = {
+      kind: 'ado',
+      load: (onProgress) => {
+        report = onProgress;
+        return new Promise((resolve) => {
+          finish = resolve;
+        });
+      },
+    };
+    render(<App source={slow} navigation={createWindowNavigation()} />);
+    expect(screen.getByRole('status').textContent).toContain('Finding the what-if stages');
+    act(() => {
+      report?.({ phase: 'reading', read: 2, total: 3 });
+    });
+    expect(screen.getByRole('status').textContent).toContain('2 of 3 stacks read');
+    await act(async () => {
+      finish?.({ stages: [REAL_STAGE], buildLabel: 'build 7700017', notes: [] });
+      await Promise.resolve();
+    });
+    expect(await summary()).toBeTruthy();
+    expect(document.querySelector('.loading')).toBeNull();
+  });
+});
+
+describe('the footer', () => {
+  const ABOUT = aboutOf({ id: 'MichaelC.bicep-whatif-dev', version: '1.0.8' });
+
+  it('offers a link last on the page, and keeps the version behind it', async () => {
+    render(<App source={sourceOf([REAL_STAGE])} navigation={createWindowNavigation()} about={ABOUT} />);
+    await summary();
+    const footer = screen.getByRole('contentinfo');
+    expect(footer.parentElement?.lastElementChild).toBe(footer);
+    expect(footer.textContent).toBe('About this extension');
+    expect(footer.textContent).not.toMatch(/1\.0\.8/);
+  });
+
+  it('opens on the extension, its version, and where to go next, through the host', async () => {
+    const opened: string[] = [];
+    const navigation = { ...createWindowNavigation(), openUrl: (url: string) => { opened.push(url); } };
+    render(<App source={sourceOf([REAL_STAGE])} navigation={navigation} about={ABOUT} />);
+    await summary();
+    const footer = screen.getByRole('contentinfo');
+    const toggle = within(footer).getByRole('button', { name: 'About this extension' });
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(footer.textContent).toMatch(/Bicep What-If MichaelC\.bicep-whatif-dev 1\.0\.8/);
+    expect(within(footer).getAllByRole('link').map((a) => a.textContent)).toEqual([
+      'Marketplace listing',
+      'Documentation',
+      'Report a problem',
+    ]);
+    fireEvent.click(within(footer).getByRole('link', { name: 'Marketplace listing' }));
+    expect(opened).toEqual(['https://marketplace.visualstudio.com/items?itemName=MichaelC.bicep-whatif-dev']);
+  });
+
+  it('is there when the build could not be read, where it matters most', async () => {
+    const failing: WhatIfSource = { kind: 'ado', load: () => Promise.reject(new Error('Build 21 is gone.')) };
+    render(<App source={failing} navigation={createWindowNavigation()} about={ABOUT} />);
+    await screen.findByText(/could not read the build.s what-if results/i);
+    fireEvent.click(screen.getByRole('button', { name: 'About this extension' }));
+    expect(screen.getByRole('contentinfo').textContent).toMatch(/1\.0\.8/);
+  });
+});
+
+describe('the flat list', () => {
+  it('lists every resource ranked across stacks, a stage that never ran included', async () => {
+    renderApp([REAL_STAGE, MISSING_STAGE]);
+    await summary();
+    fireEvent.click(screen.getByRole('button', { name: 'All resources' }));
+    expect(window.location.hash).toMatch(/view=all/);
+    expect(screen.getByText('app-cus-vnet')).toBeTruthy();
+    fireEvent.click(rowFor('Stack 3 — Shared Platform (prod)'));
+    const detail = screen.getByRole('region', { name: 'Details for Stack 3 — Shared Platform (prod)' });
+    expect(within(detail).getByRole('region', { name: /About stack/ })).toBeTruthy();
+    expect(within(detail).queryByText(/property-level/i)).toBeNull();
+  });
+
+  it('bands the rows, with the unknowns above modified, and keeps the provider in the type', async () => {
+    renderApp([REAL_STAGE, MISSING_STAGE]);
+    await summary();
+    fireEvent.click(screen.getByRole('button', { name: 'All resources' }));
+    const bands = [...document.querySelectorAll<HTMLElement>('.band')].map((b) => b.dataset.kind);
+    expect(bands.indexOf('unknown')).toBeGreaterThanOrEqual(0);
+    expect(bands.indexOf('unknown')).toBeLessThan(bands.indexOf('modified'));
+
+    const unknown = screen.getByRole('region', { name: 'Unknown — not predicted or not evaluated' });
+    const stage = within(unknown).getByText('Stack 3 — Shared Platform (prod)').closest<HTMLElement>('.row')!;
+    expect(stage.querySelector('.cell--change')?.textContent).toBe('not evaluated');
+
+    const vnet = within(screen.getByRole('region', { name: 'Modified' })).getByText('app-cus-vnet').closest('.row')!;
+    const type = vnet.querySelector<HTMLElement>('.cell--type')!;
+    expect(type.textContent).toBe('Network/virtualNetworks');
+    expect(type.title).toBe('Microsoft.Network/virtualNetworks');
   });
 });
 
@@ -179,8 +421,9 @@ describe('notes about the whole build', () => {
 
   it('explains a build with no what-if stages instead of showing an empty page', async () => {
     const note =
-      'No WhatIf_* stages were found in this build timeline. This tab shows results ' +
-      'for builds that run the stack what-if stages.';
+      'No what-if stages were found in this build: none is named WhatIf_*, and no ' +
+      'what-if result is attached to any other. This tab shows results for builds ' +
+      'that run a stack what-if.';
     renderApp([], [note]);
     const notes = await screen.findByRole('note', { name: 'Notes about this build' });
     expect(within(notes).getByText(note)).toBeTruthy();
@@ -200,7 +443,7 @@ describe('notes about the whole build', () => {
 
   it('leaves no notes area when there are none', async () => {
     renderApp([REAL_STAGE]);
-    await screen.findByRole('button', { name: /no change/i });
+    await summary();
     expect(screen.queryByRole('note')).toBeNull();
   });
 });

@@ -15,6 +15,12 @@
   ],
   "targets": [{ "id": "Microsoft.VisualStudio.Services" }],
   "icons": { "default": "images/icon-256.png" },
+  "screenshots": [
+    { "path": "images/screenshot-1-every-stack.png" },
+    { "path": "images/screenshot-2-repeated-changes.png" },
+    { "path": "images/screenshot-3-might-change.png" },
+    { "path": "images/screenshot-4-not-evaluated.png" }
+  ],
   "content": {
     "details": { "path": "overview.md" },
     "license": { "path": "LICENSE" }

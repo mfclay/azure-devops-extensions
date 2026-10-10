@@ -18,13 +18,26 @@ export const WHATIF_STAGE_PREFIX = 'whatif_';
 
 export interface LoadResult {
   stages: StageResult[];
-  /** Human label for the run, shown in the summary strip. */
+  /** Human label for the run, shown under the headline. */
   buildLabel: string;
   /** Things the source coped with. Shown, never swallowed. */
   notes: string[];
+  /**
+   * This build's results page, `…/_build/results?buildId=N`, when the host
+   * gave enough to build it. A stage's log link is made from it.
+   */
+  buildResultsUrl?: string | undefined;
 }
+
+/**
+ * How far a load has got, for the loading screen: first finding the what-if
+ * stages (the timeline and the attachment lists), then reading each stack's
+ * result. `total` is the stacks with a result attached; a stage that attached
+ * nothing has nothing to read.
+ */
+export type LoadProgress = { phase: 'finding' } | { phase: 'reading'; read: number; total: number };
 
 export interface WhatIfSource {
   readonly kind: 'mock' | 'ado';
-  load(): Promise<LoadResult>;
+  load(onProgress?: (progress: LoadProgress) => void): Promise<LoadResult>;
 }

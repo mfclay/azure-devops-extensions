@@ -23,7 +23,7 @@ import { getClient } from 'azure-devops-extension-api';
 import { BuildRestClient } from 'azure-devops-extension-api/Build';
 import * as SDK from 'azure-devops-extension-sdk';
 import { ensureSdkReady } from './sdk.js';
-import { describeConfig, resolveBuildContext } from './buildContext.js';
+import { describeConfig, resolveBuildContext, resolveBuildResultsUrl } from './buildContext.js';
 import type { Sidecar } from '../model/stage.js';
 import {
   attachmentRefs,
@@ -35,6 +35,7 @@ import {
 import {
   ATTACHMENT_TYPE_PAYLOAD,
   ATTACHMENT_TYPE_SIDECAR,
+  type LoadProgress,
   type LoadResult,
   type WhatIfSource,
 } from './source.js';
@@ -46,7 +47,8 @@ function decodeAttachment(buffer: ArrayBuffer): unknown {
 export function createAdoSource(): WhatIfSource {
   return {
     kind: 'ado',
-    async load(): Promise<LoadResult> {
+    async load(onProgress?: (progress: LoadProgress) => void): Promise<LoadResult> {
+      onProgress?.({ phase: 'finding' });
       // Shared, memoised, and already done by `main.tsx` before the first
       // render. Calling `init()` a second time here would re-assert
       // `loaded: false` after the host had been told the tab was ready.
@@ -64,12 +66,13 @@ export function createAdoSource(): WhatIfSource {
       const client = getClient(BuildRestClient);
       const notes: string[] = [];
 
-      const [timeline, payloadAttachments, sidecarAttachments] = await Promise.all([
+      const [timeline, payloadAttachments, sidecarAttachments, resultsUrl] = await Promise.all([
         client.getBuildTimeline(context.projectId, context.buildId),
         client.getAttachments(context.projectId, context.buildId, ATTACHMENT_TYPE_PAYLOAD),
         client
           .getAttachments(context.projectId, context.buildId, ATTACHMENT_TYPE_SIDECAR)
           .catch(() => [] as AttachmentLike[]),
+        resolveBuildResultsUrl(context.projectId, context.buildId, (id) => SDK.getService(id)),
       ]);
 
       const records = (timeline.records ?? []) as unknown as TimelineRecordLike[];
@@ -99,8 +102,19 @@ export function createAdoSource(): WhatIfSource {
         }
       };
 
+      // Counted on the what-if results only: a sidecar is small, and read beside its payload.
+      let read = 0;
+      const total = payloadRefs.length;
+      onProgress?.({ phase: 'reading', read, total });
+      const fetchPayload = async (ref: AttachmentRef): Promise<{ ref: AttachmentRef; value: unknown } | undefined> => {
+        const result = await fetchOne(ref);
+        read += 1;
+        onProgress?.({ phase: 'reading', read, total });
+        return result;
+      };
+
       const [payloadResults, sidecarResults] = await Promise.all([
-        Promise.all(payloadRefs.map(fetchOne)),
+        Promise.all(payloadRefs.map(fetchPayload)),
         Promise.all(sidecarRefs.map(fetchOne)),
       ]);
 
@@ -116,8 +130,9 @@ export function createAdoSource(): WhatIfSource {
 
       if (stages.length === 0) {
         notes.push(
-          'No WhatIf_* stages were found in this build timeline. This tab shows results ' +
-            'for builds that run the stack what-if stages.',
+          'No what-if stages were found in this build: none is named WhatIf_*, and no ' +
+            'what-if result is attached to any other. This tab shows results for builds ' +
+            'that run a stack what-if.',
         );
       }
 
@@ -125,6 +140,7 @@ export function createAdoSource(): WhatIfSource {
         stages,
         buildLabel: context.buildNumber ? `build ${context.buildNumber}` : `build ${String(context.buildId)}`,
         notes,
+        buildResultsUrl: resultsUrl,
       };
     },
   };

@@ -18,6 +18,9 @@ export {
   normalizeStackWhatIf,
   normalizeEstate,
   flattenPropertyChanges,
+  diagnosticsFor,
+  needsAttention,
+  NAME_UNKNOWN_UNTIL_DEPLOY,
 } from './normalize.js';
 
 export {
@@ -62,6 +65,7 @@ export type {
   PropertyChange,
   ResourceRow,
   StatusTransition,
+  WhatIfDiagnostic,
 } from './model.js';
 
 export type {

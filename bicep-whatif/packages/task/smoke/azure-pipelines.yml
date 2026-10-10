@@ -1,30 +1,46 @@
 # One real run of the dev task against Azure, to prove the service connection
 # path. The harness cannot: its task step never runs.
 #
-# `template: empty` (the default) is an inline empty ARM template. In `whatif`
-# mode nothing is deployed: the task creates a what-if result at subscription
-# scope and deletes it afterwards. In `deploy` mode it creates or updates a
-# subscription-scope deployment stack, `bicep-whatif-smoke`, that manages no
-# resources. The stack stays until it is deleted, e.g.
-#   az stack sub delete --name bicep-whatif-smoke --action-on-unmanage detachAll
+# `operation` is the task's own: `whatIf` (the default) deploys nothing, as the
+# task creates a what-if result and deletes it afterwards; `create` creates or
+# updates the stack; `validate` checks it; `delete` removes it, doing to what it
+# managed what `unmanage` says.
 #
-# `template: bicep` checks out the repo and runs `smoke/bicep/main.bicep` with
-# its `.bicepparam`, so a compile, the compiler download, a parameters file and
-# a `@secure()` value all meet Azure. Its stack is `bicep-whatif-smoke-bicep`,
-# and in `deploy` mode it manages a resource group, `rg-bicep-whatif-smoke`,
-# holding one network security group whose tag carries the stand-in secret.
-# After one `deploy` run, each what-if reports that group as a modify. So far
-# the payload has never carried the secret even then (main.bicep says why), so
-# redaction itself is proven by the task's unit tests, not here. Delete all
-# three with
-#   az stack sub delete --name bicep-whatif-smoke-bicep --action-on-unmanage deleteAll
+# `scope` picks where the stack lives. Resource-group scope uses
+# `resourceGroupName`, which must exist; management-group scope needs
+# `managementGroupId`, a group the connection has rights on.
+#
+# `template: empty` (the default) is an inline empty ARM template for the scope,
+# and its stack, `bicep-whatif-smoke`, manages nothing.
+#
+# `template: bicep` checks out the repo and runs `smoke/bicep/<scope>.bicepparam`
+# with no `templateFile`, so a compile, the compiler download, a parameters
+# file naming its own template and a `@secure()` value all meet Azure. Its stack
+# is `bicep-whatif-smoke-bicep`:
+#   - subscription: a resource group, `rg-bicep-whatif-smoke`, holding one
+#     network security group whose tag carries the stand-in secret.
+#   - resourceGroup: a second security group in that resource group, so run the
+#     subscription `create` first. Delete this stack before that one.
+#   - managementGroup: one policy definition, never assigned, whose metadata
+#     carries the stand-in secret.
+# After one `create`, each what-if reports the tagged resource as a modify. No
+# stack what-if has carried the secret even then, at any scope (subscription.bicep
+# says why). A `create` is where redaction
+# meets Azure: each template outputs the stand-in inside a longer string, and
+# the stack's outputs are in the payload a `create` attaches.
+# Clean up with `operation: delete`, `unmanage: delete`, resource-group and
+# management-group stacks first.
 # A step after the task fails the run if the stand-in secret appears in anything
-# the task wrote.
+# the task wrote. After a `create`, a second step reads the stack's outputs back
+# as output variables of the task step.
 #
 # The connection is a queue-time parameter, not a committed name: this repo is
 # public, and the name of a real connection does not belong in it. The pipeline
 # must be allowed to use the connection, either by granting it on first run or
 # by sharing the connection into this pipeline's project.
+#
+# The connection goes in under `azureResourceManagerConnection`, the alias, so
+# a pass also proves the agent resolves it; the harness uses the canonical name.
 #
 # No `env:` on the task step, deliberately. Workload identity federation used to
 # need SYSTEM_ACCESSTOKEN mapped in; a pass here with none is the proof that it
@@ -33,13 +49,23 @@ trigger: none
 pr: none
 
 parameters:
-- name: mode
-  displayName: 'Mode'
+- name: operation
+  displayName: 'Operation'
   type: string
-  default: whatif
+  default: whatIf
   values:
-  - whatif
-  - deploy
+  - whatIf
+  - create
+  - validate
+  - delete
+- name: scope
+  displayName: 'Scope'
+  type: string
+  default: subscription
+  values:
+  - subscription
+  - resourceGroup
+  - managementGroup
 - name: template
   displayName: 'Template'
   type: string
@@ -47,22 +73,49 @@ parameters:
   values:
   - empty
   - bicep
+  # What-if at subscription scope only. Short-circuits a module on purpose, so
+  # Azure reports diagnostics; bicep/shortCircuit.bicep says how.
+  - shortCircuit
 - name: serviceConnection
   displayName: 'Azure Resource Manager service connection'
   type: string
 - name: location
-  displayName: 'Location for the stack'
+  displayName: 'Location for the stack (not used at resource-group scope)'
   type: string
   default: centralus
+- name: resourceGroupName
+  displayName: 'Resource group (resource-group scope only)'
+  type: string
+  default: rg-bicep-whatif-smoke
+- name: managementGroupId
+  displayName: 'Management group id (management-group scope only)'
+  type: string
+  default: ''
+- name: unmanage
+  displayName: 'What happens to what the stack stops managing, or what a delete leaves'
+  type: string
+  default: detach
+  values:
+  - detach
+  - delete
 - name: pool
   displayName: 'Agent pool — default is the hosted image; pass {"name":"<pool>"} for self-hosted'
   type: object
   default:
     vmImage: ubuntu-latest
 
+variables:
+  # The empty template's schema names its scope.
+  ${{ if eq(parameters.scope, 'resourceGroup') }}:
+    emptySchema: 'https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#'
+  ${{ elseif eq(parameters.scope, 'managementGroup') }}:
+    emptySchema: 'https://schema.management.azure.com/schemas/2019-08-01/managementGroupDeploymentTemplate.json#'
+  ${{ else }}:
+    emptySchema: 'https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#'
+
 stages:
 - stage: WhatIf_Smoke
-  displayName: 'Smoke — ${{ parameters.mode }}, ${{ parameters.template }} template'
+  displayName: 'Smoke — ${{ parameters.operation }} at ${{ parameters.scope }}, ${{ parameters.template }} template'
   jobs:
   - job: WhatIf
     pool: ${{ parameters.pool }}
@@ -73,40 +126,63 @@ stages:
       - checkout: none
 
       - script: |
-          printf '%s\n' '{"$schema":"https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#","contentVersion":"1.0.0.0","parameters":{},"resources":[]}' \
-            > "$(Agent.TempDirectory)/empty.json"
-        displayName: 'Write an empty subscription template'
+          printf '{"$schema":"%s","contentVersion":"1.0.0.0","parameters":{},"resources":[]}\n' \
+            "$(emptySchema)" > "$(Agent.TempDirectory)/empty.json"
+        displayName: 'Write an empty ${{ parameters.scope }} template'
 
     - ${{ else }}:
       - checkout: self
         fetchDepth: 1
 
     - task: StackWhatIfDev@1
-      displayName: 'StackWhatIfDev — ${{ parameters.mode }}, ${{ parameters.template }} template'
+      name: stack
+      displayName: 'StackWhatIfDev — ${{ parameters.operation }} at ${{ parameters.scope }}, ${{ parameters.template }} template'
       inputs:
-        mode: ${{ parameters.mode }}
-        azureSubscription: ${{ parameters.serviceConnection }}
+        operation: ${{ parameters.operation }}
+        azureResourceManagerConnection: ${{ parameters.serviceConnection }}
+        scope: ${{ parameters.scope }}
+        # Each input only where the scope and operation use it, so a pass is
+        # also a run with no "is ignored" warnings.
+        ${{ if eq(parameters.scope, 'resourceGroup') }}:
+          resourceGroupName: ${{ parameters.resourceGroupName }}
+        ${{ else }}:
+          actionOnUnmanageResourceGroups: ${{ parameters.unmanage }}
+        ${{ if eq(parameters.scope, 'managementGroup') }}:
+          managementGroupId: ${{ parameters.managementGroupId }}
+          actionOnUnmanageManagementGroups: ${{ parameters.unmanage }}
+        actionOnUnmanageResources: ${{ parameters.unmanage }}
         ${{ if eq(parameters.template, 'empty') }}:
           stackId: smoke
           stackName: bicep-whatif-smoke
-          templateFile: '$(Agent.TempDirectory)/empty.json'
+        ${{ elseif eq(parameters.template, 'shortCircuit') }}:
+          stackId: smoke-short-circuit
+          stackName: bicep-whatif-smoke-short-circuit
         ${{ else }}:
           stackId: smoke-bicep
           stackName: bicep-whatif-smoke-bicep
-          templateFile: '$(Build.SourcesDirectory)/bicep-whatif/packages/task/smoke/bicep/main.bicep'
-          parametersFile: '$(Build.SourcesDirectory)/bicep-whatif/packages/task/smoke/bicep/main.bicepparam'
-        location: ${{ parameters.location }}
-        actionOnUnmanage: detachAll
-        denySettingsMode: none
+        ${{ if ne(parameters.operation, 'delete') }}:
+          ${{ if ne(parameters.scope, 'resourceGroup') }}:
+            location: ${{ parameters.location }}
+          ${{ if eq(parameters.template, 'empty') }}:
+            templateFile: '$(Agent.TempDirectory)/empty.json'
+          ${{ elseif eq(parameters.template, 'shortCircuit') }}:
+            parametersFile: '$(Build.SourcesDirectory)/bicep-whatif/packages/task/smoke/bicep/shortCircuit.bicepparam'
+          ${{ else }}:
+            parametersFile: '$(Build.SourcesDirectory)/bicep-whatif/packages/task/smoke/bicep/${{ parameters.scope }}.bicepparam'
+          denySettingsMode: none
+        ${{ if eq(parameters.operation, 'create') }}:
+          maskedOutputs: smokeMaskedOutput
         outputPath: $(smokeOut)
 
-    # The stand-in is the value in main.bicepparam. Absent from everything is the
+    # The stand-in is the value in each .bicepparam. Absent from everything is the
     # pass. Present as the placeholder means it reached the payload and was
-    # caught. A run whose payload never carried it proves less, so that is a
-    # warning rather than a pass or a failure. So far every run has been one:
-    # the subscription-scope stack what-if returns no property values, for a
-    # create or a modify, and deploy mode's payload is the stack itself.
-    - ${{ if eq(parameters.template, 'bicep') }}:
+    # caught. A what-if or validate payload has never carried it, so for those
+    # a missing placeholder is a warning rather than a pass or a failure. A
+    # `create` payload carries the stack's outputs, so there it fails unless
+    # smokeSecretOutput reads `echo:<placeholder>|<build id>`, and if the masked
+    # output's value is anywhere.
+    # A delete writes only a sidecar, so there is nothing for the check to read.
+    - ${{ if and(eq(parameters.template, 'bicep'), ne(parameters.operation, 'delete')) }}:
       - script: |
           set -eu
           secret='smoke-stand-in-5c1e9d'
@@ -115,10 +191,40 @@ stages:
             echo "##vso[task.logissue type=error]The stand-in secret is in the files above, unredacted."
             exit 1
           fi
-          if grep -rqF -- '***REDACTED***' "$(smokeOut)"; then
+          if [ '${{ parameters.operation }}' = create ]; then
+            if grep -rlF -- "masked-$(Build.BuildId)" "$(smokeOut)"; then
+              echo "##vso[task.logissue type=error]The masked output's value is in the files above, unredacted."
+              exit 1
+            fi
+            if ! grep -rqF -- "echo:***REDACTED***|$(Build.BuildId)" "$(smokeOut)"; then
+              echo "##vso[task.logissue type=error]smokeSecretOutput is not in the output with the stand-in replaced in place."
+              exit 1
+            fi
+            echo "Redacted: the stand-in reached the payload inside a longer string and was replaced in place."
+          elif grep -rqF -- '***REDACTED***' "$(smokeOut)"; then
             echo "Redacted: the stand-in reached the payload and was replaced."
           else
             echo "##vso[task.logissue type=warning]No redaction placeholder in the output: the stand-in never reached the payload, so redaction was not exercised."
           fi
         displayName: 'Check the stand-in secret was redacted'
         condition: always()
+
+    # A create sets each stack output as an output variable of the task step,
+    # named for the output, as BicepDeploy@0 does. The masked one arrives as a
+    # secret, so it has to be mapped in to reach the script, and the agent
+    # prints it as ***.
+    - ${{ if and(eq(parameters.template, 'bicep'), eq(parameters.operation, 'create')) }}:
+      - script: |
+          set -eu
+          fail() { echo "##vso[task.logissue type=error]$1"; exit 1; }
+          case "$RESOURCE_ID" in
+            ''|*stack.smokeResourceId*) fail 'The smokeResourceId output did not reach this step.' ;;
+          esac
+          [ "$MASKED" = "masked-$(Build.BuildId)" ] ||
+            fail 'The smokeMaskedOutput output did not reach this step with its value.'
+          echo "smokeResourceId: $RESOURCE_ID"
+          echo "smokeMaskedOutput, which should print masked: $MASKED"
+        displayName: 'Check the stack outputs reached a later step'
+        env:
+          RESOURCE_ID: $(stack.smokeResourceId)
+          MASKED: $(stack.smokeMaskedOutput)

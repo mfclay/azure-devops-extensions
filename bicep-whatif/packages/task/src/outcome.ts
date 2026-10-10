@@ -65,6 +65,24 @@ export function outcomeOf(payload: unknown): Outcome {
 }
 
 /**
+ * A validation's outcome. Its result has no `provisioningState` — the stack is
+ * checked, not provisioned — so the error alone decides, wherever ARM put it.
+ * No payload at all is still a failure: nothing said the stack was valid.
+ */
+export function validationOutcomeOf(payload: unknown): Outcome {
+  const properties = prop(payload, 'properties');
+  const error = prop(payload, 'error') ?? prop(properties, 'error');
+  const failed =
+    payload === null || payload === undefined || (error !== undefined && error !== null);
+  return {
+    status: failed ? 'failed' : 'succeeded',
+    error: error ?? null,
+    provisioningState: undefined,
+    resourceId: asString(prop(payload, 'id')),
+  };
+}
+
+/**
  * A failure envelope shaped like the real payload, for the case where there is
  * no real payload at all.
  *

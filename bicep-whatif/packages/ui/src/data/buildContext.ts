@@ -20,7 +20,52 @@ interface BuildContext {
 /** `CommonServiceIds.ProjectPageService`, inlined for the same reason the
  *  navigation service id is: it is an ambient `const enum` with no runtime
  *  object, and `isolatedModules` forbids inlining it from the import. */
-const PROJECT_PAGE_SERVICE_ID = 'ms.vss-tfs-web.tfs-page-data-service';
+export const PROJECT_PAGE_SERVICE_ID = 'ms.vss-tfs-web.tfs-page-data-service';
+
+/** `CommonServiceIds.LocationService`, inlined for the same reason. */
+export const LOCATION_SERVICE_ID = 'ms.vss-features.location-service';
+
+/**
+ * This build's results page, from the collection's root URL
+ * (`https://dev.azure.com/contoso/`), the project and the build id. The project
+ * is named when the host says its name, and identified by id otherwise.
+ */
+export function buildResultsUrl(collectionUrl: string, project: string, buildId: number): string {
+  const root = collectionUrl.endsWith('/') ? collectionUrl : `${collectionUrl}/`;
+  return `${root}${encodeURIComponent(project)}/_build/results?buildId=${String(buildId)}`;
+}
+
+/**
+ * Best effort: the location service for the collection's URL, the page data
+ * service for the project's name. Undefined when the host gives no URL, and
+ * then the tab draws no log links, which is all this is for. Never throws.
+ */
+export async function resolveBuildResultsUrl(
+  projectId: string,
+  buildId: number,
+  getService: (id: string) => Promise<unknown>,
+): Promise<string | undefined> {
+  try {
+    const location = (await getService(LOCATION_SERVICE_ID)) as
+      | { getServiceLocation?: () => Promise<string | undefined> }
+      | undefined;
+    const collection = await location?.getServiceLocation?.();
+    if (typeof collection !== 'string' || collection.length === 0) return undefined;
+    let project = projectId;
+    try {
+      const page = (await getService(PROJECT_PAGE_SERVICE_ID)) as
+        | { getProject?: () => Promise<{ name?: unknown } | undefined> }
+        | undefined;
+      const found = await page?.getProject?.();
+      if (typeof found?.name === 'string' && found.name.length > 0) project = found.name;
+    } catch {
+      // The id works in the URL too.
+    }
+    return buildResultsUrl(collection, project, buildId);
+  } catch {
+    return undefined;
+  }
+}
 
 /**
  * How long to wait for the host to hand over a build before giving up.

@@ -56,13 +56,26 @@ export function provisioningStateOf(body: unknown): string | undefined {
   return typeof state === 'string' ? state : undefined;
 }
 
+/** An `Azure-AsyncOperation` body's `status`, the operation's own state. */
+function operationStatusOf(body: unknown): string | undefined {
+  if (body === null || typeof body !== 'object') return undefined;
+  const status = (body as Record<string, unknown>)['status'];
+  return typeof status === 'string' ? status : undefined;
+}
+
+/** A header's value, or undefined when it is missing or empty. */
+function headerOf(headers: Headers, name: string): string | undefined {
+  const value = headers.get(name);
+  return value === null || value.length === 0 ? undefined : value;
+}
+
 /** 429 and 5xx are worth another go; 4xx means the request itself is wrong. */
 function isRetryable(status: number): boolean {
   return status === 429 || status === 408 || (status >= 500 && status <= 599);
 }
 
-function retryAfterMs(response: Response, fallback: number): number {
-  const header = response.headers.get('retry-after');
+function retryAfterMs(headers: Headers, fallback: number): number {
+  const header = headers.get('retry-after');
   if (header === null) return fallback;
   const seconds = Number(header);
   if (Number.isFinite(seconds) && seconds >= 0) return Math.min(seconds * 1000, 60_000);
@@ -190,7 +203,10 @@ export class ArmClient {
       }
 
       if (isRetryable(response.status) && attempt < maxAttempts) {
-        const wait = retryAfterMs(response, Math.min(1000 * 2 ** (attempt - 1), 30_000));
+        const wait = retryAfterMs(
+          response.headers,
+          Math.min(1000 * 2 ** (attempt - 1), 30_000),
+        );
         this.deps.log(
           `ARM returned ${response.status}; retrying in ${Math.round(wait / 1000)}s ` +
             `(attempt ${attempt} of ${maxAttempts}).`,
@@ -254,6 +270,77 @@ export class ArmClient {
         );
       }
       await this.deps.sleep(options.intervalMs);
+    }
+  }
+
+  /**
+   * Follow an accepted long-running operation to its end.
+   *
+   * For the operations ARM finishes outside the resource — stack validate and
+   * stack delete — there is no resource to watch: a validation produces none,
+   * and a deleted stack is a 404 whether it went or never was.
+   *
+   * Validate answers 202 with `Location`, as the REST spec says. That answers
+   * 202 while the operation runs, then the result: 200 with a body, 204
+   * without, or an error status, which `request` throws as for any call.
+   *
+   * Delete does not. Against Azure its 202 carries only `Azure-AsyncOperation`,
+   * though the spec promises `Location`. That answers 200 throughout, with a
+   * `status` that ends `succeeded`, `failed` or `canceled`. It carries no
+   * result, which a delete has none of anyway. `Location` wins if both come.
+   */
+  async pollOperation(
+    accepted: ArmResponse,
+    options: { intervalMs: number; timeoutMs: number; describe: string },
+  ): Promise<ArmResponse> {
+    const location = headerOf(accepted.headers, 'location');
+    const asyncOperation = headerOf(accepted.headers, 'azure-asyncoperation');
+    const url = location ?? asyncOperation;
+    if (url === undefined) {
+      throw new ArmError(
+        `${options.describe} was accepted, but ARM gave neither a Location nor an ` +
+          'Azure-AsyncOperation to follow.',
+        accepted.status,
+        'NoLocation',
+        accepted.body,
+      );
+    }
+
+    const started = Date.now();
+    let response = accepted;
+    for (;;) {
+      const elapsed = Date.now() - started;
+      if (elapsed >= options.timeoutMs) {
+        throw new ArmError(
+          `${options.describe} did not finish within ${Math.round(options.timeoutMs / 1000)}s.`,
+          0,
+          'PollTimeout',
+          undefined,
+        );
+      }
+      await this.deps.sleep(retryAfterMs(response.headers, options.intervalMs));
+      response = await this.request({ method: 'GET', url });
+      if (location !== undefined) {
+        if (response.status !== 202) return response;
+        continue;
+      }
+
+      const status = operationStatusOf(response.body);
+      // No status at all: nothing further will change, as in pollUntilTerminal.
+      if (status === undefined) return response;
+      if (!isTerminal(status)) continue;
+      if (status.toLowerCase() === 'succeeded') return response;
+      const body = response.body as Record<string, unknown>;
+      if (body['error'] !== null && typeof body['error'] === 'object') {
+        const { code, message } = describeArmError(response.status, body);
+        throw new ArmError(message, response.status, code, body);
+      }
+      throw new ArmError(
+        `${options.describe} ended ${status}.`,
+        response.status,
+        `Operation${status[0]!.toUpperCase()}${status.slice(1)}`,
+        body,
+      );
     }
   }
 }

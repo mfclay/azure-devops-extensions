@@ -3,6 +3,7 @@ import {
   defaultResultName,
   deploymentStackId,
   layerFromTemplateFile,
+  scopePath,
   whatIfResultId,
 } from '../src/ids.js';
 
@@ -45,9 +46,10 @@ describe('defaultResultName', () => {
 
 describe('resource ids', () => {
   const sub = '00000000-0000-4000-8000-000000000001';
+  const atSub = { kind: 'subscription', subscriptionId: sub } as const;
 
   it('builds the fully qualified what-if result id', () => {
-    expect(whatIfResultId(sub, 'whatif-network-7700017')).toBe(
+    expect(whatIfResultId(atSub, 'whatif-network-7700017')).toBe(
       `/subscriptions/${sub}/providers/Microsoft.Resources/deploymentStacksWhatIfResults/whatif-network-7700017`,
     );
   });
@@ -55,8 +57,27 @@ describe('resource ids', () => {
   it('points the stack id at the prefixed resource name, not the stack id token', () => {
     // `app-network`, not `network` — what-if has to compare against the
     // resource the deploy will actually write.
-    expect(deploymentStackId(sub, 'app-network')).toBe(
+    expect(deploymentStackId(atSub, 'app-network')).toBe(
       `/subscriptions/${sub}/providers/Microsoft.Resources/deploymentStacks/app-network`,
+    );
+  });
+
+  it('puts a resource-group stack under its group', () => {
+    const scope = { kind: 'resourceGroup', subscriptionId: sub, resourceGroupName: 'rg-app' } as const;
+    expect(deploymentStackId(scope, 'app')).toBe(
+      `/subscriptions/${sub}/resourceGroups/rg-app/providers/Microsoft.Resources/deploymentStacks/app`,
+    );
+    expect(whatIfResultId(scope, 'w')).toBe(
+      `/subscriptions/${sub}/resourceGroups/rg-app/providers/Microsoft.Resources/deploymentStacksWhatIfResults/w`,
+    );
+  });
+
+  it('puts a management-group stack under the group, with no subscription at all', () => {
+    const scope = { kind: 'managementGroup', managementGroupId: 'mg-contoso' } as const;
+    expect(scopePath(scope)).toBe('/providers/Microsoft.Management/managementGroups/mg-contoso');
+    expect(deploymentStackId(scope, 'app')).toBe(
+      '/providers/Microsoft.Management/managementGroups/mg-contoso' +
+        '/providers/Microsoft.Resources/deploymentStacks/app',
     );
   });
 });

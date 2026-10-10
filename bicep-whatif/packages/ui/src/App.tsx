@@ -1,20 +1,31 @@
 import type { Severity } from '@bicep-whatif/core';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BuildNotes } from './components/BuildNotes.js';
-import { DetailPanel } from './components/DetailPanel.js';
-import { NotEvaluatedBanner } from './components/NotEvaluatedBanner.js';
-import { ResultsGrid } from './components/ResultsGrid.js';
-import { SummaryStrip } from './components/SummaryStrip.js';
+import { Chevron } from './components/Glyph.js';
+import { Headline } from './components/Headline.js';
+import { HostLinksContext } from './components/HostLinks.js';
+import { Loading } from './components/Loading.js';
+import { ResourceRows } from './components/ResourceRows.js';
+import { StackList } from './components/StackList.js';
 import { Toolbar } from './components/Toolbar.js';
-import type { LoadResult, WhatIfSource } from './data/source.js';
-import { buildEstateView, type EstateView } from './model/estate.js';
+import { Totals } from './components/Totals.js';
+import { DOCS_URL, ISSUE_URL, type About } from './data/about.js';
+import type { LoadProgress, LoadResult, WhatIfSource } from './data/source.js';
+import { buildEstateView, type EstateView, type GridRow } from './model/estate.js';
+import { headlineFor, summaryGroups } from './model/summary.js';
 import { decodeViewState, encodeViewState } from './model/urlState.js';
 import {
   applyFilters,
   countsForStrip,
   defaultViewState,
-  setStacks,
+  resourceBands,
+  setSeverities,
   toggleSeverity,
+  setStacks,
+  setStacksOpen,
+  toggleRow,
+  toggleStackOpen,
+  type Layout,
   type ViewState,
 } from './model/view.js';
 import type { Navigation } from './nav/navigation.js';
@@ -22,26 +33,102 @@ import type { Navigation } from './nav/navigation.js';
 export interface AppProps {
   source: WhatIfSource;
   navigation: Navigation;
+  /** Which extension and version this is, for the footer's About link. */
+  about?: About | undefined;
+}
+
+/**
+ * At the very bottom of the page, a link that opens on which extension and
+ * version drew the tab, and where to read about it or report a problem.
+ */
+function AboutFooter({
+  about,
+  openUrl,
+}: {
+  about: About | undefined;
+  openUrl: (url: string) => void;
+}): React.ReactElement | null {
+  const [open, setOpen] = useState(false);
+  if (about === undefined) return null;
+  const links: [string, string][] = [
+    ...(about.listingUrl === undefined ? [] : [['Marketplace listing', about.listingUrl] as [string, string]]),
+    ['Documentation', DOCS_URL],
+    ['Report a problem', ISSUE_URL],
+  ];
+  return (
+    <footer className="about">
+      <button
+        type="button"
+        className="linkbtn disclosure"
+        aria-expanded={open}
+        onClick={() => {
+          setOpen((v) => !v);
+        }}
+      >
+        <Chevron open={open} />
+        About this extension
+      </button>
+      {open && (
+        <p className="about__body">
+          Bicep What-If <span className="about__id">{about.line}</span>
+          {links.map(([label, url]) => (
+            <span key={label}>
+              {' · '}
+              <a
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => {
+                  e.preventDefault();
+                  openUrl(url);
+                }}
+              >
+                {label}
+              </a>
+            </span>
+          ))}
+        </p>
+      )}
+    </footer>
+  );
 }
 
 type Load =
-  | { status: 'loading' }
+  | { status: 'loading'; progress: LoadProgress }
   | { status: 'error'; message: string }
   | { status: 'ready'; result: LoadResult; estate: EstateView };
 
+/** Resource rows by stack, in the order given. Stage placeholders are the stack line's job. */
+function byStack(rows: readonly GridRow[]): Map<string, GridRow[]> {
+  const out = new Map<string, GridRow[]>();
+  for (const row of rows) {
+    if (row.isStagePlaceholder) continue;
+    const list = out.get(row.stackKey);
+    if (list) list.push(row);
+    else out.set(row.stackKey, [row]);
+  }
+  return out;
+}
+
 export function App(props: AppProps): React.ReactElement {
-  const [load, setLoad] = useState<Load>({ status: 'loading' });
+  const [load, setLoad] = useState<Load>({ status: 'loading', progress: { phase: 'finding' } });
   const [state, setState] = useState<ViewState>(defaultViewState);
 
   // Set while writing our own hash, so the change we caused does not bounce back
   // through the subscription and clobber the state that produced it.
   const writing = useRef(false);
+  // Nothing is written until the hash has been read once. The host answers
+  // `getHash` over a message round trip, so writing the default view on mount
+  // would reach it first and erase the link the tab was opened from.
+  const [hashRead, setHashRead] = useState(false);
 
   useEffect(() => {
     let live = true;
     void (async () => {
       try {
-        const result = await props.source.load();
+        const result = await props.source.load((progress) => {
+          if (live) setLoad((l) => (l.status === 'loading' ? { status: 'loading', progress } : l));
+        });
         if (!live) return;
         setLoad({ status: 'ready', result, estate: buildEstateView(result.stages) });
       } catch (err) {
@@ -57,9 +144,16 @@ export function App(props: AppProps): React.ReactElement {
   // Adopt whatever the URL says on open, and follow it if the host changes it.
   useEffect(() => {
     let live = true;
-    void props.navigation.getHash().then((hash) => {
-      if (live && hash.length > 0) setState(decodeViewState(hash));
-    });
+    void props.navigation
+      .getHash()
+      .then((hash) => {
+        if (live && hash.length > 0) setState(decodeViewState(hash));
+      })
+      // A tab that cannot read its link still works; it opens on the default view.
+      .catch(() => undefined)
+      .finally(() => {
+        if (live) setHashRead(true);
+      });
     const unsubscribe = props.navigation.subscribe((hash) => {
       if (writing.current) return;
       setState(decodeViewState(hash));
@@ -71,6 +165,7 @@ export function App(props: AppProps): React.ReactElement {
   }, [props.navigation]);
 
   useEffect(() => {
+    if (!hashRead) return;
     writing.current = true;
     props.navigation.setHash(encodeViewState(state));
     const id = window.setTimeout(() => {
@@ -79,31 +174,76 @@ export function App(props: AppProps): React.ReactElement {
     return () => {
       window.clearTimeout(id);
     };
-  }, [state, props.navigation]);
+  }, [state, hashRead, props.navigation]);
 
   const estate = load.status === 'ready' ? load.estate : undefined;
   const allRows = useMemo(() => estate?.rows ?? [], [estate]);
   const rows = useMemo(() => applyFilters(allRows, state), [allRows, state]);
   const stripCounts = useMemo(() => countsForStrip(allRows, state), [allRows, state]);
+  const potentialCounts = useMemo(
+    () => countsForStrip(allRows, state, (row) => row.potential),
+    [allRows, state],
+  );
   const allStackKeys = useMemo(() => estate?.stacks.map((s) => s.key) ?? [], [estate]);
-
-  const selectedRow = useMemo(
-    () => (state.selected === null ? undefined : allRows.find((r) => r.key === state.selected)),
-    [allRows, state.selected],
+  const stacksByKey = useMemo(() => new Map(estate?.stacks.map((s) => [s.key, s]) ?? []), [estate]);
+  const buildResultsUrl = load.status === 'ready' ? load.result.buildResultsUrl : undefined;
+  const hostLinks = useMemo(
+    () => ({
+      buildResultsUrl,
+      openUrl: (url: string) => {
+        props.navigation.openUrl(url);
+      },
+    }),
+    [buildResultsUrl, props.navigation],
   );
-  const selectedStack = useMemo(
-    () => estate?.stacks.find((s) => s.key === selectedRow?.stackKey),
-    [estate, selectedRow],
+  const allRowsByStack = useMemo(() => byStack(allRows), [allRows]);
+  const rowsByStack = useMemo(() => byStack(rows), [rows]);
+
+  // A stack is listed when any of its rows passes the filters; a stage that
+  // never ran passes through its placeholder row, so the default view keeps it.
+  const visibleStacks = useMemo(() => {
+    const keys = new Set(rows.map((r) => r.stackKey));
+    return estate?.stacks.filter((s) => keys.has(s.key)) ?? [];
+  }, [estate, rows]);
+  const groups = useMemo(() => summaryGroups(visibleStacks), [visibleStacks]);
+
+  // Searching opens every stack with a match, or a hit would sit behind a
+  // closed line. Otherwise a stack is open if it was opened, or holds an open
+  // row (which is how a shared link to one resource lands on it).
+  const searching = state.query.trim().length > 0;
+  const openStacks = useMemo(() => {
+    if (searching) return new Set(visibleStacks.map((s) => s.key));
+    const out = new Set(state.openStacks);
+    for (const row of allRows) if (state.open.has(row.key)) out.add(row.stackKey);
+    return out;
+  }, [searching, visibleStacks, state.openStacks, state.open, allRows]);
+
+  const headline = useMemo(
+    () => (load.status === 'ready' ? headlineFor(load.estate, load.result.buildLabel) : undefined),
+    [load],
   );
 
-  const onSelect = useCallback((key: string) => {
-    setState((s) => ({ ...s, selected: s.selected === key ? null : key }));
+  const onToggleRow = useCallback((key: string) => {
+    setState((s) => toggleRow(s, key));
   }, []);
-  const onClose = useCallback(() => {
-    setState((s) => ({ ...s, selected: null }));
+  const onToggleStack = useCallback(
+    (key: string) => {
+      const rowKeys = (allRowsByStack.get(key) ?? []).map((r) => r.key);
+      setState((s) => toggleStackOpen(s, key, openStacks.has(key), rowKeys));
+    },
+    [allRowsByStack, openStacks],
+  );
+  const onExpandAll = useCallback(
+    (expand: boolean) => {
+      setState((s) => setStacksOpen(s, expand ? visibleStacks.map((v) => v.key) : []));
+    },
+    [visibleStacks],
+  );
+  const onShowUnchanged = useCallback(() => {
+    setState((s) => (s.severities.has('noChange') ? s : toggleSeverity(s, 'noChange')));
   }, []);
-  const onToggleSeverity = useCallback((severity: Severity) => {
-    setState((s) => toggleSeverity(s, severity));
+  const onSeverities = useCallback((severities: Severity[]) => {
+    setState((s) => setSeverities(s, severities));
   }, []);
   const onStacks = useCallback(
     (keys: string[]) => {
@@ -117,16 +257,27 @@ export function App(props: AppProps): React.ReactElement {
   const onHideNoise = useCallback((hideNoise: boolean) => {
     setState((s) => ({ ...s, hideNoise }));
   }, []);
+  const onLayout = useCallback((layout: Layout) => {
+    setState((s) => ({ ...s, layout }));
+  }, []);
   const onReset = useCallback(() => {
     setState(defaultViewState());
   }, []);
 
-  if (load.status === 'loading') {
-    return (
-      <div className="center">
-        <p>Reading what-if results…</p>
-      </div>
+  // Bring a linked resource into view once, when the tab first has both the
+  // data and the link. Later clicks never scroll the page out from under you.
+  const scrolled = useRef(false);
+  useEffect(() => {
+    if (scrolled.current || load.status !== 'ready' || state.open.size === 0) return;
+    scrolled.current = true;
+    const target = [...document.querySelectorAll<HTMLElement>('[data-row-key]')].find((el) =>
+      state.open.has(el.dataset.rowKey ?? ''),
     );
+    target?.scrollIntoView?.({ block: 'start' });
+  }, [load.status, state.open]);
+
+  if (load.status === 'loading') {
+    return <Loading progress={load.progress} />;
   }
 
   if (load.status === 'error') {
@@ -134,54 +285,122 @@ export function App(props: AppProps): React.ReactElement {
       <div className="center">
         <h1>This tab could not read the build&rsquo;s what-if results.</h1>
         <p>{load.message}</p>
-        <p>
-          To work offline against the committed fixtures, open this page with <code>?mock=1</code>.
-        </p>
+        {/* Only the dev server has a mock mode (decision E4), so only it offers one. */}
+        {import.meta.env.DEV && (
+          <p>
+            To work offline against the committed fixtures, open this page with <code>?mock=1</code>.
+          </p>
+        )}
+        <AboutFooter about={props.about} openUrl={props.navigation.openUrl} />
       </div>
     );
   }
 
+  const hasStacks = load.estate.stacks.length > 0;
+
   return (
     <div className="app">
-      <NotEvaluatedBanner stacks={load.estate.stacks} />
       <BuildNotes notes={load.result.notes} />
 
-      <SummaryStrip
-        buildLabel={load.result.buildLabel}
-        stackCount={load.estate.stacks.length}
-        evaluatedCount={load.estate.stacks.filter((s) => s.evaluated).length}
-        resourceCount={load.estate.total}
-        counts={stripCounts}
-        active={state.severities}
-        onToggle={onToggleSeverity}
-      />
-
-      <Toolbar
-        stacks={load.estate.stacks}
-        selectedStacks={state.stacks}
-        query={state.query}
-        hideNoise={state.hideNoise}
-        shown={rows.length}
-        total={allRows.length}
-        onQuery={onQuery}
-        onStacks={onStacks}
-        onHideNoise={onHideNoise}
-        onReset={onReset}
-      />
-
-      <div className="app__body">
-        <div className="app__grid">
-          <ResultsGrid rows={rows} selected={state.selected} onSelect={onSelect} onReset={onReset} />
-        </div>
-        {selectedRow && (
-          <DetailPanel
-            row={selectedRow}
-            stack={selectedStack}
-            hideNoise={state.hideNoise}
-            onClose={onClose}
+      {headline && (
+        <header className="summary">
+          <Headline headline={headline} />
+          <Totals
+            counts={stripCounts}
+            potentialCounts={potentialCounts}
           />
-        )}
-      </div>
+        </header>
+      )}
+
+      {hasStacks && (
+        <Toolbar
+          stacks={load.estate.stacks}
+          selectedStacks={state.stacks}
+          query={state.query}
+          hideNoise={state.hideNoise}
+          shown={rows.length}
+          total={allRows.length}
+          layout={state.layout}
+          anyOpen={openStacks.size > 0}
+          onLayout={onLayout}
+          onExpandAll={onExpandAll}
+          onQuery={onQuery}
+          onStacks={onStacks}
+          counts={stripCounts}
+          severities={state.severities}
+          onSeverities={onSeverities}
+          onHideNoise={onHideNoise}
+          onReset={onReset}
+        />
+      )}
+
+      {hasStacks && (
+        <HostLinksContext.Provider value={hostLinks}>
+          <main className="app__main">
+            {rows.length === 0 ? (
+              <div className="empty">
+                <p>Nothing matches these filters.</p>
+                <button type="button" className="btn" onClick={onReset}>
+                  Show everything
+                </button>
+              </div>
+            ) : state.layout === 'stacks' ? (
+              <StackList
+                groups={groups}
+                rowsByStack={rowsByStack}
+                allRowsByStack={allRowsByStack}
+                stacks={stacksByKey}
+                openStacks={openStacks}
+                openRows={state.open}
+                hideNoise={state.hideNoise}
+                query={state.query}
+                unchangedHidden={!state.severities.has('noChange')}
+                onToggleStack={onToggleStack}
+                onToggleRow={onToggleRow}
+                onShowUnchanged={onShowUnchanged}
+              />
+            ) : (
+              <div className="flat">
+                <div className="flat__head" aria-hidden="true">
+                  <span />
+                  <span />
+                  <span>Resource</span>
+                  <span>Stack</span>
+                  <span className="cell--type">Type</span>
+                  <span>Change</span>
+                </div>
+                {/*
+                  In bands, worst first, with unknowns above new and modified: an
+                  unknown can hide a delete. Every row that passes the filters is
+                  listed; no band is cut short.
+                */}
+                {resourceBands(rows).map((band) => (
+                  <section key={band.kind} className="band" data-kind={band.kind} aria-label={band.title}>
+                    <h2 className="band__title">
+                      {band.title}
+                      <span className="band__count">
+                        {band.count}
+                        {band.note !== undefined && <span className="band__note"> — {band.note}</span>}
+                      </span>
+                    </h2>
+                    <ResourceRows
+                      rows={band.rows}
+                      open={state.open}
+                      stacks={stacksByKey}
+                      hideNoise={state.hideNoise}
+                      query={state.query}
+                      withStack
+                      onToggle={onToggleRow}
+                    />
+                  </section>
+                ))}
+              </div>
+            )}
+          </main>
+        </HostLinksContext.Provider>
+      )}
+
+      <AboutFooter about={props.about} openUrl={props.navigation.openUrl} />
     </div>
   );
 }

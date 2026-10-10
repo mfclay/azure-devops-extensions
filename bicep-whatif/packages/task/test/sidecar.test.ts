@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SIDECAR_SCHEMA_VERSION } from '../src/contract.js';
-import { deploySidecar, whatIfSidecar } from '../src/sidecar.js';
+import { stackSidecar, whatIfSidecar } from '../src/sidecar.js';
 
 const BASE = {
   stackId: 'shared-infra',
@@ -16,6 +16,7 @@ describe('whatIfSidecar', () => {
     ...BASE,
     resultName: 'whatif-shared-infra-7700017',
     resultId: '/subscriptions/s/providers/Microsoft.Resources/deploymentStacksWhatIfResults/w',
+    payload: { properties: { correlationId: 'whatif-correlation' } },
   });
 
   it('carries every field the PowerShell wrote, under the same names', () => {
@@ -54,7 +55,7 @@ describe('whatIfSidecar', () => {
 
   it('declares the schema version it actually is', () => {
     expect(sidecar.schemaVersion).toBe(SIDECAR_SCHEMA_VERSION);
-    expect(sidecar.mode).toBe('whatif');
+    expect(sidecar.operation).toBe('whatIf');
   });
 
   it('writes nulls rather than dropping fields when something is unknown', () => {
@@ -68,19 +69,26 @@ describe('whatIfSidecar', () => {
       error: { code: 'X', message: 'y' },
       resultName: 'whatif-x-1',
       resultId: undefined,
+      payload: undefined,
     });
     expect(partial.layer).toBeNull();
     expect(partial.whatIfResultId).toBeNull();
     expect(partial.bicepVersion).toBeNull();
     expect(partial.status).toBe('failed');
     expect(partial.error).toEqual({ code: 'X', message: 'y' });
+    expect(partial.correlationId).toBeNull();
+  });
+
+  it("copies the what-if's correlation id off the payload, for a noise report", () => {
+    expect(sidecar.correlationId).toBe('whatif-correlation');
   });
 });
 
-describe('deploySidecar', () => {
+describe('stackSidecar', () => {
   it('counts the resource arrays rather than copying them', () => {
-    const sidecar = deploySidecar({
+    const sidecar = stackSidecar({
       ...BASE,
+      operation: 'create',
       stackName: 'app-shared-infra',
       stackResourceId: '/subscriptions/s/providers/Microsoft.Resources/deploymentStacks/a',
       provisioningState: 'succeeded',
@@ -96,6 +104,23 @@ describe('deploySidecar', () => {
     expect(sidecar.deletedResources).toBe(0);
     // Absent from the payload entirely — null, not zero.
     expect(sidecar.failedResources).toBeNull();
-    expect(sidecar.mode).toBe('deploy');
+    expect(sidecar.operation).toBe('create');
+  });
+
+  it("copies the deploy's correlation id, the key to what it changed", () => {
+    const args = {
+      ...BASE,
+      operation: 'create' as const,
+      stackName: 'app-shared-infra',
+      stackResourceId: undefined,
+      provisioningState: 'succeeded',
+    };
+    expect(stackSidecar({ ...args, payload: { properties: { correlationId: 'deploy-1' } } }).correlationId).toBe(
+      'deploy-1',
+    );
+    // A delete returns no body; an empty or non-string id is no id.
+    expect(stackSidecar({ ...args, operation: 'delete', payload: undefined }).correlationId).toBeNull();
+    expect(stackSidecar({ ...args, payload: { properties: { correlationId: '' } } }).correlationId).toBeNull();
+    expect(stackSidecar({ ...args, payload: { properties: { correlationId: 7 } } }).correlationId).toBeNull();
   });
 });

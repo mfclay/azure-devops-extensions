@@ -12,7 +12,14 @@
  */
 import { describe, expect, it, vi } from 'vitest';
 
-import { describeConfig, resolveBuildContext } from '../src/data/buildContext.js';
+import {
+  buildResultsUrl,
+  describeConfig,
+  LOCATION_SERVICE_ID,
+  PROJECT_PAGE_SERVICE_ID,
+  resolveBuildContext,
+  resolveBuildResultsUrl,
+} from '../src/data/buildContext.js';
 
 const noService = async (): Promise<unknown> => undefined;
 
@@ -91,5 +98,43 @@ describe('describeConfig', () => {
 
   it('says so when the configuration is empty', () => {
     expect(describeConfig({})).toBe('The host supplied an empty configuration.');
+  });
+});
+
+describe('resolveBuildResultsUrl', () => {
+  const services = (location: unknown, page: unknown) => (id: string) =>
+    Promise.resolve(id === LOCATION_SERVICE_ID ? location : id === PROJECT_PAGE_SERVICE_ID ? page : undefined);
+
+  it('names the project when the host says its name', async () => {
+    const url = await resolveBuildResultsUrl(
+      'p-id',
+      21,
+      services(
+        { getServiceLocation: () => Promise.resolve('https://dev.azure.com/contoso/') },
+        { getProject: () => Promise.resolve({ id: 'p-id', name: 'Platform Team' }) },
+      ),
+    );
+    expect(url).toBe('https://dev.azure.com/contoso/Platform%20Team/_build/results?buildId=21');
+  });
+
+  it('falls back to the project id, and adds the slash a root URL lacks', async () => {
+    const url = await resolveBuildResultsUrl(
+      'p-id',
+      21,
+      services({ getServiceLocation: () => Promise.resolve('https://dev.azure.com/contoso') }, undefined),
+    );
+    expect(url).toBe('https://dev.azure.com/contoso/p-id/_build/results?buildId=21');
+  });
+
+  it('gives up quietly when the host gives no URL, so the tab just draws no link', async () => {
+    expect(await resolveBuildResultsUrl('p-id', 21, services(undefined, undefined))).toBeUndefined();
+    const throwing = (): Promise<unknown> => Promise.reject(new Error('no such service'));
+    expect(await resolveBuildResultsUrl('p-id', 21, throwing)).toBeUndefined();
+  });
+
+  it('builds the same URL directly', () => {
+    expect(buildResultsUrl('https://dev.azure.com/contoso/', 'Platform', 7)).toBe(
+      'https://dev.azure.com/contoso/Platform/_build/results?buildId=7',
+    );
   });
 });

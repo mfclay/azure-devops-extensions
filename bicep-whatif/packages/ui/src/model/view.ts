@@ -15,9 +15,18 @@ export interface ViewState {
   query: string;
   /** Decision C4's client-side noise toggle. Off by default; never hides a whole row. */
   hideNoise: boolean;
-  /** Row key of the resource open in the detail panel. */
-  selected: string | null;
+  /** Row keys open in place. Several may be open at once, to compare them. */
+  open: ReadonlySet<string>;
+  /** Stack keys open in the stack list. A stack holding an open row is open too. */
+  openStacks: ReadonlySet<string>;
+  layout: Layout;
 }
+
+/**
+ * `stacks` opens on one line per stack, worst first; `resources` is the flat
+ * list ranked by severity across every stack.
+ */
+export type Layout = 'stacks' | 'resources';
 
 /**
  * The default view: everything above `noChange`, severity-descending.
@@ -36,7 +45,9 @@ export function defaultViewState(): ViewState {
     stacks: null,
     query: '',
     hideNoise: false,
-    selected: null,
+    open: new Set(),
+    openStacks: new Set(),
+    layout: 'stacks',
   };
 }
 
@@ -61,11 +72,25 @@ function compareRows(a: GridRow, b: GridRow): number {
   return a.key.localeCompare(b.key);
 }
 
+/**
+ * An open row is always shown, whatever the filters say: a link that names one
+ * resource is someone saying "look at this", and an unchanged resource that
+ * lost its protection is exactly what the default filter would otherwise hide.
+ *
+ * A stage that never ran is shown whatever the severity filter says, too. Its
+ * row shares the `unevaluated` rung with resources Azure could not predict, but
+ * the totals line counts only resources, so the control that hides those must
+ * not take a whole unevaluated stack with them.
+ */
 export function applyFilters(rows: readonly GridRow[], state: ViewState): GridRow[] {
   const q = state.query.trim().toLowerCase();
   const out: GridRow[] = [];
   for (const row of rows) {
-    if (!state.severities.has(row.severity)) continue;
+    if (state.open.has(row.key)) {
+      out.push(row);
+      continue;
+    }
+    if (!row.isStagePlaceholder && !state.severities.has(row.severity)) continue;
     if (state.stacks !== null && !state.stacks.has(row.stackKey)) continue;
     if (q.length > 0 && !row.haystack.includes(q)) continue;
     out.push(row);
@@ -74,21 +99,48 @@ export function applyFilters(rows: readonly GridRow[], state: ViewState): GridRo
   return out;
 }
 
-/** Counts for the summary strip, over the stack filter but *not* the severity filter. */
+/**
+ * Counts for the totals line, over the stack filter but *not* the severity
+ * filter. Resources only: a stage that never ran is not a resource Azure could
+ * not predict, and the headline already says how many stacks were not evaluated.
+ */
 export function countsForStrip(
   rows: readonly GridRow[],
   state: ViewState,
+  only: (row: GridRow) => boolean = () => true,
 ): Record<Severity, number> {
   const counts = {} as Record<Severity, number>;
   for (const s of SEVERITIES) counts[s] = 0;
   const q = state.query.trim().toLowerCase();
   for (const row of rows) {
+    if (row.isStagePlaceholder) continue;
     if (state.stacks !== null && !state.stacks.has(row.stackKey)) continue;
     if (q.length > 0 && !row.haystack.includes(q)) continue;
+    if (!only(row)) continue;
     counts[row.severity] += 1;
   }
   return counts;
 }
+
+export function setSeverities(state: ViewState, severities: Iterable<Severity>): ViewState {
+  return { ...state, severities: new Set(severities) };
+}
+
+export interface SeverityPick {
+  label: string;
+  severities: readonly Severity[];
+}
+
+/**
+ * The Changes menu's quick picks. "Deletes and protection loss" is the question
+ * people open the tab to ask. A stack that never ran stays on screen under every
+ * one of them, None included: its row ignores the severity filter.
+ */
+export const SEVERITY_PICKS: readonly SeverityPick[] = Object.freeze([
+  { label: 'All', severities: [...SEVERITIES] },
+  { label: 'Deletes and protection loss', severities: ['destructive', 'protectionLoss'] },
+  { label: 'None', severities: [] },
+]);
 
 export function toggleSeverity(state: ViewState, severity: Severity): ViewState {
   const next = new Set(state.severities);
@@ -110,4 +162,137 @@ export function toggleStack(state: ViewState, key: string, allKeys: readonly str
 export function setStacks(state: ViewState, keys: readonly string[], allKeys: readonly string[]): ViewState {
   if (keys.length === allKeys.length) return { ...state, stacks: null };
   return { ...state, stacks: new Set(keys) };
+}
+
+export function toggleRow(state: ViewState, key: string): ViewState {
+  const open = new Set(state.open);
+  if (open.has(key)) open.delete(key);
+  else open.add(key);
+  return { ...state, open };
+}
+
+/**
+ * Open or close one stack. `rowKeys` are that stack's rows: closing a stack
+ * closes them too, or the open row would hold the stack open.
+ */
+export function toggleStackOpen(
+  state: ViewState,
+  key: string,
+  isOpen: boolean,
+  rowKeys: readonly string[],
+): ViewState {
+  const openStacks = new Set(state.openStacks);
+  if (!isOpen) {
+    openStacks.add(key);
+    return { ...state, openStacks };
+  }
+  openStacks.delete(key);
+  const open = new Set(state.open);
+  for (const k of rowKeys) open.delete(k);
+  return { ...state, openStacks, open };
+}
+
+/** Every stack in `keys` open, or (with an empty list) every stack and row closed. */
+export function setStacksOpen(state: ViewState, keys: readonly string[]): ViewState {
+  if (keys.length === 0) return { ...state, openStacks: new Set(), open: new Set() };
+  return { ...state, openStacks: new Set(keys) };
+}
+
+export type BandKind = 'will' | 'might' | 'unknown' | 'new' | 'modified' | 'unchanged';
+
+export interface Band {
+  kind: BandKind;
+  title: string;
+  /** How many, in words: "4 resources", "12 resources, 1 potential". */
+  count: string;
+  /** Why the band sits where it does, when that is not obvious. */
+  note?: string | undefined;
+  rows: GridRow[];
+}
+
+function bandOf(row: GridRow): BandKind {
+  switch (row.severity) {
+    case 'destructive':
+    case 'protectionLoss':
+      return row.potential ? 'might' : 'will';
+    case 'unevaluated':
+      return 'unknown';
+    case 'create':
+      return 'new';
+    case 'modify':
+      return 'modified';
+    case 'noChange':
+      return 'unchanged';
+  }
+}
+
+const BAND_ORDER: readonly BandKind[] = ['will', 'might', 'unknown', 'new', 'modified', 'unchanged'];
+
+const BAND_TITLE: Readonly<Record<BandKind, string>> = Object.freeze({
+  will: 'Will delete or stop protecting',
+  might: 'Might delete or stop protecting',
+  unknown: 'Unknown — not predicted or not evaluated',
+  new: 'New',
+  modified: 'Modified',
+  unchanged: 'Unchanged',
+});
+
+function plural(n: number, one: string, many: string): string {
+  return `${String(n)} ${n === 1 ? one : many}`;
+}
+
+/**
+ * The flat list, in bands: will, might, unknown, new, modified, unchanged.
+ *
+ * The unknown band sits above new and modified for the reason not-evaluated
+ * stacks group above them on the first screen: an unknown can hide a delete.
+ * Like that grouping, this moves rows, not rungs. `core`'s ladder is unchanged,
+ * and within a band the rows keep the order `applyFilters` gave them.
+ */
+export function resourceBands(rows: readonly GridRow[]): Band[] {
+  const byKind = new Map<BandKind, GridRow[]>();
+  for (const row of rows) {
+    const kind = bandOf(row);
+    const list = byKind.get(kind);
+    if (list) list.push(row);
+    else byKind.set(kind, [row]);
+  }
+
+  const bands: Band[] = [];
+  for (const kind of BAND_ORDER) {
+    const list = byKind.get(kind);
+    if (!list) continue;
+    const stages = list.filter((r) => r.isStagePlaceholder).length;
+    const resources = list.length - stages;
+    const potential = list.filter((r) => r.potential).length;
+    let count: string;
+    let note: string | undefined;
+    if (kind === 'might') {
+      count = `${String(potential)} potential`;
+      note = "Azure couldn't tell";
+    } else if (kind === 'unknown') {
+      const parts: string[] = [];
+      if (resources > 0) parts.push(`${plural(resources, 'resource', 'resources')} not predicted`);
+      if (stages > 0) parts.push(`${plural(stages, 'stack', 'stacks')} not evaluated`);
+      count = parts.join(', ');
+      note = 'ranked above new and modified: an unknown can hide a delete';
+    } else {
+      count = plural(resources, 'resource', 'resources');
+      if (potential > 0) count += `, ${String(potential)} potential`;
+    }
+    bands.push({ kind, title: BAND_TITLE[kind], count, note, rows: list });
+  }
+  return bands;
+}
+
+/**
+ * A resource type with `Microsoft.` dropped, split so the namespace can be
+ * drawn in a lighter tone: `Microsoft.Storage/storageAccounts` →
+ * `Storage` + `/storageAccounts`. Any other provider keeps its whole namespace.
+ */
+export function shortType(resourceType: string): { namespace: string; rest: string } {
+  const slash = resourceType.indexOf('/');
+  if (slash < 0) return { namespace: '', rest: resourceType };
+  const namespace = resourceType.slice(0, slash).replace(/^microsoft\./i, '');
+  return { namespace, rest: resourceType.slice(slash) };
 }

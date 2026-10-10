@@ -13,6 +13,7 @@
  * the ranked run from this summary. It costs one attachment.
  */
 import {
+  needsAttention,
   normalizeStackWhatIf,
   SEVERITIES,
   SEVERITY_GLYPH,
@@ -44,6 +45,9 @@ function label(row: ResourceRow): string {
   return `${row.name} (${type})`;
 }
 
+/** `changeCertainty: potential`: may or may not happen. Ranked as is, and marked. */
+const isPotential = (row: ResourceRow): boolean => row.changeCertainty?.toLowerCase() === 'potential';
+
 /**
  * The "why" line, printed only when the ranking is not what the change type
  * alone would predict. The tab makes the same choice for the same reason:
@@ -72,6 +76,8 @@ export interface RenderedSummary {
   counts: Readonly<Record<Severity, number>>;
   highestSeverity: Severity | undefined;
   warnings: string[];
+  /** Azure's warnings and errors about this what-if, one line each, for the pipeline's issues. */
+  diagnostics: string[];
 }
 
 export function renderSummary(payload: unknown, context: SummaryContext): RenderedSummary {
@@ -105,6 +111,28 @@ export function renderSummary(payload: unknown, context: SummaryContext): Render
     '',
   ];
 
+  // Azure's own word that the result may be incomplete: a short-circuited
+  // module is missing from the rows above and named only here. So these come
+  // before the rows, not after them.
+  const attention = normalized.diagnostics.filter(needsAttention);
+  const diagnostics = attention.map((d) => `${d.code ?? d.level}: ${d.message}`);
+  if (normalized.diagnostics.length > 0) {
+    logLines.push('', `Azure diagnostics (${normalized.diagnostics.length}):`);
+    for (const d of normalized.diagnostics) {
+      const code = d.code !== undefined ? ` ${d.code}` : '';
+      logLines.push(`  ${needsAttention(d) ? '!' : 'i'} ${d.level}${code}: ${d.message}`);
+    }
+  }
+  if (attention.length > 0) {
+    mdLines.push(
+      `> **Azure reported ${attention.length} warning${attention.length === 1 ? '' : 's'} on this what-if.** ` +
+        'Resources can be missing from the result, or predicted without certainty.',
+      '>',
+      ...attention.map((d) => `> - \`${d.code ?? d.level}\`: ${d.message}`),
+      '',
+    );
+  }
+
   if (interesting.length === 0) {
     logLines.push('', 'Nothing above noChange.');
     mdLines.push('Nothing above `noChange`.', '');
@@ -115,9 +143,10 @@ export function renderSummary(payload: unknown, context: SummaryContext): Render
     for (const row of shown) {
       const glyph = SEVERITY_GLYPH[row.severity];
       const why = surprisingReason(row);
-      logLines.push(`  ${glyph} ${label(row)}${why !== undefined ? `  — ${why}` : ''}`);
+      const potential = isPotential(row) ? ' [potential]' : '';
+      logLines.push(`  ${glyph} ${label(row)}${potential}${why !== undefined ? `  — ${why}` : ''}`);
       mdLines.push(
-        `| \`${glyph}\` | \`${row.name}\` | ${row.changeType} | ${why ?? ''} |`.replace(
+        `| \`${glyph}\` | \`${row.name}\` | ${row.changeType}${isPotential(row) ? ' (potential)' : ''} | ${why ?? ''} |`.replace(
           /\|\s*\|/g,
           '| |',
         ),
@@ -154,6 +183,7 @@ export function renderSummary(payload: unknown, context: SummaryContext): Render
     counts: normalized.counts,
     highestSeverity: normalized.highestSeverity,
     warnings,
+    diagnostics,
   };
 }
 

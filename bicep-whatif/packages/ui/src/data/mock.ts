@@ -1,10 +1,9 @@
 /**
  * `?mock=1` — the committed fixtures, no Azure and no Azure DevOps.
  *
- * Decision E4: roughly 95% of the UI work needs neither, and this stays in the
- * shipped bundle because it is the fastest bug-repro channel available. The
- * fixtures are lazily imported so they land in their own chunk and cost a normal
- * load nothing.
+ * Decision E4: roughly 95% of the UI work needs neither. Only the dev server
+ * loads this module; `main.tsx` imports it behind `import.meta.env.DEV`, so a
+ * production build drops it and every fixture with it.
  *
  * The mock estate deliberately includes a stage that produced **no attachment**.
  * The one correctness rule in this project is that such a stage renders loudly
@@ -12,7 +11,7 @@
  * someone opens the app, not only when a real pipeline happens to fail.
  */
 import type { StageResult } from '../model/stage.js';
-import type { LoadResult, WhatIfSource } from './source.js';
+import type { LoadProgress, LoadResult, WhatIfSource } from './source.js';
 
 // The timeline capture feeds the join tests; it is not a what-if payload.
 const FIXTURES = import.meta.glob(['../../../core/fixtures/**/*.json', '!../../../core/fixtures/**/*-timeline-and-attachments.json']);
@@ -33,12 +32,14 @@ function pascal(stackId: string): string {
 export function createMockSource(): WhatIfSource {
   return {
     kind: 'mock',
-    async load(): Promise<LoadResult> {
+    async load(onProgress?: (progress: LoadProgress) => void): Promise<LoadResult> {
+      onProgress?.({ phase: 'finding' });
       const paths = Object.keys(FIXTURES).sort();
       const stages: StageResult[] = [];
       const notes: string[] = [];
 
-      for (const path of paths) {
+      for (const [i, path] of paths.entries()) {
+        onProgress?.({ phase: 'reading', read: i, total: paths.length });
         const loader = FIXTURES[path];
         if (!loader) continue;
         const stackId = stackIdFromPath(path);

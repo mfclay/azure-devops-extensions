@@ -15,14 +15,21 @@ import type { EndpointDetails } from './arm/auth.js';
 import type { RawInputs } from './inputs.js';
 
 const INPUT_NAMES = [
-  'mode',
-  'azureSubscription',
+  'operation',
+  'ConnectedServiceName',
+  'scope',
+  'subscriptionId',
+  'resourceGroupName',
+  'managementGroupId',
   'stackId',
   'stackName',
   'templateFile',
   'parametersFile',
+  'parameters',
   'location',
-  'actionOnUnmanage',
+  'actionOnUnmanageResources',
+  'actionOnUnmanageResourceGroups',
+  'actionOnUnmanageManagementGroups',
   'denySettingsMode',
   'denySettingsApplyToChildScopes',
   'denySettingsExcludedActions',
@@ -33,6 +40,9 @@ const INPUT_NAMES = [
   'bicepVersion',
   'deleteWhatIfResult',
   'bypassStackOutOfSyncError',
+  'tags',
+  'validationLevel',
+  'maskedOutputs',
   'description',
   'outputPath',
   'publishSummary',
@@ -122,9 +132,10 @@ async function main(): Promise<void> {
   const manifestPath = path.join(__dirname, 'task.json');
   tl.setResourcePath(manifestPath, true);
 
-  const connectedService = tl.getInput('azureSubscription', true);
+  // The agent resolves the `azureResourceManagerConnection` alias to this name.
+  const connectedService = tl.getInput('ConnectedServiceName', true);
   if (connectedService === undefined) {
-    tl.setResult(tl.TaskResult.Failed, 'azureSubscription is required.');
+    tl.setResult(tl.TaskResult.Failed, 'ConnectedServiceName is required.');
     return;
   }
 
@@ -138,6 +149,8 @@ async function main(): Promise<void> {
     log: (message) => console.log(message),
     warn: (message) => tl.warning(message),
     setSecret: (value) => tl.setSecret(value),
+    // Not secret, and an output: as BicepDeploy@0 sets them. Masking is setSecret's job.
+    setOutput: (name, value) => tl.setVariable(name, value, false, true),
     addAttachment: (type, name, filePath) => tl.addAttachment(type, name, filePath),
     now: () => new Date(),
     version: readVersion(manifestPath),

@@ -8,29 +8,71 @@
   "category": "Deploy",
   "author": "mfclay",
   "version": { "Major": 1, "Minor": 0, "Patch": 0 },
-  "preview": true,
   "minimumAgentVersion": "3.232.1",
-  "instanceNameFormat": "$(mode) $(stackId)",
+  "instanceNameFormat": "$(operation) $(stackId)",
   "groups": [
     { "name": "protection", "displayName": "Unmanage and deny settings", "isExpanded": true },
     { "name": "advanced", "displayName": "Advanced", "isExpanded": false }
   ],
   "inputs": [
     {
-      "name": "mode",
+      "name": "operation",
       "type": "pickList",
-      "label": "Mode",
-      "defaultValue": "whatif",
+      "label": "Operation",
+      "defaultValue": "whatIf",
       "required": true,
-      "options": { "whatif": "What-if (preview only)", "deploy": "Deploy the stack" },
-      "helpMarkDown": "Both modes read the same inputs and take the same code path to ARM, so a preview cannot disagree with the deploy it previews."
+      "options": {
+        "whatIf": "What-if (preview only)",
+        "create": "Create or update the stack",
+        "validate": "Validate the stack without deploying it",
+        "delete": "Delete the stack"
+      },
+      "helpMarkDown": "What-if, create and validate read the same inputs and take the same code path to ARM, so a preview cannot disagree with the deploy it previews. Defaults to `whatIf`: a step that leaves this out never deploys."
     },
     {
-      "name": "azureSubscription",
+      "name": "ConnectedServiceName",
+      "aliases": ["azureResourceManagerConnection"],
       "type": "connectedService:AzureRM",
       "label": "Azure Resource Manager connection",
       "required": true,
       "helpMarkDown": "Service principal (secret), workload identity federation, or managed identity. Certificate-based service principals are not supported."
+    },
+    {
+      "name": "scope",
+      "type": "pickList",
+      "label": "Scope",
+      "defaultValue": "subscription",
+      "required": true,
+      "options": {
+        "resourceGroup": "Resource group",
+        "subscription": "Subscription",
+        "managementGroup": "Management group"
+      },
+      "helpMarkDown": "Where the stack lives. Stacks exist at these three scopes only."
+    },
+    {
+      "name": "subscriptionId",
+      "type": "string",
+      "label": "Subscription id",
+      "required": false,
+      "visibleRule": "scope != managementGroup",
+      "helpMarkDown": "Defaults to the service connection's subscription."
+    },
+    {
+      "name": "resourceGroupName",
+      "type": "string",
+      "label": "Resource group",
+      "required": true,
+      "visibleRule": "scope = resourceGroup",
+      "helpMarkDown": "The resource group the stack lives in. It must already exist."
+    },
+    {
+      "name": "managementGroupId",
+      "type": "string",
+      "label": "Management group id",
+      "required": true,
+      "visibleRule": "scope = managementGroup",
+      "helpMarkDown": "The id of the management group the stack lives in, not its display name."
     },
     {
       "name": "stackId",
@@ -50,41 +92,70 @@
       "name": "templateFile",
       "type": "filePath",
       "label": "Template file",
-      "required": true,
-      "helpMarkDown": "A `.bicep` with `targetScope = 'subscription'`, or a compiled ARM `.json`."
+      "required": false,
+      "visibleRule": "operation != delete",
+      "helpMarkDown": "A `.bicep` whose `targetScope` matches **Scope**, or a compiled ARM `.json`. Required unless **Parameters file** is a `.bicepparam`, which names its own template with `using`."
     },
     {
       "name": "parametersFile",
       "type": "filePath",
       "label": "Parameters file",
       "required": false,
+      "visibleRule": "operation != delete",
       "helpMarkDown": "A `.bicepparam` or a JSON parameters file. A `.bicepparam` is compiled in one pass that yields both the template and the parameter values, which is what makes secret redaction reliable."
+    },
+    {
+      "name": "parameters",
+      "type": "multiLine",
+      "label": "Inline parameters",
+      "required": false,
+      "visibleRule": "operation != delete",
+      "properties": { "resizable": "true", "rows": "4" },
+      "helpMarkDown": "A JSON object of parameter name to value, e.g. `{\"sku\": \"Standard\"}`, laid over **Parameters file**. A `@secure()` parameter set here is redacted from the payload like one set in the file; pass its value from a secret variable."
     },
     {
       "name": "location",
       "type": "string",
       "label": "Location",
       "required": true,
-      "helpMarkDown": "Where the stack — and, in what-if mode, the transient result resource — lives."
+      "visibleRule": "scope != resourceGroup && operation != delete",
+      "helpMarkDown": "Where the stack — and, for a what-if, the transient result resource — lives. Not used at resource-group scope, where both take the group's location."
     },
     {
-      "name": "actionOnUnmanage",
+      "name": "actionOnUnmanageResources",
       "type": "pickList",
-      "label": "Action on unmanage",
+      "label": "Action on unmanaged resources",
       "required": true,
       "groupName": "protection",
-      "options": {
-        "detachAll": "detachAll — leave everything in Azure",
-        "deleteResources": "deleteResources — delete resources, detach their groups",
-        "deleteAll": "deleteAll — delete resources, groups and management groups"
-      },
-      "helpMarkDown": "An input to what-if, not just to the deploy: it decides whether a resource dropped from the template is previewed as **Detach** or as **Delete**."
+      "options": { "delete": "Delete", "detach": "Detach" },
+      "helpMarkDown": "What happens to a resource the stack stops managing. An input to what-if, not just to the deploy: it decides whether a resource dropped from the template is previewed as **Detach** or as **Delete**."
+    },
+    {
+      "name": "actionOnUnmanageResourceGroups",
+      "type": "pickList",
+      "label": "Action on unmanaged resource groups",
+      "required": true,
+      "groupName": "protection",
+      "visibleRule": "scope != resourceGroup",
+      "options": { "delete": "Delete", "detach": "Detach" },
+      "helpMarkDown": "What happens to a resource group the stack stops managing. A resource-group stack cannot manage one."
+    },
+    {
+      "name": "actionOnUnmanageManagementGroups",
+      "type": "pickList",
+      "label": "Action on unmanaged management groups",
+      "required": true,
+      "groupName": "protection",
+      "visibleRule": "scope = managementGroup",
+      "options": { "delete": "Delete", "detach": "Detach" },
+      "helpMarkDown": "What happens to a management group the stack stops managing. Only a management-group-scope stack can manage one."
     },
     {
       "name": "denySettingsMode",
       "type": "pickList",
       "label": "Deny settings mode",
       "required": true,
+      "visibleRule": "operation != delete",
       "groupName": "protection",
       "options": {
         "none": "none",
@@ -98,6 +169,7 @@
       "label": "Apply deny settings to child scopes",
       "defaultValue": "false",
       "required": false,
+      "visibleRule": "operation != delete",
       "groupName": "protection"
     },
     {
@@ -105,6 +177,7 @@
       "type": "string",
       "label": "Excluded actions",
       "required": false,
+      "visibleRule": "operation != delete",
       "groupName": "protection",
       "helpMarkDown": "Space-, comma- or newline-separated management operations excluded from the lock."
     },
@@ -113,6 +186,7 @@
       "type": "string",
       "label": "Excluded principals",
       "required": false,
+      "visibleRule": "operation != delete",
       "groupName": "protection",
       "helpMarkDown": "Up to five Entra principal object ids excluded from the lock."
     },
@@ -123,7 +197,7 @@
       "defaultValue": "PT3H",
       "required": false,
       "groupName": "advanced",
-      "visibleRule": "mode = whatif",
+      "visibleRule": "operation = whatIf",
       "helpMarkDown": "ISO 8601. The service enforces one to three hours and rejects anything longer at run time, whatever the documentation says."
     },
     {
@@ -133,7 +207,7 @@
       "defaultValue": "true",
       "required": false,
       "groupName": "advanced",
-      "visibleRule": "mode = whatif",
+      "visibleRule": "operation = whatIf",
       "helpMarkDown": "Stack what-if creates a persistent subscription-scope resource that counts toward that scope's limits. Leave this on; retention is the backstop, not the mechanism."
     },
     {
@@ -143,7 +217,7 @@
       "defaultValue": "false",
       "required": false,
       "groupName": "advanced",
-      "visibleRule": "mode = deploy"
+      "visibleRule": "operation = create || operation = delete"
     },
     {
       "name": "bicepVersion",
@@ -151,6 +225,7 @@
       "label": "Bicep version",
       "defaultValue": "0.46.1",
       "required": false,
+      "visibleRule": "operation != delete",
       "groupName": "advanced",
       "helpMarkDown": "Pinned on purpose. Compiler output changes across versions, and every consumer's what-if should compile identically. A `bicep` already on PATH is deliberately ignored."
     },
@@ -168,14 +243,48 @@
       "label": "What-if result name",
       "required": false,
       "groupName": "advanced",
-      "visibleRule": "mode = whatif",
+      "visibleRule": "operation = whatIf",
       "helpMarkDown": "Defaults to `whatif-<stackId>-<Build.BuildId>`, which is what keeps two concurrent builds from colliding on the same resource."
+    },
+    {
+      "name": "tags",
+      "type": "multiLine",
+      "label": "Tags",
+      "required": false,
+      "visibleRule": "operation != delete",
+      "groupName": "advanced",
+      "properties": { "resizable": "true", "rows": "3" },
+      "helpMarkDown": "A JSON object of tag name to string value, set on the stack and on the transient what-if result, which a tag policy would otherwise deny."
+    },
+    {
+      "name": "validationLevel",
+      "type": "pickList",
+      "label": "Validation level",
+      "required": false,
+      "visibleRule": "operation != delete",
+      "groupName": "advanced",
+      "options": {
+        "provider": "Provider — the resource providers validate, with RBAC checks",
+        "template": "Template — static analysis only",
+        "providerNoRbac": "Provider, without RBAC checks"
+      },
+      "helpMarkDown": "Leave unset for the service's default."
+    },
+    {
+      "name": "maskedOutputs",
+      "type": "string",
+      "label": "Masked outputs",
+      "required": false,
+      "groupName": "advanced",
+      "visibleRule": "operation = create",
+      "helpMarkDown": "Comma-separated output names. Every output of a create is set as an output variable of the same name; these are also masked in the log and redacted from the attached payload."
     },
     {
       "name": "description",
       "type": "string",
       "label": "Description",
       "required": false,
+      "visibleRule": "operation != delete",
       "groupName": "advanced"
     },
     {
@@ -196,13 +305,11 @@
       "helpMarkDown": "Also attach a `Distributedtask.Core.Summary` roll-up, which renders on the build summary page without this extension's tab."
     }
   ],
-  "restrictions": {
-    "settableVariables": {
-      "allowed": []
-    }
-  },
   "execution": {
     "Node20_1": {
+      "target": "index.js"
+    },
+    "Node24": {
       "target": "index.js"
     }
   }

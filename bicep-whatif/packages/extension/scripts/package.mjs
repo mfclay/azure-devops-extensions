@@ -103,6 +103,17 @@ const strays = (await fs.readdir(path.join(build, 'ui'), { recursive: true })).f
 );
 if (strays.length > 0) throw new Error(`Unexpected task.json inside the tab: ${strays.join(', ')}`);
 
+// Mock mode is dev-server only (decision E4), so a production tab holds no
+// fixture chunk and no source map. Either one here means the build that made
+// `ui/dist` was not a production build, or the `import.meta.env.DEV` gate in
+// `main.tsx` has stopped dropping `data/mock.ts`.
+const fixtureNames = (await fs.readdir(path.join(repo, 'packages/core/fixtures'), { recursive: true }))
+  .filter((f) => String(f).endsWith('.json'))
+  .map((f) => path.basename(String(f), '.json'));
+const shipped = (await fs.readdir(path.join(build, 'ui'), { recursive: true })).map(String);
+const leaks = shipped.filter((f) => f.endsWith('.map') || fixtureNames.some((n) => path.basename(f).startsWith(`${n}-`)));
+if (leaks.length > 0) throw new Error(`The tab ships fixtures or source maps: ${leaks.join(', ')}`);
+
 // ── The task's version follows the extension's ──────────────────────────────
 //
 // Azure DevOps keeps serving the package it already holds for a task version,

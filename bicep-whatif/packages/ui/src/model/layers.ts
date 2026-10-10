@@ -71,3 +71,13 @@ export function groupStacks(stackIds: readonly string[]): StackGroup[] {
   }
   return multi;
 }
+
+/**
+ * Whether the stack filter should offer grouping by name prefix at all: only
+ * when the prefixes find at least two real groups. An estate not named with a
+ * shared prefix would otherwise get one group and a lone "Other" heading,
+ * which says nothing grouping by outcome does not.
+ */
+export function prefixGroupingHelps(stackIds: readonly string[]): boolean {
+  return groupStacks(stackIds).filter((g) => g.key !== UNGROUPED_KEY).length >= 2;
+}

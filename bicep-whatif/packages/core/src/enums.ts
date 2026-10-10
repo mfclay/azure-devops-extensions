@@ -44,8 +44,14 @@ export type ResourceChangeType = (typeof RESOURCE_CHANGE_TYPES)[number];
 export const PROPERTY_CHANGE_TYPES = ['create', 'delete', 'modify', 'array', 'noEffect'] as const;
 export type PropertyChangeType = (typeof PROPERTY_CHANGE_TYPES)[number];
 
-/** Whether the stack still governs the resource after the operation. */
-export const MANAGEMENT_STATUSES = ['managed', 'notManaged'] as const;
+/**
+ * Whether the stack still governs the resource after the operation.
+ *
+ * Azure sends `notManaged`, in every capture here, although the 2025-07-01 spec
+ * names it `unmanaged`; both are known, and both mean the stack lets go.
+ * `unknown` is what a short-circuited resource carries: Azure could not say.
+ */
+export const MANAGEMENT_STATUSES = ['managed', 'notManaged', 'unmanaged', 'unknown'] as const;
 export type ManagementStatus = (typeof MANAGEMENT_STATUSES)[number];
 
 /** Deny-assignment state on the resource. */
@@ -55,6 +61,8 @@ export const DENY_STATUSES = [
   'denyWriteAndDelete',
   'notSupported',
   'removedBySystem',
+  'inapplicable',
+  'unknown',
 ] as const;
 export type DenyStatus = (typeof DENY_STATUSES)[number];
 
@@ -93,6 +101,7 @@ export function denyStrength(status: string | undefined): number | undefined {
     case 'none':
     case 'notSupported':
     case 'removedBySystem':
+    case 'inapplicable':
       return 0;
     default:
       return undefined;

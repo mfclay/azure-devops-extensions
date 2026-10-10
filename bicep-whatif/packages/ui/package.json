@@ -19,8 +19,6 @@
   },
   "dependencies": {
     "@bicep-whatif/core": "0.1.0",
-    "@tanstack/react-table": "^9.1.2",
-    "@tanstack/react-virtual": "^3.14.10",
     "azure-devops-extension-api": "^5.276.0",
     "azure-devops-extension-sdk": "^4",
     "react": "^19.2.8",

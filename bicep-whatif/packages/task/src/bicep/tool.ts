@@ -47,10 +47,13 @@ async function toolLib(): Promise<typeof import('azure-pipelines-tool-lib/tool.j
  * to have it read back to them.
  */
 export function needsCompiler(
-  templateFile: string,
+  templateFile: string | undefined,
   parametersFile: string | undefined,
 ): boolean {
-  return isBicep(templateFile) || (parametersFile !== undefined && isBicepParam(parametersFile));
+  return (
+    (templateFile !== undefined && isBicep(templateFile)) ||
+    (parametersFile !== undefined && isBicepParam(parametersFile))
+  );
 }
 
 /** Templates of a few megabytes are ordinary; the default 1 MB buffer is not enough. */
@@ -122,10 +125,15 @@ export async function ensureBicep(
   return binary;
 }
 
-async function run(binary: string, args: string[]): Promise<string> {
+async function run(
+  binary: string,
+  args: string[],
+  env?: Readonly<Record<string, string>>,
+): Promise<string> {
   try {
     const { stdout } = await execFileAsync(binary, args, {
       maxBuffer: MAX_BUFFER,
+      ...(env !== undefined ? { env: { ...process.env, ...env } } : {}),
       // Bicep writes diagnostics to stderr and JSON to stdout; keep them apart.
       encoding: 'utf8',
     });
@@ -165,16 +173,31 @@ function parseJson(text: string, what: string): unknown {
  * `parametersJson` the resolved values. Taking them from a single call is what
  * makes the redaction sound — the types and the values cannot disagree about
  * which parameter is which, because one compile produced both.
+ *
+ * With no `templateFile`, the `.bicepparam`'s own `using` names the template.
+ * `inputs.ts` refuses a missing template with anything else.
+ *
+ * `overrides`, the inline `parameters` input, reach a `.bicepparam` through
+ * `BICEP_PARAMETERS_OVERRIDES`, as `BicepDeploy@0` passes them, so a parameter
+ * the file derives from an overridden one is derived from the override. Other
+ * parameter sources take them afterwards, in `request.ts`.
  */
 export async function compile(
   binary: string,
-  templateFile: string,
+  templateFile: string | undefined,
   parametersFile: string | undefined,
+  overrides: Readonly<Record<string, unknown>> = {},
 ): Promise<CompileResult> {
   if (parametersFile !== undefined && isBicepParam(parametersFile)) {
     const args = ['build-params', parametersFile, '--stdout'];
-    if (isBicep(templateFile)) args.push('--bicep-file', templateFile);
-    const compiled = parseJson(await run(binary, args), 'bicep build-params') as Record<
+    if (templateFile !== undefined && isBicep(templateFile)) {
+      args.push('--bicep-file', templateFile);
+    }
+    const env =
+      Object.keys(overrides).length > 0
+        ? { BICEP_PARAMETERS_OVERRIDES: JSON.stringify(overrides) }
+        : undefined;
+    const compiled = parseJson(await run(binary, args, env), 'bicep build-params') as Record<
       string,
       unknown
     >;
@@ -194,6 +217,10 @@ export async function compile(
           ? parseJson(parametersJson, 'The compiled parameters')
           : {},
     };
+  }
+
+  if (templateFile === undefined) {
+    throw new BicepError('There is no template: templateFile is not set.');
   }
 
   const template = isBicep(templateFile)

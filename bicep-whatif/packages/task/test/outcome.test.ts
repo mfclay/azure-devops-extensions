@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { failureEnvelope, outcomeOf } from '../src/outcome.js';
+import { failureEnvelope, outcomeOf, validationOutcomeOf } from '../src/outcome.js';
 
 describe('outcomeOf', () => {
   it('reports succeeded only on a terminal succeeded state with no error', () => {
@@ -56,5 +56,19 @@ describe('failureEnvelope', () => {
     const envelope = failureEnvelope('AuthError', 'no token');
     expect(outcomeOf(envelope).status).toBe('failed');
     expect(outcomeOf(envelope).error).toMatchObject({ code: 'AuthError', message: 'no token' });
+  });
+});
+
+describe('validationOutcomeOf', () => {
+  it('succeeds on a result with no error, though it has no provisioningState', () => {
+    const outcome = validationOutcomeOf({ id: 'stack', properties: { validatedResources: [] } });
+    expect(outcome.status).toBe('succeeded');
+    expect(outcome.resourceId).toBe('stack');
+  });
+
+  it('fails on an error at the top or in properties, and on no result at all', () => {
+    expect(validationOutcomeOf({ error: { code: 'X' } }).status).toBe('failed');
+    expect(validationOutcomeOf({ properties: { error: { code: 'X' } } }).status).toBe('failed');
+    expect(validationOutcomeOf(undefined).status).toBe('failed');
   });
 });

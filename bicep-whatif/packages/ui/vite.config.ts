@@ -10,12 +10,13 @@ export default defineConfig({
   base: './',
   build: {
     outDir: 'dist',
-    sourcemap: true,
+    // Nothing in the VSIX reads them, and the source is public anyway.
+    sourcemap: false,
     target: 'es2022',
   },
   server: {
     // The committed fixtures live in packages/core, outside this package's root.
-    // `?mock=1` loads them from there — see src/data/mock.ts.
+    // `?mock=1`, which only the dev server serves, loads them from there — see src/data/mock.ts.
     fs: { allow: ['../..'] },
   },
 });

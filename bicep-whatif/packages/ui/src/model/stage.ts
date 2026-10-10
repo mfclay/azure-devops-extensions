@@ -1,14 +1,15 @@
 /**
- * A `WhatIf_*` pipeline stage, paired with the attachment it produced — or with
- * the fact that it produced none.
+ * A what-if pipeline stage, paired with the attachment one of its stacks
+ * produced — or with the fact that it produced none.
  *
  * This type is the boundary the correctness rule rests on (design §03, decision
  * E3). What-if stages run `continueOnError: true`, so a failed stage lands on
  * `SucceededWithIssues` and attaches nothing at all. A source that returned only
  * attachments would make eight clean stacks and one never-evaluated stack look
- * identical. So a source returns one `StageResult` per stage in the build
- * timeline, and `payload: undefined` is a first-class outcome rather than an
- * omission.
+ * identical. So a source returns a `StageResult` for every stage in the build
+ * timeline: one per stack the stage attached, or one with no stack when it
+ * attached nothing. `payload: undefined` is a first-class outcome rather than
+ * an omission.
  */
 
 /**
@@ -31,6 +32,11 @@ export interface Sidecar {
   whatIfResultName?: string | undefined;
   whatIfResultId?: string | undefined;
   azCliVersion?: string | undefined;
+  /**
+   * `whatIf` on every sidecar this tab reads; the task files other operations'
+   * sidecars under other attachment types. Absent from older producers'.
+   */
+  operation?: string | undefined;
   /** `succeeded` | `failed`, lowercase. Written even when the what-if fails — that is the point. */
   status?: string | undefined;
   /**
@@ -50,6 +56,11 @@ export interface StageResult {
   stageId: string;
   /** Display name from the timeline record. Falls back to `stageId`. */
   displayName: string;
+  /**
+   * The stage's timeline record id, a GUID. The build results page opens a
+   * stage's log by it. Undefined for an attachment no stage could be found for.
+   */
+  recordId?: string | undefined;
   /** Timeline record state / result, verbatim. `SucceededWithIssues` is the interesting one. */
   state?: string | undefined;
   result?: string | undefined;

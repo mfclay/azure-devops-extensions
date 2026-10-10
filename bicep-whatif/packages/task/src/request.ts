@@ -1,39 +1,36 @@
 /**
  * The ARM request bodies, built as pure data.
  *
- * `mode: whatif` and `mode: deploy` differ by three properties out of nine, and
+ * `operation: whatIf` and `operation: create` differ by three properties out of nine, and
  * building both from one `TaskInputs` is what makes decision **C2** structurally
  * unbreakable rather than merely documented: the preview and the deploy cannot
  * disagree about `actionOnUnmanage` or `denySettings`, because there is only one
  * set of values and one code path that reads them.
  */
-import type { ActionOnUnmanage, DenySettingsInput, TaskInputs } from './inputs.js';
-
-/** ARM's own shape: three independent actions, not the CLI's three shorthands. */
-export interface ActionOnUnmanageBody {
-  resources: 'delete' | 'detach';
-  resourceGroups: 'delete' | 'detach';
-  managementGroups: 'delete' | 'detach';
-}
+import type {
+  ActionOnUnmanageInput,
+  DenySettingsInput,
+  TaskInputs,
+  UnmanageAction,
+  ValidationLevel,
+} from './inputs.js';
 
 /**
- * Expand the CLI shorthand.
- *
- * Taken from `_prepare_stacks_action_on_unmanage` in the Azure CLI's
- * `resource/custom.py`, not from the documentation — `deleteResources` deleting
- * resources while *detaching* their resource groups is the kind of asymmetry a
- * doc paraphrases away, and getting it wrong changes whether a dropped resource
- * is previewed as Detach or as Delete.
+ * ARM's own shape. Only `resources` is required by the service; a switch the
+ * scope cannot use is left out rather than sent with a value that means nothing.
  */
-export function expandActionOnUnmanage(action: ActionOnUnmanage): ActionOnUnmanageBody {
-  switch (action) {
-    case 'deleteAll':
-      return { resources: 'delete', resourceGroups: 'delete', managementGroups: 'delete' };
-    case 'deleteResources':
-      return { resources: 'delete', resourceGroups: 'detach', managementGroups: 'detach' };
-    case 'detachAll':
-      return { resources: 'detach', resourceGroups: 'detach', managementGroups: 'detach' };
-  }
+export interface ActionOnUnmanageBody {
+  resources: UnmanageAction;
+  resourceGroups?: UnmanageAction;
+  managementGroups?: UnmanageAction;
+}
+
+export function actionOnUnmanageBody(action: ActionOnUnmanageInput): ActionOnUnmanageBody {
+  return {
+    resources: action.resources,
+    ...(action.resourceGroups !== undefined ? { resourceGroups: action.resourceGroups } : {}),
+    ...(action.managementGroups !== undefined ? { managementGroups: action.managementGroups } : {}),
+  };
 }
 
 export interface DenySettingsBody {
@@ -74,8 +71,53 @@ export function unwrapParameters(compiled: unknown): Record<string, unknown> {
   return outer;
 }
 
+/**
+ * The parameter values ARM is sent: the compiled ones, with the inline
+ * `parameters` input laid over them, each wrapped as ARM wants it.
+ *
+ * Built once, and handed both to the request and to `secureValuesFrom`, so the
+ * values redaction looks for are exactly the values that went to ARM. An
+ * inline override of a `@secure()` parameter is therefore redacted like one
+ * from a file.
+ */
+export function effectiveParameters(
+  compiled: unknown,
+  overrides: Readonly<Record<string, unknown>>,
+): { parameters: Record<string, unknown> } {
+  const merged: Record<string, unknown> = { ...unwrapParameters(compiled) };
+  for (const [name, value] of Object.entries(overrides)) merged[name] = { value };
+  return { parameters: merged };
+}
+
+/** ARM capitalises these; `BicepDeploy@0`'s input does not. */
+const VALIDATION_LEVEL_BODY: Record<ValidationLevel, string> = {
+  template: 'Template',
+  provider: 'Provider',
+  providerNoRbac: 'ProviderNoRbac',
+};
+
+/**
+ * The resource's own fields, beside `properties`. Tags go on the what-if result
+ * as well as the stack: a policy that requires a tag denies any resource
+ * without it, and the result is a resource.
+ */
+function topLevel(inputs: TaskInputs): { location?: string; tags?: Record<string, string> } {
+  return {
+    ...(inputs.location !== undefined ? { location: inputs.location } : {}),
+    ...(Object.keys(inputs.tags).length > 0 ? { tags: inputs.tags } : {}),
+  };
+}
+
+function validationLevel(inputs: TaskInputs): { validationLevel?: string } {
+  return inputs.validationLevel !== undefined
+    ? { validationLevel: VALIDATION_LEVEL_BODY[inputs.validationLevel] }
+    : {};
+}
+
 export interface WhatIfRequestBody {
-  location: string;
+  /** Absent at resource-group scope, where ARM takes the group's location. */
+  location?: string;
+  tags?: Record<string, string>;
   properties: Record<string, unknown>;
 }
 
@@ -83,9 +125,9 @@ export interface BuildRequestArgs {
   inputs: TaskInputs;
   /** The compiled ARM template, as an object. */
   template: unknown;
-  /** Whatever the parameters compiled to; unwrapped here. */
+  /** `effectiveParameters`' result, or whatever the parameters compiled to; unwrapped here. */
   parameters: unknown;
-  /** Fully qualified `/subscriptions/.../deploymentStacks/{name}`. */
+  /** Fully qualified `<scope>/providers/Microsoft.Resources/deploymentStacks/{name}`. */
   deploymentStackResourceId: string;
 }
 
@@ -93,31 +135,44 @@ export interface BuildRequestArgs {
 export function buildWhatIfRequest(args: BuildRequestArgs): WhatIfRequestBody {
   const { inputs } = args;
   return {
-    location: inputs.location,
+    ...topLevel(inputs),
     properties: {
       template: args.template,
       parameters: unwrapParameters(args.parameters),
-      actionOnUnmanage: expandActionOnUnmanage(inputs.actionOnUnmanage),
+      actionOnUnmanage: actionOnUnmanageBody(inputs.actionOnUnmanage),
       denySettings: denySettingsBody(inputs.denySettings),
       deploymentStackResourceId: args.deploymentStackResourceId,
       retentionInterval: inputs.retentionInterval,
+      ...validationLevel(inputs),
       ...(inputs.description !== undefined ? { description: inputs.description } : {}),
     },
   };
 }
 
 /** `PUT .../deploymentStacks/{name}` */
-export function buildDeployRequest(args: BuildRequestArgs): WhatIfRequestBody {
+export function buildCreateRequest(args: BuildRequestArgs): WhatIfRequestBody {
   const { inputs } = args;
   return {
-    location: inputs.location,
+    ...topLevel(inputs),
     properties: {
       template: args.template,
       parameters: unwrapParameters(args.parameters),
-      actionOnUnmanage: expandActionOnUnmanage(inputs.actionOnUnmanage),
+      actionOnUnmanage: actionOnUnmanageBody(inputs.actionOnUnmanage),
       denySettings: denySettingsBody(inputs.denySettings),
       ...(inputs.bypassStackOutOfSyncError ? { bypassStackOutOfSyncError: true } : {}),
+      ...validationLevel(inputs),
       ...(inputs.description !== undefined ? { description: inputs.description } : {}),
     },
   };
+}
+
+/**
+ * `POST .../deploymentStacks/{name}/validate` takes the body a create would send,
+ * less the out-of-sync bypass, which the validate API does not take.
+ */
+export function buildValidateRequest(args: BuildRequestArgs): WhatIfRequestBody {
+  return buildCreateRequest({
+    ...args,
+    inputs: { ...args.inputs, bypassStackOutOfSyncError: false },
+  });
 }

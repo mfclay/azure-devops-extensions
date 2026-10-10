@@ -47,6 +47,15 @@ export function stringLeaves(value: unknown): string[] {
   return [];
 }
 
+/**
+ * The strings in a value long enough to treat as a secret. For a value marked
+ * secret by name rather than by type — a masked output — where nothing says
+ * which of its leaves matter, so all of them do.
+ */
+export function secretLeaves(value: unknown): string[] {
+  return stringLeaves(value).filter((leaf) => leaf.length >= MIN_SECRET_LENGTH);
+}
+
 export class RedactionError extends Error {
   constructor(message: string) {
     super(message);

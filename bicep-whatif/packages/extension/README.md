@@ -9,8 +9,9 @@ npm run package -w @bicep-whatif/extension
 ```
 
 That writes `dist/<publisher>.<id>-<version>.vsix` (`MichaelC.bicep-whatif-dev-…` for the dev overrides) and prints its
-size against the 50 MB Marketplace limit. Currently **4.08 MB**, of which the
-task's two un-bundlable Microsoft libraries are most of it.
+size against the 50 MB Marketplace limit. Currently **7.4 MB**: the task's two
+un-bundlable Microsoft libraries are most of it, and the four listing screenshots
+most of the rest.
 
 ## Why the task ships even though the tab is the product
 
@@ -70,7 +71,9 @@ question with no clean answer.
 ## What goes in the archive
 
 Staged into `build/` first, so the VSIX contains exactly what was staged — no
-`node_modules` from a sibling package, no source, no fixtures.
+`node_modules` from a sibling package, no source, no fixtures. Packaging refuses
+a tab holding a fixture chunk or a source map, which only a build with mock mode
+compiled in would produce (decision E4).
 
 | In the VSIX | From | Addressable |
 |---|---|---|
@@ -84,6 +87,18 @@ re-render the PNG from it with any SVG renderer. `art/task-icon.svg`
 is the same mark with the glyph enlarged for 32px, rendered to the task's
 `packages/task/icon.png`.
 
+`images/rung-*.png` are the tab's severity icons for the overview's rung table, rendered at
+25 px from the paths in `packages/ui/src/components/Glyph.tsx` in the light theme's tone
+colours. They are PNGs at display size because the listing rejects any SVG in the package
+and draws a markdown image at its own pixel size. A sized HTML `<img>` is no way out: only
+markdown images get their paths rewritten, so it comes out broken. Re-render them if those paths change.
+
+`images/screenshot-*.png` are the manifest's `screenshots` and also appear in the overview. They
+are the real tab on the harness build (synthetic data only), cropped to the tab's frame so no
+URL or organisation shows. The listing's carousel shows only the first three, so order them by
+importance. Each was re-encoded losslessly with its metadata chunks dropped, which also cleared
+a chance denylist match in the compressed bytes.
+
 ## Publishing
 
 [RELEASING.md](../../../RELEASING.md) at the repo root has the whole process: identity, dev
@@ -96,12 +111,13 @@ builds, the release steps, credentials and the listing. What is specific to this
   sets `"version"`, then publish with `tools/tfx-run`, or run the *Bicep What-If Publish*
   workflow by hand. Never `--rev-version`; RELEASING.md says why.
 
-### The release publish — not yet done
+### The release
 
-The release will be `MichaelC.bicep-whatif`, published by the steps in RELEASING.md
-with `--overrides overrides/release.json`, which is gitignored for the reason in
-"The publisher is never committed" above. Until then, the task's markdown summary
-(`publishSummary`, on by default) is what a pipeline without the extension
-installed still gets. **Never `--share-with` an
+The release is `MichaelC.bicep-whatif`, published by the *Bicep What-If Publish*
+workflow in its `release` mode (RELEASING.md, "A release"). The terminal fallback there
+packages with `--overrides overrides/release.json`, which is gitignored for the reason in
+"The publisher is never committed" above. A pipeline whose organisation has not installed
+the extension still gets the task's markdown summary (`publishSummary`, on by default).
+**Never `--share-with` an
 organisation people rely on from the dev publisher** — identity is `{publisher}.{id}`, so
 even once creates an install people must later be migrated off.

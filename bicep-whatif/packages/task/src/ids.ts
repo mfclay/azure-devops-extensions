@@ -24,7 +24,7 @@ export function layerFromTemplateFile(templateFile: string): number | undefined 
  * The what-if result resource name.
  *
  * Stack what-if is not a transient operation — it creates a persistent
- * `Microsoft.Resources/deploymentStacksWhatIfResults` at subscription scope that
+ * `Microsoft.Resources/deploymentStacksWhatIfResults` at the stack's scope that
  * counts against that scope's resource limits. Scoping the name to the build id
  * is what stops two concurrent PR builds colliding on it. Falls back to a
  * timestamp when there is no build id, which is the local-run case.
@@ -40,9 +40,31 @@ export function defaultResultName(stackId: string, buildId: string | undefined, 
   return `whatif-${stackId}-${digits.slice(0, 8)}-${digits.slice(8)}`;
 }
 
-export function whatIfResultId(subscriptionId: string, resultName: string): string {
+/**
+ * Where a stack lives. Stacks, and their what-if results, exist at exactly
+ * these three scopes (`deploymentStacks.json`, 2025-07-01); there is no tenant
+ * scope for either.
+ */
+export type StackScope =
+  | { kind: 'resourceGroup'; subscriptionId: string; resourceGroupName: string }
+  | { kind: 'subscription'; subscriptionId: string }
+  | { kind: 'managementGroup'; managementGroupId: string };
+
+/** The ARM path every stack resource at that scope hangs off. */
+export function scopePath(scope: StackScope): string {
+  switch (scope.kind) {
+    case 'resourceGroup':
+      return `/subscriptions/${scope.subscriptionId}/resourceGroups/${scope.resourceGroupName}`;
+    case 'subscription':
+      return `/subscriptions/${scope.subscriptionId}`;
+    case 'managementGroup':
+      return `/providers/Microsoft.Management/managementGroups/${scope.managementGroupId}`;
+  }
+}
+
+export function whatIfResultId(scope: StackScope, resultName: string): string {
   return (
-    `/subscriptions/${subscriptionId}` +
+    `${scopePath(scope)}` +
     `/providers/Microsoft.Resources/deploymentStacksWhatIfResults/${resultName}`
   );
 }
@@ -52,9 +74,6 @@ export function whatIfResultId(subscriptionId: string, resultName: string): stri
  * fully qualified — this is what makes the operation *stack* what-if rather than
  * deployment what-if, and it is why detached and deleted resources appear at all.
  */
-export function deploymentStackId(subscriptionId: string, stackName: string): string {
-  return (
-    `/subscriptions/${subscriptionId}` +
-    `/providers/Microsoft.Resources/deploymentStacks/${stackName}`
-  );
+export function deploymentStackId(scope: StackScope, stackName: string): string {
+  return `${scopePath(scope)}/providers/Microsoft.Resources/deploymentStacks/${stackName}`;
 }

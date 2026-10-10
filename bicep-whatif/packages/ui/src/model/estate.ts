@@ -22,6 +22,7 @@
 import {
   SEVERITY_RANK,
   flattenPropertyChanges,
+  needsAttention,
   normalizeStackWhatIf,
   type NormalizedStackWhatIf,
   type ParseWarning,
@@ -60,6 +61,14 @@ export interface GridRow {
   changeTypeKnown: boolean;
   /** True when this row stands for a stage, not a resource. */
   isStagePlaceholder: boolean;
+  /**
+   * Azure's `changeCertainty: potential`: the change may or may not happen. The
+   * rank is unchanged — a potential detach can still be real — but the row says
+   * it is a guess, so it does not read like a definite one.
+   */
+  potential: boolean;
+  /** Why the row is only potential, in a line. Set exactly when `potential` is. */
+  certaintyNote?: string | undefined;
   /** The normalized resource. Undefined on a placeholder row. */
   resource?: ResourceRow | undefined;
   /** Lowercased haystack, precomputed once so filtering stays cheap while typing. */
@@ -76,11 +85,30 @@ export interface StackView {
   /** Undefined when the stage produced no payload. */
   stack?: NormalizedStackWhatIf | undefined;
   counts: Record<Severity, number>;
+  /** How many of each rung's rows Azure marked potential. All zero on a stage that never ran. */
+  potentialCounts: Record<Severity, number>;
   highestSeverity?: Severity | undefined;
   warnings: ParseWarning[];
   /** Set only when `evaluated` is false. */
   notEvaluatedDetail?: string | undefined;
+  /**
+   * Why a stack was not evaluated, as the stage left it. Set only when
+   * `evaluated` is false. The code and message are kept apart, so the opened
+   * stack can show the code as a code.
+   */
+  failure?: StackFailure | undefined;
+  /** The stage's timeline result, verbatim (`succeededWithIssues`). */
+  stageResult?: string | undefined;
+  /** The stage's timeline record id, which the build results page opens its log by. */
+  stageRecordId?: string | undefined;
   notes: string[];
+}
+
+export interface StackFailure {
+  /** The sidecar said the what-if step failed. Otherwise the stage attached nothing at all. */
+  failed: boolean;
+  code?: string | undefined;
+  message?: string | undefined;
 }
 
 export interface EstateView {
@@ -89,7 +117,7 @@ export interface EstateView {
   counts: Record<Severity, number>;
   total: number;
   highestSeverity?: Severity | undefined;
-  /** True when any stage failed to produce a payload. Drives the banner. */
+  /** True when any stage failed to produce a payload. */
   hasUnevaluatedStages: boolean;
 }
 
@@ -120,10 +148,31 @@ function rowKey(stackKey: string, row: ResourceRow, index: number): string {
  */
 const NO_ID = '(resource with no id)';
 
+function isPotential(row: ResourceRow): boolean {
+  return row.changeCertainty?.toLowerCase() === 'potential';
+}
+
+/**
+ * The line a potential row shows. A short-circuit is the usual cause, and Azure
+ * says so in a warning on the stack; without one, all that is known is Azure's
+ * own definition of the word.
+ */
+function certaintyNoteFor(stack: NormalizedStackWhatIf): string {
+  const warnings = stack.diagnostics.filter(needsAttention);
+  if (warnings.some((d) => /shortcircuit/i.test(d.code ?? ''))) {
+    return "Azure couldn't tell whether this happens: this stack's what-if short-circuited.";
+  }
+  if (warnings.length > 0) return "Azure couldn't tell whether this happens; see its warning for this stack.";
+  return 'Azure says this may or may not happen, depending on the deploy.';
+}
+
 function haystackFor(stackLabel: string, row: ResourceRow): string {
   const parts = [stackLabel, row.name, row.resourceType, row.resourceId, String(row.changeType)];
+  if (isPotential(row)) parts.push('potential');
+  if (row.severity === 'unevaluated') parts.push('not predicted');
   for (const p of flattenPropertyChanges(row.propertyChanges)) {
-    parts.push(p.path);
+    // `core` joins with dots; the table draws indexes in brackets. Either finds it.
+    parts.push(p.path, p.path.replace(/\.(\d+)(?=\.|$)/g, '[$1]'));
     if (typeof p.before === 'string') parts.push(p.before);
     if (typeof p.after === 'string') parts.push(p.after);
   }
@@ -137,13 +186,25 @@ function haystackFor(stackLabel: string, row: ResourceRow): string {
  * neither `code` nor `message` is shown raw rather than dropped, since it is the
  * only account of why the stack was never evaluated.
  */
-function errorText(error: unknown): string | undefined {
+/**
+ * The sidecar's error, as a code and a message. ARM writes `{ code, message }`;
+ * older producers wrote a plain string, which is all message.
+ */
+function errorParts(error: unknown): { code?: string; message?: string } | undefined {
   if (error === null || error === undefined || error === '') return undefined;
-  if (typeof error === 'string') return error;
-  if (typeof error !== 'object') return String(error);
+  if (typeof error === 'string') return { message: error };
+  if (typeof error !== 'object') return { message: String(error) };
   const { code, message } = error as Record<string, unknown>;
-  const parts = [code, message].filter((p): p is string => typeof p === 'string' && p.length > 0);
-  return parts.length > 0 ? parts.join(': ') : JSON.stringify(error);
+  const out: { code?: string; message?: string } = {};
+  if (typeof code === 'string' && code.length > 0) out.code = code;
+  if (typeof message === 'string' && message.length > 0) out.message = message;
+  return out.code === undefined && out.message === undefined ? { message: JSON.stringify(error) } : out;
+}
+
+function errorText(error: unknown): string | undefined {
+  const parts = errorParts(error);
+  if (parts === undefined) return undefined;
+  return [parts.code, parts.message].filter((p) => p !== undefined).join(': ');
 }
 
 /**
@@ -161,7 +222,9 @@ function placeholderRow(stage: StageResult, stackKey: string, label: string): Gr
       'Treat it as unknown, not as unchanged.';
 
   return {
-    key: `stage:${stage.stageId}`,
+    // A stage can hold several stacks that each failed, so the stack is part of
+    // the key when there is one.
+    key: stage.stackId === undefined ? `stage:${stage.stageId}` : `stage:${stage.stageId}:${stackKey}`,
     stackKey,
     stackLabel: label,
     severity: 'unevaluated',
@@ -173,6 +236,7 @@ function placeholderRow(stage: StageResult, stackKey: string, label: string): Gr
     changeType: 'notEvaluated',
     changeTypeKnown: false,
     isStagePlaceholder: true,
+    potential: false,
     haystack: [label, stage.stageId, stage.displayName, 'not evaluated'].join(' ').toLowerCase(),
   };
 }
@@ -199,9 +263,16 @@ export function buildEstateView(stages: readonly StageResult[]): EstateView {
         stageDisplayName: stage.displayName,
         evaluated: false,
         counts: stackCounts,
+        potentialCounts: emptyCounts(),
         highestSeverity: 'unevaluated',
         warnings: [],
         notEvaluatedDetail: row.reasons[0]?.detail,
+        failure: {
+          failed: stage.sidecar?.status?.toLowerCase() === 'failed',
+          ...errorParts(stage.sidecar?.error),
+        },
+        stageResult: stage.result,
+        stageRecordId: stage.recordId,
         notes: stage.notes,
       });
       continue;
@@ -212,8 +283,10 @@ export function buildEstateView(stages: readonly StageResult[]): EstateView {
     // payload's own `name` is the transient what-if result resource and changes
     // every run. Prefer it, then the attachment's stack id, then the stage.
     const label = normalized.stackName ?? stage.stackId ?? stage.displayName;
+    const potentialCounts = emptyCounts();
 
     for (const [i, r] of normalized.rows.entries()) {
+      if (isPotential(r)) potentialCounts[r.severity] += 1;
       rows.push({
         key: rowKey(stackKey, r, i),
         stackKey,
@@ -227,6 +300,8 @@ export function buildEstateView(stages: readonly StageResult[]): EstateView {
         changeType: String(r.changeType),
         changeTypeKnown: r.changeTypeKnown,
         isStagePlaceholder: false,
+        potential: isPotential(r),
+        ...(isPotential(r) ? { certaintyNote: certaintyNoteFor(normalized) } : {}),
         resource: r,
         haystack: haystackFor(label, r),
       });
@@ -241,6 +316,7 @@ export function buildEstateView(stages: readonly StageResult[]): EstateView {
       evaluated: true,
       stack: normalized,
       counts: normalized.counts,
+      potentialCounts,
       highestSeverity: normalized.highestSeverity,
       warnings: normalized.warnings,
       notes: stage.notes,

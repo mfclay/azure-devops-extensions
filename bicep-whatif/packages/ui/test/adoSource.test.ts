@@ -11,7 +11,7 @@
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AttachmentLike, TimelineRecordLike } from '../src/data/join.js';
-import { ATTACHMENT_TYPE_PAYLOAD, ATTACHMENT_TYPE_SIDECAR } from '../src/data/source.js';
+import { ATTACHMENT_TYPE_PAYLOAD, ATTACHMENT_TYPE_SIDECAR, type LoadProgress } from '../src/data/source.js';
 import type { Sidecar } from '../src/model/stage.js';
 import { fixture } from './fixtures.js';
 
@@ -92,6 +92,27 @@ describe('createAdoSource', () => {
     expect((h.getClientArg as { name?: string }).name).toBe('BuildRestClient');
   });
 
+  it('reports finding the stages, then each stack read, for the loading screen', async () => {
+    const seen: LoadProgress[] = [];
+    await createAdoSource().load((p) => seen.push(p));
+    expect(seen[0]).toEqual({ phase: 'finding' });
+    const reading = seen.slice(1);
+    expect(reading.map((p) => (p.phase === 'reading' ? p.read : -1))).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    expect(new Set(reading.map((p) => (p.phase === 'reading' ? p.total : -1)))).toEqual(new Set([9]));
+  });
+
+  it('counts a stack whose result could not be read as read, so the count still finishes', async () => {
+    const seen: LoadProgress[] = [];
+    h.client = captureClient({
+      getAttachment: async (_p, _b, _t, _r, type, name) => {
+        if (type === ATTACHMENT_TYPE_PAYLOAD) throw new Error('gone');
+        return encode(capture.sidecars[name as string]);
+      },
+    });
+    await createAdoSource().load((p) => seen.push(p));
+    expect(seen.at(-1)).toEqual({ phase: 'reading', read: 9, total: 9 });
+  });
+
   it('asks for both attachment types against the right build', async () => {
     const getAttachments = vi.fn(captureClient().getAttachments);
     h.client = captureClient({ getAttachments });
@@ -159,6 +180,6 @@ describe('createAdoSource', () => {
     });
     const result = await createAdoSource().load();
     expect(result.stages).toEqual([]);
-    expect(result.notes.join(' ')).toMatch(/No WhatIf_\* stages were found/);
+    expect(result.notes.join(' ')).toMatch(/No what-if stages were found in this build/);
   });
 });

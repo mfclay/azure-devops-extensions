@@ -124,3 +124,49 @@ describe('renderSummary edge cases', () => {
     }
   });
 });
+
+describe('renderSummary with Azure diagnostics', () => {
+  const summary = renderSummary(load('synthetic/synthetic-short-circuit.json'), CONTEXT);
+
+  it('lists every diagnostic in the log, before the rows', () => {
+    const lines = summary.log.split('\n');
+    const head = lines.indexOf('Azure diagnostics (2):');
+    expect(head).toBeGreaterThan(-1);
+    expect(lines[head + 1]).toMatch(/^ {2}! warning ShortCircuitedResourceId: RESULT NON-DETERMINISTIC!/);
+    expect(lines[head + 2]).toMatch(/^ {2}i info SyntheticInformational: /);
+    const firstRow = lines.findIndex((l) => /^\s{2}[-/+~?]\s/.test(l));
+    expect(firstRow).toBeGreaterThan(head);
+  });
+
+  it('calls out only the warnings in the markdown', () => {
+    expect(summary.markdown).toMatch(/> \*\*Azure reported 1 warning on this what-if\.\*\*/);
+    expect(summary.markdown).toMatch(/> - `ShortCircuitedResourceId`: RESULT NON-DETERMINISTIC!/);
+    expect(summary.markdown).not.toMatch(/SyntheticInformational/);
+  });
+
+  it('returns the warnings for the pipeline to raise', () => {
+    expect(summary.diagnostics).toEqual([expect.stringMatching(/^ShortCircuitedResourceId: RESULT NON-DETERMINISTIC!/)]);
+  });
+
+  it('says nothing about diagnostics when there are none', () => {
+    const clean = renderSummary(load('real/build-7700017-app-network.json'), CONTEXT);
+    expect(clean.log).not.toMatch(/Azure diagnostics/);
+    expect(clean.markdown).not.toMatch(/Azure reported/);
+    expect(clean.diagnostics).toEqual([]);
+  });
+});
+
+describe('renderSummary with a potential change', () => {
+  // Smoke build 85: the deployed group as a potential detach.
+  const summary = renderSummary(load('real/smoke-85-short-circuit-after-create.json'), CONTEXT);
+
+  it('marks it in the log and the markdown, and ranks it as before', () => {
+    expect(summary.log).toMatch(/^ {2}\/ nsg-\S+ \(Microsoft\.Network\/networkSecurityGroups\) \[potential\]/m);
+    expect(summary.markdown).toMatch(/\| detach \(potential\) \|/);
+    expect(summary.counts.protectionLoss).toBe(1);
+  });
+
+  it('marks nothing definite', () => {
+    expect(summary.log.match(/\[potential\]/g)).toHaveLength(1);
+  });
+});

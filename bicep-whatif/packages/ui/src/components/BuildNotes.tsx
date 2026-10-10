@@ -3,9 +3,9 @@
  * it could not read or link, a build with no what-if stages at all, mock mode.
  *
  * `LoadResult.notes` promises these are "shown, never swallowed". Per-stack
- * notes have the detail panel; these belong to no row, so without this they
+ * notes have their stack; these belong to no stack, so without this they
  * reach nowhere, and a build with no what-if stages would render as an empty
- * page with no explanation. Like the not-evaluated banner, it does not dismiss.
+ * page with no explanation. It does not dismiss.
  */
 export function BuildNotes({ notes }: { notes: readonly string[] }): React.ReactElement | null {
   if (notes.length === 0) return null;

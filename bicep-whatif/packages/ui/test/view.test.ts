@@ -6,9 +6,14 @@ import {
   applyFilters,
   countsForStrip,
   defaultViewState,
+  resourceBands,
   setStacks,
+  shortType,
+  setStacksOpen,
+  toggleRow,
   toggleSeverity,
   toggleStack,
+  toggleStackOpen,
 } from '../src/model/view.js';
 
 function row(over: Partial<GridRow> & Pick<GridRow, 'key' | 'severity'>): GridRow {
@@ -23,6 +28,7 @@ function row(over: Partial<GridRow> & Pick<GridRow, 'key' | 'severity'>): GridRo
     changeType: 'modify',
     changeTypeKnown: true,
     isStagePlaceholder: false,
+    potential: false,
     haystack: `${over.key} network`.toLowerCase(),
     ...over,
   };
@@ -85,7 +91,7 @@ describe('filtering', () => {
   });
 });
 
-describe('the summary strip counts', () => {
+describe('the totals counts', () => {
   it('ignores the severity filter, so a chip can still show what it would reveal', () => {
     const state = { ...defaultViewState(), severities: new Set<'destructive'>(['destructive']) };
     const counts = countsForStrip(ROWS, state);
@@ -97,6 +103,84 @@ describe('the summary strip counts', () => {
     const state = { ...defaultViewState(), stacks: new Set(['client-01']) };
     expect(countsForStrip(ROWS, state).create).toBe(1);
     expect(countsForStrip(ROWS, state).destructive).toBe(0);
+  });
+  it('counts resources only, so a stage that never ran is not a resource Azure could not predict', () => {
+    const rows = [...ROWS, row({ key: 'widget', severity: 'unevaluated', changeType: 'unsupported' })];
+    expect(countsForStrip(rows, defaultViewState()).unevaluated).toBe(1);
+  });
+});
+
+describe('a stage that never ran', () => {
+  // Its row shares the not-predicted rung, whose count is a filter. Turning
+  // that count off hides resources Azure could not predict, never a stack.
+  it('stays shown when the not-predicted rung is turned off', () => {
+    const rows = [...ROWS, row({ key: 'widget', severity: 'unevaluated', changeType: 'unsupported' })];
+    const state = toggleSeverity(defaultViewState(), 'unevaluated');
+    const shown = applyFilters(rows, state).map((r) => r.key);
+    expect(shown).toContain('stage');
+    expect(shown).not.toContain('widget');
+  });
+
+  it('still answers to the stack filter and the search', () => {
+    expect(applyFilters(ROWS, { ...defaultViewState(), stacks: new Set(['client-01']) }).map((r) => r.key)).not.toContain('stage');
+    expect(applyFilters(ROWS, { ...defaultViewState(), query: 'client' }).map((r) => r.key)).not.toContain('stage');
+  });
+});
+
+describe('the flat list bands', () => {
+  const rows = applyFilters(
+    [
+      ...ROWS,
+      row({ key: 'maybe', severity: 'protectionLoss', potential: true }),
+      row({ key: 'widget', severity: 'unevaluated', changeType: 'unsupported' }),
+      row({ key: 'vnet2', severity: 'modify', potential: true }),
+    ],
+    { ...defaultViewState(), severities: new Set(SEVERITIES) },
+  );
+  const bands = resourceBands(rows);
+
+  it('puts the unknowns above new and modified', () => {
+    expect(bands.map((b) => b.kind)).toEqual(['will', 'might', 'unknown', 'new', 'modified', 'unchanged']);
+  });
+
+  it('splits will from might on certainty, not on rung', () => {
+    expect(bands[0]?.rows.map((r) => r.key)).toEqual(['kv', 'pe']);
+    expect(bands[1]?.rows.map((r) => r.key)).toEqual(['maybe']);
+  });
+
+  it('counts each band in words', () => {
+    expect(bands.map((b) => b.count)).toEqual([
+      '2 resources',
+      '1 potential',
+      '1 resource not predicted, 1 stack not evaluated',
+      '1 resource',
+      '2 resources, 1 potential',
+      '1 resource',
+    ]);
+    expect(bands[2]?.note).toBe('ranked above new and modified: an unknown can hide a delete');
+  });
+
+  it('never loses a row', () => {
+    expect(bands.flatMap((b) => b.rows).map((r) => r.key).sort()).toEqual(rows.map((r) => r.key).sort());
+  });
+
+  it('leaves out a band with nothing in it', () => {
+    expect(resourceBands(applyFilters(ROWS, defaultViewState())).map((b) => b.kind)).not.toContain('might');
+  });
+});
+
+describe('shortType', () => {
+  it('drops Microsoft. and splits off the namespace', () => {
+    expect(shortType('Microsoft.Storage/storageAccounts')).toEqual({ namespace: 'Storage', rest: '/storageAccounts' });
+    expect(shortType('Microsoft.Network/virtualNetworks/subnets')).toEqual({
+      namespace: 'Network',
+      rest: '/virtualNetworks/subnets',
+    });
+  });
+
+  it('keeps any other provider whole', () => {
+    expect(shortType('Contoso.Widgets/widgets')).toEqual({ namespace: 'Contoso.Widgets', rest: '/widgets' });
+    expect(shortType('Pipeline stage')).toEqual({ namespace: '', rest: 'Pipeline stage' });
   });
 });
 
@@ -116,5 +200,35 @@ describe('toggles', () => {
 
   it('treats selecting every stack as "all"', () => {
     expect(setStacks(defaultViewState(), ['a', 'b'], ['a', 'b']).stacks).toBeNull();
+  });
+});
+
+describe('opening rows and stacks', () => {
+  it('always shows an open row, even one the filters would hide', () => {
+    const state = { ...defaultViewState(), open: new Set(['st']), query: 'nothing matches this' };
+    expect(applyFilters(ROWS, state).map((r) => r.key)).toEqual(['st']);
+  });
+
+  it('opens several rows at once, and closes each on a second toggle', () => {
+    const two = toggleRow(toggleRow(defaultViewState(), 'kv'), 'pe');
+    expect([...two.open].sort()).toEqual(['kv', 'pe']);
+    expect([...toggleRow(two, 'kv').open]).toEqual(['pe']);
+  });
+
+  it('closes a stack and every row open in it, leaving other rows open', () => {
+    let state = toggleStackOpen(defaultViewState(), 'network', false, []);
+    expect(state.openStacks.has('network')).toBe(true);
+    state = toggleRow(toggleRow(state, 'kv'), 'pg');
+    state = toggleStackOpen(state, 'network', true, ['kv', 'pe', 'vnet']);
+    expect(state.openStacks.has('network')).toBe(false);
+    expect([...state.open]).toEqual(['pg']);
+  });
+
+  it('expands every listed stack, and collapsing all closes rows too', () => {
+    const all = setStacksOpen(toggleRow(defaultViewState(), 'kv'), ['a', 'b']);
+    expect([...all.openStacks]).toEqual(['a', 'b']);
+    const none = setStacksOpen(all, []);
+    expect(none.openStacks.size).toBe(0);
+    expect(none.open.size).toBe(0);
   });
 });

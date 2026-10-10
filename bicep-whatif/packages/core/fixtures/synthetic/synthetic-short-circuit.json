@@ -1,0 +1,174 @@
+{
+  "_synthetic": {
+    "warning": "SYNTHETIC — NOT A CAPTURED PAYLOAD, though shaped on one: a stack what-if that short-circuited, run against Azure in a personal test subscription on 2026-10-08.",
+    "why": "Models a stack whose role-assignment names depend on a principal id known only at deploy time. What-if cannot work out the new names, so each new assignment is an unsupported row whose id is the unevaluated expression, and Azure warns that resources with no definite entry may be marked as potentially deleted.",
+    "fromTheCapture": "The diagnostic's level, code and message (no target, empty additionalInfo); the unsupported row's shape: an expression for its id, unsupportedReason, managementStatusChange notManaged -> unknown, and no resourceGroup, symbolicName or denyStatusChange.",
+    "invented": "The role-assignment names and resource types, the detach row marked potential (what the diagnostic's message says happens to an existing stack's resources; not yet seen), the potential modify, and the info diagnostic.",
+    "doNotTreatAsEvidence": "Nothing here proves how ARM behaves beyond the fields listed under fromTheCapture."
+  },
+  "id": "/subscriptions/00000000-0000-4000-8000-000000000001/providers/Microsoft.Resources/deploymentStacks/app-identity",
+  "location": "centralus",
+  "name": "app-identity",
+  "type": "Microsoft.Resources/deploymentStacks/deploymentStackWhatIfResults",
+  "tags": {},
+  "systemData": null,
+  "properties": {
+    "actionOnUnmanage": {
+      "managementGroups": "detach",
+      "resourceGroups": "detach",
+      "resources": "detach",
+      "resourcesWithoutDeleteSupport": "fail"
+    },
+    "correlationId": "00000000-0000-4000-8000-000000000004",
+    "debugSetting": null,
+    "denySettings": {
+      "applyToChildScopes": false,
+      "excludedActions": [],
+      "excludedPrincipals": [],
+      "mode": "denyWriteAndDelete"
+    },
+    "deploymentScope": null,
+    "deploymentStackLastModified": null,
+    "deploymentStackResourceId": "/subscriptions/00000000-0000-4000-8000-000000000001/providers/Microsoft.Resources/deploymentStacks/app-identity",
+    "description": null,
+    "diagnostics": [
+      {
+        "level": "warning",
+        "code": "ShortCircuitedResourceId",
+        "message": "RESULT NON-DETERMINISTIC! UNMARKED RESOURCES COULD BE DELETED. One or more resource ids short-circuited, leading to the result not being deterministic. If the corresponding existing deployment stack contains resources that do not have a definite change entry, every such resource will be marked as potentially deleted as non-determinism does not allow definite predictions of unmanaged resources.",
+        "additionalInfo": []
+      },
+      {
+        "level": "info",
+        "code": "SyntheticInformational",
+        "message": "An informational message, present to show that info-level diagnostics stay quiet."
+      }
+    ],
+    "error": null,
+    "extensionConfigs": null,
+    "externalInputDefinitions": null,
+    "externalInputs": null,
+    "parameters": {},
+    "parametersLink": null,
+    "provisioningState": "succeeded",
+    "retentionInterval": "3:00:00",
+    "template": null,
+    "templateLink": null,
+    "validationLevel": "Provider",
+    "changes": {
+      "denySettingsChange": null,
+      "deploymentScopeChange": null,
+      "resourceChanges": [
+        {
+          "apiVersion": "2022-04-01",
+          "changeCertainty": "potential",
+          "changeType": "detach",
+          "denyStatusChange": {
+            "before": "denyWriteAndDelete",
+            "after": "removedBySystem"
+          },
+          "deploymentId": null,
+          "extension": null,
+          "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/synthetic-identity-rg/providers/Microsoft.Authorization/roleAssignments/00000000-0000-4000-8000-000000000301",
+          "identifiers": null,
+          "managementStatusChange": {
+            "before": "managed",
+            "after": "notManaged"
+          },
+          "resourceConfigurationChanges": {
+            "before": {
+              "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/synthetic-identity-rg/providers/Microsoft.Authorization/roleAssignments/00000000-0000-4000-8000-000000000301",
+              "name": "00000000-0000-4000-8000-000000000301",
+              "type": "Microsoft.Authorization/roleAssignments"
+            },
+            "after": null,
+            "delta": []
+          },
+          "resourceGroup": "synthetic-identity-rg",
+          "symbolicName": "workloadReader",
+          "type": "Microsoft.Authorization/roleAssignments",
+          "unsupportedReason": null
+        },
+        {
+          "id": "[resourceId('00000000-0000-4000-8000-000000000001', 'synthetic-identity-rg', 'Microsoft.Authorization/roleAssignments', guid(resourceGroup().id, reference('/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/synthetic-identity-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/synthetic-workload-id', '2023-01-31').principalId))]",
+          "type": "Microsoft.Authorization/roleAssignments",
+          "unsupportedReason": "Changes to the resource declared at 'properties.template.resources[1].properties.template.resources[0]' on line 1 and column 2790 cannot be analyzed because its resource ID or API version cannot be calculated until the deployment is under way. Please see https://aka.ms/WhatIfUnidentifiableResource for more guidance.",
+          "managementStatusChange": {
+            "before": "notManaged",
+            "after": "unknown"
+          },
+          "changeType": "unsupported",
+          "changeCertainty": "definite"
+        },
+        {
+          "apiVersion": "2023-01-31",
+          "changeCertainty": "definite",
+          "changeType": "noChange",
+          "denyStatusChange": {
+            "before": "denyWriteAndDelete",
+            "after": "denyWriteAndDelete"
+          },
+          "deploymentId": null,
+          "extension": null,
+          "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/synthetic-identity-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/synthetic-workload-id",
+          "identifiers": null,
+          "managementStatusChange": {
+            "before": "managed",
+            "after": "managed"
+          },
+          "resourceConfigurationChanges": {
+            "before": {},
+            "after": {},
+            "delta": []
+          },
+          "resourceGroup": "synthetic-identity-rg",
+          "symbolicName": "workloadIdentity",
+          "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+          "unsupportedReason": null
+        },
+        {
+          "apiVersion": "2024-11-01",
+          "changeCertainty": "potential",
+          "changeType": "modify",
+          "denyStatusChange": {
+            "before": "denyWriteAndDelete",
+            "after": "denyWriteAndDelete"
+          },
+          "deploymentId": null,
+          "extension": null,
+          "id": "/subscriptions/00000000-0000-4000-8000-000000000001/resourceGroups/synthetic-identity-rg/providers/Microsoft.KeyVault/vaults/synthetic-identity-kv",
+          "identifiers": null,
+          "managementStatusChange": {
+            "before": "managed",
+            "after": "managed"
+          },
+          "resourceConfigurationChanges": {
+            "before": {
+              "properties": {
+                "enableRbacAuthorization": false
+              }
+            },
+            "after": {
+              "properties": {
+                "enableRbacAuthorization": true
+              }
+            },
+            "delta": [
+              {
+                "after": true,
+                "before": false,
+                "changeType": "modify",
+                "children": [],
+                "path": "properties.enableRbacAuthorization"
+              }
+            ]
+          },
+          "resourceGroup": "synthetic-identity-rg",
+          "symbolicName": "identityVault",
+          "type": "Microsoft.KeyVault/vaults",
+          "unsupportedReason": null
+        }
+      ]
+    }
+  }
+}

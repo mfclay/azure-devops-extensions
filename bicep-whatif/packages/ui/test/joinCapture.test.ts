@@ -203,6 +203,8 @@ describe('joinStages, against a real timeline', () => {
     expect(network?.displayName).toBe('Stack 1 — Network');
     expect(network?.result).toBe('succeeded');
     expect(network?.state).toBe('completed');
+    // The stage's own timeline record, which its log link is made from.
+    expect(network?.recordId).toMatch(/^[0-9a-f-]{36}$/);
   });
 
   it('covers all five layers, which no previous fixture did', () => {

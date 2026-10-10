@@ -162,3 +162,33 @@ describe('synthetic Detach and Delete — no live stack produces these', () => {
     expect(sorted.at(-1)?.symbolicName).toBe('opaqueWidget');
   });
 });
+
+describe('the statuses the spec names beyond the captures', () => {
+  // The 2025-07-01 spec lists `unmanaged` where Azure sends `notManaged`, plus
+  // `unknown`; and deny statuses `inapplicable` and `unknown`.
+  const m = (before: string, after: string) => ({
+    before: parseManagementStatus(before),
+    after: parseManagementStatus(after),
+  });
+
+  it('reads unmanaged as letting go, like notManaged', () => {
+    const v = severityOf({ changeType: ct('noChange'), managementStatus: m('managed', 'unmanaged') });
+    expect(v.severity).toBe('protectionLoss');
+    expect(severityOf({ changeType: ct('noChange'), managementStatus: m('notManaged', 'unmanaged') }).severity).toBe(
+      'noChange',
+    );
+  });
+
+  it('does not read unknown as losing management', () => {
+    expect(parseManagementStatus('unknown')).toEqual({ value: 'unknown', known: true });
+    const v = severityOf({ changeType: ct('noChange'), managementStatus: m('managed', 'unknown') });
+    expect(v.severity).toBe('noChange');
+  });
+
+  it('knows inapplicable and unknown deny statuses, and only inapplicable has a strength', () => {
+    expect(parseDenyStatus('inapplicable')?.known).toBe(true);
+    expect(parseDenyStatus('unknown')?.known).toBe(true);
+    expect(denyStrength('inapplicable')).toBe(0);
+    expect(denyStrength('unknown')).toBeUndefined();
+  });
+});
