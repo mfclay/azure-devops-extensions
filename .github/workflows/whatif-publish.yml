@@ -193,9 +193,11 @@ jobs:
       # after a full typecheck, test and build, and the rejection reads as a
       # publish failure rather than as "you already shipped this".
       #
-      # `isvalid` answers in three shapes, established by running it:
+      # `isvalid` answers in four shapes, established by running it:
       #   exit 0  and a line reading exactly `Valid`   -> published already
       #   exit != 0 with "Could not find extension version" -> free to use
+      #   exit != 0 with "Extension not published" -> no version of it exists yet,
+      #     the first release (1.0.0's dry run stopped here before this was known)
       #   anything else -> exists in some other state; refuse and let a human look
       #
       # It runs on a dry run too, so a dry run says whether the real one can go.
@@ -213,6 +215,8 @@ jobs:
             --token "$TFX_TOKEN" --no-color 2>&1 || true)"
           if printf '%s' "$out" | grep -q 'Could not find extension version'; then
             echo "Version $VERSION is not taken. Proceeding."
+          elif printf '%s' "$out" | grep -q 'Extension not published'; then
+            echo "$PUBLISHER.$EXTENSION_ID has no published version yet, so $VERSION is not taken. Proceeding."
           elif printf '%s\n' "$out" | grep -qE '^[[:space:]]*Valid[[:space:]]*$'; then
             echo "::error::$PUBLISHER.$EXTENSION_ID $VERSION is already published. Versions cannot be reclaimed — pick a new one."
             exit 1
