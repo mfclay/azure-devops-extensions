@@ -84,6 +84,12 @@ re-render the PNG from it with any SVG renderer. `art/task-icon.svg`
 is the same mark with the glyph enlarged for 32px, rendered to the task's
 `packages/task/icon.png`.
 
+`images/rung-*.png` are the tab's severity icons for the overview's rung table, rendered at
+25 px from the paths in `packages/ui/src/components/Glyph.tsx` in the light theme's tone
+colours. They are PNGs at display size because the listing rejects any SVG in the package
+and draws a markdown image at its own pixel size. A sized HTML `<img>` is no way out: only
+markdown images get their paths rewritten, so it comes out broken. Re-render them if those paths change.
+
 ## Publishing
 
 [RELEASING.md](../../../RELEASING.md) at the repo root has the whole process: identity, dev

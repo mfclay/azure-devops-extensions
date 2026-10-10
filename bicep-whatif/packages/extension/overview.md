@@ -10,19 +10,22 @@ This extension puts every stack in a run on one screen.
 
 ## What it adds
 
-**A build results tab.** It opens on one sentence: how many stacks would delete
-or stop protecting resources, how many were not evaluated, and whether Azure
-warned that a result may be incomplete. Below it is one line per stack, worst
-first, with its counts by severity. Open a stack for its resources, and a
-resource for its property changes, before and after side by side. "All
-resources" lists every changed resource across the run, ranked by how much it can
-hurt you. Filter by severity, by stack, or by search; what you open and filter
-lives in the URL, so a link picks out the resource you were looking at.
+**A build results tab.** It opens on one sentence: how many stacks will delete
+or stop protecting resources, how many more might, how many were not evaluated,
+and whether Azure warned that a result may be incomplete. Below it is one line
+per stack, worst first, with its resource counts by severity. Open a stack for
+its resources, and a resource for its property changes, before and after side by
+side. A stack nobody evaluated opens on why: Azure's error, the stage's result,
+and a link to the stage's log. "All resources" lists every changed resource
+across the run, ranked by how much it can hurt you. Choose which changes and
+which stacks to show from the toolbar, or search; what you open and filter lives
+in the URL, so a link picks out the resource you were looking at.
 
 Azure's own warnings stay with the stack they are about. When a resource's name
 cannot be worked out before the deploy, Azure short-circuits it, says the result
-is non-deterministic, and marks the changes it is unsure of as *potential*; the
-tab shows each of those as potential rather than as certain.
+is non-deterministic, and marks the changes it is unsure of as *potential*. A
+stack whose only deletes are potential is listed as one that *might* delete,
+apart from the stacks that will.
 
 **A pipeline task.** One task, with `BicepDeploy@0`'s operations and input
 names. `whatIf` previews a stack against what it currently manages and attaches
@@ -56,9 +59,9 @@ page before relying on this section.*
 
 **What this extension adds:**
 
-- **A page to read the result on.** One tab for every stack in a run: filterable,
-  sortable, ranked by severity, with any stage that produced nothing shown as
-  not evaluated rather than as unchanged. `BicepDeploy@0` reports to the build
+- **A page to read the result on.** One tab for every stack in a run: filterable and
+  ranked by severity, with any stage that produced nothing shown as not
+  evaluated rather than as unchanged. `BicepDeploy@0` reports to the build
   log only, and a built-in task cannot add a page to the build results.
 - **What-if for deployment stacks.** `BicepDeploy@0` can create, validate and
   delete a stack, but not preview one. A stack what-if is what reports the
@@ -80,7 +83,7 @@ nothing at all. A tab that rendered only the attachments it received would show
 eight clean stacks as a safe deploy while the ninth was never evaluated. So the
 tab reconciles against the build timeline rather than the attachment list: every
 what-if stage in the run gets a row, and a stage that produced nothing is ranked
-`unevaluated` — above `noChange`, so the default filter cannot bury it. The
+`unevaluated` — above `noChange`, so no filter can hide it. The
 headline says how many stacks were not evaluated, and they get their own group,
 above every stack that only modifies. Neither dismisses.
 
@@ -95,14 +98,17 @@ type. A `noChange` resource whose management status moves from `managed` to
 `notManaged` is the stack quietly stopping to govern a key vault, and sorting on
 change type puts it at the bottom of the table next to two hundred benign no-ops.
 
-| | Rung | Reached by |
-|---|---|---|
-| `-` | destructive | `delete` |
-| `/` | protectionLoss | `detach`, management lost, deny settings weakened |
-| `+` | create | `create` |
-| `~` | modify | `modify` |
-| `?` | unevaluated | `unsupported`, an unrecognised change type, or a stage that attached nothing |
-| `*` | noChange | `noChange` |
+The tab draws each rung as an icon; the build log and its summary print the
+glyph.
+
+| Tab | Log | Rung | Reached by |
+|---|---|---|---|
+| ![Destructive](images/rung-destructive.png) | `-` | destructive | `delete` |
+| ![Protection loss](images/rung-protection-loss.png) | `/` | protectionLoss | `detach`, management lost, deny settings weakened |
+| ![New](images/rung-create.png) | `+` | create | `create` |
+| ![Modified](images/rung-modify.png) | `~` | modify | `modify` |
+| ![Not predicted](images/rung-unevaluated.png) | `?` | unevaluated | `unsupported`, an unrecognised change type, or a stage that attached nothing |
+| ![Unchanged](images/rung-no-change.png) | `*` | noChange | `noChange` |
 
 ## Permissions
 
