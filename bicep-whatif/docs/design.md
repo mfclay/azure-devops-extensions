@@ -61,7 +61,9 @@ Everything runs in the pipeline. The browser only reads.
  ─────────────────          ──────────────────────        ────────────            ─────────────
  StackWhatIf@1  ── PUT ───▶ deploymentStacksWhatIfResults
  (one step per  ◀─ poll ──  (or the stack itself, for
-  stack)        ── DELETE ▶  create / validate / delete)
+  stack)        ── POST ──▶  create / validate / delete;
+                   /whatIf   the POST is what-if only)
+                ── DELETE ▶
        │
        └─ ##vso[task.addattachment] ──────────────────▶ build attachments ◀── getAttachments()
                                                          (raw payload        │
@@ -76,8 +78,11 @@ registration and no tenant admin consent, and why its only scope is `vso.build`.
 One task, `StackWhatIf@1`, does one stack per step. Its `operation` input is `whatIf` (the
 default), `create`, `validate` or `delete`:
 
-- **`whatIf`** creates a `deploymentStacksWhatIfResults` resource, waits for it, redacts the
-  response, attaches it with a sidecar, and deletes the result.
+- **`whatIf`** creates a `deploymentStacksWhatIfResults` resource, waits for it, reads its
+  property-level changes with `POST {result}/whatIf`, redacts the response, attaches it with a
+  sidecar, and deletes the result. The `POST` is not optional: the `PUT` and `GET` return each
+  resource's change type but no `before`, `after` or `delta`, so without it every modify arrives
+  with no detail. If it fails, the what-if fails.
 - **`create`** creates or updates the stack, sets its outputs as pipeline output variables, and
   attaches the redacted outcome.
 - **`validate`** runs the stack's `validate` action and attaches what comes back.
