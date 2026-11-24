@@ -3,6 +3,7 @@
 # Drive this repo's GitHub Actions from the terminal.
 #
 #   tools/gh-run publish [0.1.2]    # dispatch a dev publish; no version: the next patch
+#   GH_RUN_MODE="release dry run" tools/gh-run publish   # or "release"; see do_publish
 #   tools/gh-run runs [workflow]    # recent runs (default: whatif-publish.yml)
 #   tools/gh-run watch [workflow]   # poll until the newest run finishes
 #
@@ -69,19 +70,30 @@ api() {
   curl "${args[@]}" "$API$path" 2>&1 | TOKEN="$TOKEN" perl -pe 's/\Q$ENV{TOKEN}\E/[REDACTED]/g'
 }
 
+# GH_RUN_MODE picks the workflow's `mode` input: `dev` (the default), `dev and
+# wait for validation`, `release dry run` or `release`. GH_RUN_BUMP picks `bump`
+# for a blank version: `patch` (the default), `minor` or `major`. A release still
+# waits for approval in the `marketplace-release` environment, and the workflow
+# refuses one from any branch but main.
 do_publish() {
   local version="${1:-}"
-  # Blank asks the workflow for the newest published version plus a patch.
+  local mode="${GH_RUN_MODE:-dev}" bump="${GH_RUN_BUMP:-patch}"
+  # Blank asks the workflow for the newest published version plus a bump.
   [ -z "$version" ] || printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' \
     || die "version '$version' is not MAJOR.MINOR.PATCH."
+  case "$mode" in
+    'dev' | 'dev and wait for validation' | 'release dry run' | 'release') ;;
+    *) die "GH_RUN_MODE '$mode' is not one of: dev, dev and wait for validation, release dry run, release." ;;
+  esac
+  case "$bump" in patch | minor | major) ;; *) die "GH_RUN_BUMP '$bump' is not patch, minor or major." ;; esac
   resolve_token
   local out code
   out="$(api POST "/actions/workflows/whatif-publish.yml/dispatches" \
-        "{\"ref\":\"$REF\",\"inputs\":{\"version\":\"$version\"}}")"
+        "{\"ref\":\"$REF\",\"inputs\":{\"mode\":\"$mode\",\"bump\":\"$bump\",\"version\":\"$version\"}}")"
   code="$(printf '%s' "$out" | tail -1)"
   # 204 No Content is success here; the API returns no body to confirm with.
   [ "$code" = "204" ] || { printf '%s\n' "$out" >&2; die "dispatch failed (HTTP $code)"; }
-  echo "Dispatched Publish for ${version:-the next patch} on $REF."
+  echo "Dispatched Publish ($mode) for ${version:-the next $bump} on $REF."
 }
 
 do_runs() {
