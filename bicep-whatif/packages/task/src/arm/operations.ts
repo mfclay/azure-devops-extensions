@@ -20,32 +20,99 @@ export interface OperationArgs {
 }
 
 /**
- * Create the what-if result and wait for it.
+ * Create the what-if result, wait for it, and read back what it found.
+ *
+ * **A stack what-if is three ARM calls, and only the third says what changes.**
+ * The `PUT` creates and evaluates the result, and a `GET` of it returns the
+ * resource list, each resource's change type, and its deny and management
+ * transitions. Neither carries `resourceConfigurationChanges`: the `before`,
+ * `after` and `delta` that say what a deploy would write. Those come from
+ * `POST {result}/whatIf`, which Azure documents as returning "property-level
+ * changes that will be made by the deployment if executed".
+ *
+ * Without that call every `modify` arrives with no delta, and the tab can only
+ * say that a resource changes, never how. A setting rewritten on a container
+ * app and a no-op re-assertion of its template read the same. The `POST` is
+ * therefore part of the what-if, not an extra: if it fails, or answers without
+ * a `changes` object, the what-if fails too, because a preview with the detail
+ * missing must not be read as a preview with nothing in it.
  *
  * The return value is the ARM resource *as sent*, including a failed one — a
  * what-if that ran and failed is a result the tab must be able to render, not an
- * exception. Only a request ARM refused outright throws, and even then the
- * caller turns it into an envelope rather than attaching nothing: absence of
- * data must never render as absence of change.
+ * exception. A failed result is returned as it settled, without the `POST`,
+ * which has nothing to analyse. Only a request ARM refused outright throws, and
+ * even then the caller turns it into an envelope rather than attaching nothing:
+ * absence of data must never render as absence of change.
  */
 export async function createWhatIfResult(
   client: ArmClient,
   args: OperationArgs,
 ): Promise<unknown> {
-  const url = client.url(whatIfResultId(args.scope, args.name));
+  const path = whatIfResultId(args.scope, args.name);
+  const url = client.url(path);
 
   const created = await client.request({ method: 'PUT', url, body: args.body, maxAttempts: 3 });
 
+  let settled = created.body;
   const state = provisioningStateOf(created.body);
-  if (state !== undefined && ['succeeded', 'failed', 'canceled'].includes(state.toLowerCase())) {
-    return created.body;
+  if (state === undefined || !['succeeded', 'failed', 'canceled'].includes(state.toLowerCase())) {
+    const polled = await client.pollUntilTerminal(url, {
+      ...args.poll,
+      describe: `What-if result ${args.name}`,
+    });
+    settled = polled.body ?? created.body;
   }
 
-  const settled = await client.pollUntilTerminal(url, {
-    ...args.poll,
-    describe: `What-if result ${args.name}`,
+  if (provisioningStateOf(settled)?.toLowerCase() !== 'succeeded') return settled;
+  const analysed = await readPropertyChanges(client, path, args);
+  return withPropertyChanges(settled, analysed, args.name);
+}
+
+/**
+ * `POST {result}/whatIf`. A long-running operation that ends at its `Location`:
+ * a `200` is the answer, and a `202` is followed until it stops being one.
+ */
+async function readPropertyChanges(
+  client: ArmClient,
+  path: string,
+  args: OperationArgs,
+): Promise<unknown> {
+  const response = await client.request({
+    method: 'POST',
+    url: client.url(`${path}/whatIf`),
+    maxAttempts: 3,
   });
-  return settled.body ?? created.body;
+  if (response.status !== 202) return response.body;
+  const settled = await client.pollOperation(response, {
+    ...args.poll,
+    describe: `Reading the property-level changes of what-if result ${args.name}`,
+  });
+  return settled.body;
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/**
+ * The settled result with the `POST`'s properties laid over it. The `POST`
+ * answers with the whole result resource, so its `changes` replace the
+ * delta-less ones; anything it leaves out keeps the value the `GET` returned.
+ */
+export function withPropertyChanges(settled: unknown, analysed: unknown, name: string): unknown {
+  const properties = isRecord(analysed) ? analysed['properties'] : undefined;
+  if (!isRecord(properties) || !isRecord(properties['changes'])) {
+    throw new ArmError(
+      `What-if result ${name} was evaluated, but reading its property-level changes returned ` +
+        'no changes object. Without them every modify would show no detail, so the what-if is ' +
+        'reported as failed rather than as complete.',
+      0,
+      'NoPropertyChanges',
+      analysed,
+    );
+  }
+  const base = isRecord(settled) ? settled : {};
+  const baseProperties = isRecord(base['properties']) ? base['properties'] : {};
+  return { ...base, properties: { ...baseProperties, ...properties } };
 }
 
 /**

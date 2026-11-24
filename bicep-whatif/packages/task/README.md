@@ -61,11 +61,14 @@ inside a longer string, unmasked, and the smoke fails unless the attached payloa
 reads `echo:***REDACTED***|<build id>`. It has passed at all three scopes. Names
 in `maskedOutputs` were masked in the log and absent from the payload.
 
-**On a what-if, never exercised.** At every scope, created or modified, the
-smoke's stack what-if returned no property values at all, so the stand-in never
-reached a what-if payload. The captures in
-[`core/fixtures/real`](../core/fixtures/real) do carry property values, which is
-why the what-if payload is redacted all the same.
+**On a what-if, proven at subscription scope.** Until 1.0.1 the smoke's stack
+what-if returned no property values at all, at every scope, because the task
+never asked for them: only `POST {result}/whatIf` returns a what-if's `before`,
+`after` and `delta`. With that call in place, a subscription-scope `whatIf` after
+a `create` reported the security group's tag as a modify with its old value
+reading `***REDACTED***|<build id>`, and the stand-in appeared nowhere in the
+payload. The resource-group and management-group scopes have not been re-run
+since.
 
 ## Inputs
 

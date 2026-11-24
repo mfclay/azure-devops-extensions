@@ -61,7 +61,9 @@ Everything runs in the pipeline. The browser only reads.
  ─────────────────          ──────────────────────        ────────────            ─────────────
  StackWhatIf@1  ── PUT ───▶ deploymentStacksWhatIfResults
  (one step per  ◀─ poll ──  (or the stack itself, for
-  stack)        ── DELETE ▶  create / validate / delete)
+  stack)        ── POST ──▶  create / validate / delete;
+                   /whatIf   the POST is what-if only)
+                ── DELETE ▶
        │
        └─ ##vso[task.addattachment] ──────────────────▶ build attachments ◀── getAttachments()
                                                          (raw payload        │
@@ -76,8 +78,11 @@ registration and no tenant admin consent, and why its only scope is `vso.build`.
 One task, `StackWhatIf@1`, does one stack per step. Its `operation` input is `whatIf` (the
 default), `create`, `validate` or `delete`:
 
-- **`whatIf`** creates a `deploymentStacksWhatIfResults` resource, waits for it, redacts the
-  response, attaches it with a sidecar, and deletes the result.
+- **`whatIf`** creates a `deploymentStacksWhatIfResults` resource, waits for it, reads its
+  property-level changes with `POST {result}/whatIf`, redacts the response, attaches it with a
+  sidecar, and deletes the result. The `POST` is not optional: the `PUT` and `GET` return each
+  resource's change type but no `before`, `after` or `delta`, so without it every modify arrives
+  with no detail. If it fails, the what-if fails.
 - **`create`** creates or updates the stack, sets its outputs as pipeline output variables, and
   attaches the redacted outcome.
 - **`validate`** runs the stack's `validate` action and attaches what comes back.
@@ -460,7 +465,7 @@ Each changed a decision. Re-check before relying on one months from now.
 | Enum casing is inconsistent within one payload (`"none"` and `"None"` for the same deny mode) | Real capture | `core` matches enums case-insensitively |
 | The property-level `changeType` is a different enum from the resource-level one: it adds `array` and `noEffect`, drops `detach` and `noChange` | ARM spec and real captures | Separate rendering for property changes |
 | Redaction on a `create` works at all three scopes: a `@secure()` stand-in in an output reads `***REDACTED***` in the attachment | Smoke, every scope, 2026-10 | `F3` proven where it can be |
-| Redaction on a what-if has never been exercised against Azure: at every scope the smoke's stack what-if returned no property values | Smoke, every scope, 2026-10 | The what-if payload is redacted regardless, because real captures do carry property values |
+| Redaction on a what-if is proven at subscription scope only. Until 1.0.1 the task never made the `POST {result}/whatIf` call, so no stack what-if returned property values; with it, the smoke's secret reached the payload redacted | Smoke, subscription scope, 2026-11 | Re-run the resource-group and management-group smokes |
 | Restricted command mode permits ten logging commands, and `addattachment` is not one | Microsoft docs | `D6` |
 | `supportsTasks` gates the tab on the task being in the definition, not on it having run; no runtime control ([SDK #85](https://github.com/microsoft/azure-devops-extension-sdk/issues/85), open) | 2026-08 | The task must ship (`02`) |
 | `bicep-linux-x64` is about 105 MB; the VSIX limit is 50 MB | Bicep releases API | `D5` |

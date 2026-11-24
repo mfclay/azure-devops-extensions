@@ -99,6 +99,10 @@ interface Harness {
   outputPath: string;
 }
 
+/** `POST {result}/whatIf`: the call that returns the property-level changes. */
+const isPropertyRead = (url: string, method: string): boolean =>
+  method === 'POST' && url.includes('deploymentStacksWhatIfResults') && url.includes('/whatIf?');
+
 /** ARM requests carry JSON; the token request is form-encoded and not recorded. */
 function parseBody(body: unknown): unknown {
   return typeof body === 'string' ? (JSON.parse(body) as unknown) : undefined;
@@ -119,9 +123,14 @@ function harness(options: {
   const secrets: string[] = [];
   const outputs: Record<string, string> = {};
 
+  // The property-level read answers with the whole result resource, so by
+  // default it echoes whatever the what-if PUT returned, a test's own PUT route
+  // included. A test that needs it to say something else routes it itself.
+  let lastWhatIf: unknown = WHATIF_PAYLOAD;
   const defaultRoutes: Route[] = [
     { match: (u) => u.includes('oauth2'), reply: () => ({ body: { access_token: 't', expires_in: 3599 } }) },
     { match: (u, m) => u.includes('deploymentStacksWhatIfResults') && m === 'PUT', reply: () => ({ body: WHATIF_PAYLOAD }) },
+    { match: (u, m) => isPropertyRead(u, m), reply: () => ({ body: lastWhatIf }) },
     { match: (u, m) => u.includes('deploymentStacksWhatIfResults') && m === 'DELETE', reply: () => ({ status: 204 }) },
     { match: (u, m) => u.includes('deploymentStacks/') && m === 'PUT', reply: () => ({ body: { id: 'stack-id', properties: { provisioningState: 'succeeded' } } }) },
   ];
@@ -134,6 +143,7 @@ function harness(options: {
     requests.push({ url, method, body: sent });
     const route = routes.find((r) => r.match(url, method));
     const { status = 200, body, headers } = route?.reply() ?? { status: 404, body: {} };
+    if (method === 'PUT' && url.includes('deploymentStacksWhatIfResults')) lastWhatIf = body;
     // A 204 must have no body at all; `Response` throws on even an empty one.
     return new Response(body === undefined ? null : JSON.stringify(body), {
       status,
@@ -764,5 +774,160 @@ describe('run — Azure diagnostics on a what-if', () => {
     expect(result.status).toBe('succeeded');
     expect(h.warnings).toEqual([expect.stringMatching(/: Azure reported NestedDeploymentShortCircuited: Module skipped\.$/)]);
     expect(h.logs.join('\n')).toMatch(/i info Quiet: Nothing to see\./);
+  });
+});
+
+describe('run — the property-level changes come from POST {result}/whatIf', () => {
+  // ARM's PUT and GET of a stack what-if result return the resource list and
+  // each change type, but no `resourceConfigurationChanges`. Only the POST says
+  // what a modify would write, so these cases give the PUT a delta-less result
+  // and the POST the detail, as Azure does.
+  const APP_ID =
+    '/subscriptions/sub-1/resourceGroups/rg-app/providers/Microsoft.App/containerApps/contoso-web';
+  const settledOnly = {
+    ...WHATIF_PAYLOAD,
+    properties: {
+      ...WHATIF_PAYLOAD.properties,
+      changes: {
+        resourceChanges: [{ id: APP_ID, changeType: 'modify', changeCertainty: 'definite' }],
+        denySettingsChange: null,
+      },
+    },
+  };
+  const delta = [
+    {
+      path: 'properties.template.containers[0].image',
+      propertyChangeType: 'modify',
+      before: 'contoso.azurecr.io/web:1.4.0',
+      after: 'contoso.azurecr.io/web:1.5.0',
+    },
+  ];
+  const analysed = {
+    ...settledOnly,
+    properties: {
+      ...settledOnly.properties,
+      changes: {
+        resourceChanges: [
+          {
+            id: APP_ID,
+            changeType: 'modify',
+            changeCertainty: 'definite',
+            resourceConfigurationChanges: { before: {}, after: {}, delta },
+          },
+        ],
+        denySettingsChange: null,
+      },
+    },
+  };
+  const putSettled: Route = {
+    match: (u, m) => u.includes('deploymentStacksWhatIfResults') && m === 'PUT',
+    reply: () => ({ body: settledOnly }),
+  };
+  const payloadOf = (h: Harness) => readAttachment(h, ATTACHMENT_TYPE_PAYLOAD) as typeof analysed;
+
+  it('reads them after the result settles, and attaches them', async () => {
+    const h = harness({ routes: [putSettled, { match: isPropertyRead, reply: () => ({ body: analysed }) }] });
+    const result = await run(h.deps);
+
+    expect(result.status).toBe('succeeded');
+    const methods = h.requests.filter((r) => r.url.includes('WhatIfResults')).map((r) => r.method);
+    expect(methods).toEqual(['PUT', 'POST', 'DELETE']);
+    const row = payloadOf(h).properties.changes.resourceChanges[0];
+    expect(row?.resourceConfigurationChanges.delta).toEqual(delta);
+    // What only the GET carries survives the merge.
+    expect(payloadOf(h).properties.actionOnUnmanage).toEqual(WHATIF_PAYLOAD.properties.actionOnUnmanage);
+  });
+
+  it('follows a 202 to its Location', async () => {
+    const h = harness({
+      routes: [
+        putSettled,
+        {
+          match: isPropertyRead,
+          reply: () => ({ status: 202, headers: { location: 'https://management.azure.com/operationResults/op-1' } }),
+        },
+        { match: (u, m) => u.includes('/operationResults/op-1') && m === 'GET', reply: () => ({ body: analysed }) },
+      ],
+    });
+    const result = await run(h.deps);
+
+    expect(result.status).toBe('succeeded');
+    expect(payloadOf(h).properties.changes.resourceChanges[0]?.resourceConfigurationChanges.delta).toEqual(delta);
+  });
+
+  it('fails the what-if when they cannot be read, and still writes the sidecar and cleans up', async () => {
+    const h = harness({
+      routes: [
+        putSettled,
+        {
+          match: isPropertyRead,
+          reply: () => ({ status: 400, body: { error: { code: 'BadRequest', message: 'No.' } } }),
+        },
+      ],
+    });
+    const result = await run(h.deps);
+
+    expect(result.status).toBe('failed');
+    const sidecar = readAttachment(h, ATTACHMENT_TYPE_SIDECAR) as Record<string, unknown>;
+    expect(sidecar['status']).toBe('failed');
+    expect(JSON.stringify(sidecar['error'])).toContain('BadRequest');
+    expect(h.requests.some((r) => r.method === 'DELETE')).toBe(true);
+  });
+
+  it('fails the what-if when the answer has no changes object, rather than show modifies with no detail', async () => {
+    const h = harness({
+      routes: [putSettled, { match: isPropertyRead, reply: () => ({ body: { properties: {} } }) }],
+    });
+    const result = await run(h.deps);
+
+    expect(result.status).toBe('failed');
+    const sidecar = readAttachment(h, ATTACHMENT_TYPE_SIDECAR) as Record<string, unknown>;
+    expect(JSON.stringify(sidecar['error'])).toContain('NoPropertyChanges');
+  });
+
+  it('does not ask for them on a result that failed', async () => {
+    const failed = {
+      ...settledOnly,
+      properties: {
+        ...settledOnly.properties,
+        provisioningState: 'failed',
+        error: { code: 'DeploymentStackWhatIfFailed', message: 'It failed.' },
+      },
+    };
+    const h = harness({
+      routes: [{ match: (u, m) => u.includes('deploymentStacksWhatIfResults') && m === 'PUT', reply: () => ({ body: failed }) }],
+    });
+    const result = await run(h.deps);
+
+    expect(result.status).toBe('failed');
+    expect(h.requests.some((r) => isPropertyRead(r.url, r.method))).toBe(false);
+  });
+
+  it('redacts a secure value that only the property-level answer carries', async () => {
+    const leaking = {
+      ...analysed,
+      properties: {
+        ...analysed.properties,
+        changes: {
+          resourceChanges: [
+            {
+              id: APP_ID,
+              changeType: 'modify',
+              resourceConfigurationChanges: {
+                after: { properties: { administratorLoginPassword: SECRET } },
+                delta: [],
+              },
+            },
+          ],
+          denySettingsChange: null,
+        },
+      },
+    };
+    const h = harness({ routes: [putSettled, { match: isPropertyRead, reply: () => ({ body: leaking }) }] });
+    await run(h.deps);
+
+    const raw = readFileSync(find(h, ATTACHMENT_TYPE_PAYLOAD)!.path, 'utf8');
+    expect(raw).not.toContain(SECRET);
+    expect(raw).toContain(REDACTION_PLACEHOLDER);
   });
 });
