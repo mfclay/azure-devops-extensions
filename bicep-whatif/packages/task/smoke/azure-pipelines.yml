@@ -23,11 +23,11 @@
 #     subscription `create` first. Delete this stack before that one.
 #   - managementGroup: one policy definition, never assigned, whose metadata
 #     carries the stand-in secret.
-# After one `create`, each what-if reports the tagged resource as a modify. No
-# stack what-if has carried the secret even then, at any scope (subscription.bicep
-# says why). A `create` is where redaction
-# meets Azure: each template outputs the stand-in inside a longer string, and
-# the stack's outputs are in the payload a `create` attaches.
+# After one `create`, each what-if reports the tagged resource as a modify, and
+# since 1.0.1 its delta carries the tag's old value, so the stand-in reaches the
+# what-if payload and redaction meets Azure there (subscription.bicep says how).
+# A `create` meets it too: each template outputs the stand-in inside a longer
+# string, and the stack's outputs are in the payload a `create` attaches.
 # Clean up with `operation: delete`, `unmanage: delete`, resource-group and
 # management-group stacks first.
 # A step after the task fails the run if the stand-in secret appears in anything

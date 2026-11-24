@@ -8,13 +8,12 @@
 // what-if carries it; it is a stand-in, not a credential.
 //
 // The tag joins the secret to a stamp that changes every run, so once the
-// group exists every what-if is a modify. If ARM reported property values, its
-// delta would hold the secret inside a longer string, which is the case
-// value-based redaction exists for. Against Azure it has not: ARM blanks secure
-// values in the parameters it echoes, and the subscription-scope stack what-if
-// has returned no property values for the resource group or the security
-// group, created or modified. The captured fixtures, which do carry
-// `resourceConfigurationChanges`, came from stacks scoped to a resource group.
+// group exists every what-if is a modify, and its delta holds the secret
+// inside a longer string, which is the case value-based redaction exists for.
+// ARM blanks secure values in the parameters it echoes, but not in the tag's
+// old value. Until 1.0.1 no what-if showed this, because the task never made
+// the `POST {result}/whatIf` call that returns property values; since then the
+// tag's old value arrives as `***REDACTED***|<build id>`.
 //
 // The stamp is passed in by subscription.bicepparam, not defaulted here. As a
 // `utcNow()` default it changed every run and the stack what-if still called
